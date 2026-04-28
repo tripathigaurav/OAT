@@ -16,6 +16,10 @@
                 <div class="onboard-icon">📅</div>
                 <h2>Office Attendance Tracker</h2>
                 <p>Track your Q1 office attendance automatically!<br>Would you like to enable <strong>auto-tracking</strong> via office WiFi?</p>
+                <div class="onboard-name-group">
+                    <label for="onboardName">Your Name</label>
+                    <input type="text" id="onboardName" placeholder="e.g. Gaurav" maxlength="30" />
+                </div>
                 <div class="onboard-wifi-note">
                     🔒 <strong>Privacy Note:</strong> This will monitor connection to <strong>"corp"</strong> WiFi (NetApp office network) to auto-mark your attendance. No data is sent anywhere — everything stays in your browser.
                 </div>
@@ -58,6 +62,10 @@
     </div>
 
     <h1>📅 Q1 Office Attendance Tracker</h1>
+    <div class="user-greeting" id="userGreeting" style="display:none;">
+        👋 Hello, <strong id="userName"></strong>!
+        <button onclick="editUserName()" class="edit-name-btn" title="Edit name">✏️</button>
+    </div>
     <p style="text-align:center; margin-bottom:5px; opacity:0.6;">27 April 2026 - 31 July 2026</p>
 
     <!-- WiFi Auto-Mark Notification -->

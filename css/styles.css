@@ -178,6 +178,71 @@
     line-height: 1.4;
 }
 
+/* Onboarding Name Input */
+.onboard-name-group {
+    margin: 14px 0;
+    text-align: center;
+}
+
+.onboard-name-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: #a29bfe;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.onboard-name-group input {
+    width: 70%;
+    max-width: 260px;
+    padding: 10px 14px;
+    border: 2px solid rgba(162, 155, 254, 0.4);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    font-size: 1.05rem;
+    text-align: center;
+    transition: border-color 0.3s;
+}
+
+.onboard-name-group input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.onboard-name-group input:focus {
+    outline: none;
+    border-color: #a29bfe;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* User Greeting */
+.user-greeting {
+    text-align: center;
+    font-size: 1.05rem;
+    color: #dfe6e9;
+    margin-bottom: 2px;
+    animation: fadeIn 0.5s ease;
+}
+
+.user-greeting strong {
+    color: #a29bfe;
+    font-size: 1.1rem;
+}
+
+.edit-name-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+    vertical-align: middle;
+}
+
+.edit-name-btn:hover {
+    opacity: 1;
+}
+
 body {
     font-family: 'Arial', sans-serif;
     background: linear-gradient(135deg, #1a1a2e, #16213e);

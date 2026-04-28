@@ -300,6 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!localStorage.getItem('oatOnboarded') || urlParams2.get('newuser') === 'true') {
         showOnboarding();
     }
+
+    // Show user greeting if name is saved
+    showUserGreeting();
 });
 
 // OS tab switching in settings
@@ -323,14 +326,49 @@ function showOnboarding() {
     document.getElementById('onboardOverlay').style.display = 'flex';
     document.getElementById('onboardStep1').style.display = 'block';
     document.getElementById('onboardStep2').style.display = 'none';
+    // Pre-fill name if already saved
+    const savedName = localStorage.getItem('oatUserName');
+    if (savedName) {
+        document.getElementById('onboardName').value = savedName;
+    }
+}
+
+function saveUserName() {
+    const nameInput = document.getElementById('onboardName');
+    const name = nameInput ? nameInput.value.trim() : '';
+    if (name) {
+        localStorage.setItem('oatUserName', name);
+    }
+    showUserGreeting();
+}
+
+function showUserGreeting() {
+    const name = localStorage.getItem('oatUserName');
+    const greetingEl = document.getElementById('userGreeting');
+    const nameEl = document.getElementById('userName');
+    if (name && greetingEl && nameEl) {
+        nameEl.textContent = name;
+        greetingEl.style.display = 'block';
+    }
+}
+
+function editUserName() {
+    const current = localStorage.getItem('oatUserName') || '';
+    const newName = prompt('Enter your name:', current);
+    if (newName !== null && newName.trim()) {
+        localStorage.setItem('oatUserName', newName.trim());
+        showUserGreeting();
+    }
 }
 
 function onboardSkip() {
+    saveUserName();
     localStorage.setItem('oatOnboarded', 'skipped');
     document.getElementById('onboardOverlay').style.display = 'none';
 }
 
 function onboardYes() {
+    saveUserName();
     const os = detectOS();
     document.getElementById('onboardStep1').style.display = 'none';
     document.getElementById('onboardStep2').style.display = 'block';
@@ -426,7 +464,10 @@ function copyCommands() {
 }
 
 function onboardDone() {
+    saveUserName();
     localStorage.setItem('oatOnboarded', 'completed');
     document.getElementById('onboardOverlay').style.display = 'none';
-    showNotification('\uD83C\uDF89 Setup complete! Your attendance will auto-track when you connect to office WiFi.', 'success');
+    const name = localStorage.getItem('oatUserName');
+    const greeting = name ? `Welcome ${name}! ` : '';
+    showNotification(`\uD83C\uDF89 ${greeting}Setup complete! Your attendance will auto-track when you connect to office WiFi.`, 'success');
 }
