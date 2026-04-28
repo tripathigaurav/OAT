@@ -295,8 +295,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({}, document.title, cleanUrl);
     }
 
-    // Show onboarding for first-time visitors
-    if (!localStorage.getItem('oatOnboarded')) {
+    // Show onboarding for first-time visitors (or ?newuser=true for demo)
+    const urlParams2 = new URLSearchParams(window.location.search);
+    if (!localStorage.getItem('oatOnboarded') || urlParams2.get('newuser') === 'true') {
         showOnboarding();
     }
 });
