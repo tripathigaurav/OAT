@@ -16,7 +16,7 @@
 # --- Configuration ---
 OFFICE_WIFI="corp"
 OFFICE_DNS_DOMAIN="wlan.netapp.com"
-TRACKER_PATH="$HOME/Library/CloudStorage/OneDrive-NetAppInc/Desktop/OAT/index.html"
+TRACKER_URL="https://tripathigaurav.github.io/OAT/?automark=true"
 LOG_FILE="$HOME/Library/CloudStorage/OneDrive-NetAppInc/Desktop/OAT/auto-attendance.log"
 LOCK_FILE="/tmp/oat-automark-$(date +%Y-%m-%d).lock"
 
@@ -107,13 +107,13 @@ if [ "$1" = "--dry-run" ]; then
     echo ""
     echo "  📋 What would happen:"
     echo "     ✅ Create lock file: $LOCK_FILE"
-    echo "     ✅ Open tracker:     file://${TRACKER_PATH}?automark=true"
+    echo "     ✅ Open tracker:     $TRACKER_URL"
     echo "     ✅ Auto-mark today:  $(date +%Y-%m-%d)"
     echo ""
     echo "  📂 Config:"
     echo "     Office WiFi SSID:  $OFFICE_WIFI"
     echo "     Office DNS Domain: $OFFICE_DNS_DOMAIN"
-    echo "     Tracker path:      $TRACKER_PATH"
+    echo "     Tracker URL:       $TRACKER_URL"
     echo "     Log file:          $LOG_FILE"
     echo ""
     echo "  ✅ DRY RUN PASSED — Everything looks good!"
@@ -126,7 +126,7 @@ fi
 touch "$LOCK_FILE"
 
 # Open the tracker in default browser with automark parameter
-open "file://${TRACKER_PATH}?automark=true"
+open "$TRACKER_URL"
 
 log_msg "✅ Opened attendance tracker with auto-mark. Done!"
 
