@@ -287,10 +287,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check for auto-mark trigger via URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('automark') === 'true') {
+        // Record that the background script is working
+        localStorage.setItem('oatScriptActive', new Date().toISOString());
         if (settings.autoMarkEnabled !== false) {
             autoMarkToday();
         }
         // Clean up URL (remove ?automark=true) without reload
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    // Check for backfill trigger via URL parameter (?backfill=2026-05-05,2026-05-06,...)
+    const backfillDates = urlParams.get('backfill');
+    if (backfillDates) {
+        handleBackfill(backfillDates);
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
     }
@@ -300,6 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!localStorage.getItem('oatOnboarded') || urlParams2.get('newuser') === 'true') {
         showOnboarding();
     }
+
+    // Update setup status indicator
+    updateSetupStatus();
 
     // Show user greeting if name is saved
     showUserGreeting();
@@ -322,15 +335,83 @@ function detectOS() {
     return 'unknown';
 }
 
+function isSetupAlreadyDone() {
+    // Check multiple signals that suggest the script is already installed
+    const scriptActive = localStorage.getItem('oatScriptActive');
+    const hasAutoMarks = Object.keys(autoMarkedDays).length > 0;
+    const hasAutoLog = autoMarkLog.length > 0;
+    return !!(scriptActive || hasAutoMarks || hasAutoLog);
+}
+
+function getSetupStatusText() {
+    const scriptActive = localStorage.getItem('oatScriptActive');
+    const autoMarkCount = Object.keys(autoMarkedDays).length;
+
+    if (scriptActive) {
+        const lastRun = new Date(scriptActive);
+        return `Last auto-mark trigger: ${lastRun.toLocaleDateString()} ${lastRun.toLocaleTimeString()}`;
+    }
+    if (autoMarkCount > 0) {
+        return `${autoMarkCount} day(s) auto-marked so far`;
+    }
+    return '';
+}
+
+function updateSetupStatus() {
+    // Show a small status indicator on the main page if setup is active
+    const existing = document.getElementById('setupStatusBadge');
+    if (existing) existing.remove();
+
+    if (isSetupAlreadyDone()) {
+        const badge = document.createElement('div');
+        badge.id = 'setupStatusBadge';
+        badge.className = 'setup-status-badge active';
+        badge.innerHTML = '🤖 Auto-tracking active';
+        badge.title = getSetupStatusText();
+        const header = document.querySelector('h1');
+        if (header) header.after(badge);
+    }
+}
+
 function showOnboarding() {
+    const alreadySetup = isSetupAlreadyDone();
+
     document.getElementById('onboardOverlay').style.display = 'flex';
-    document.getElementById('onboardStep1').style.display = 'block';
     document.getElementById('onboardStep2').style.display = 'none';
+
+    if (alreadySetup) {
+        // Setup already detected — show "already active" version
+        document.getElementById('onboardStep1').style.display = 'none';
+        document.getElementById('onboardStepActive').style.display = 'block';
+        const statusDetail = document.getElementById('activeStatusDetail');
+        if (statusDetail) statusDetail.textContent = getSetupStatusText();
+    } else {
+        // Fresh user — show normal onboarding
+        document.getElementById('onboardStep1').style.display = 'block';
+        const activeStep = document.getElementById('onboardStepActive');
+        if (activeStep) activeStep.style.display = 'none';
+    }
+
     // Pre-fill name if already saved
     const savedName = localStorage.getItem('oatUserName');
     if (savedName) {
         document.getElementById('onboardName').value = savedName;
+        const activeNameInput = document.getElementById('onboardNameActive');
+        if (activeNameInput) activeNameInput.value = savedName;
     }
+}
+
+function onboardDoneActive() {
+    // Save name from the "active" modal variant
+    const nameInput = document.getElementById('onboardNameActive');
+    const name = nameInput ? nameInput.value.trim() : '';
+    if (name) localStorage.setItem('oatUserName', name);
+    showUserGreeting();
+
+    localStorage.setItem('oatOnboarded', 'completed');
+    document.getElementById('onboardOverlay').style.display = 'none';
+    const greeting = name ? `${name}, ` : '';
+    showNotification(`\u2705 ${greeting}your auto-tracking is active and working!`, 'success');
 }
 
 function saveUserName() {
@@ -382,29 +463,44 @@ function onboardYes() {
         document.getElementById('terminalName').textContent = 'PowerShell (Run as Admin)';
         document.getElementById('downloadBtn1').textContent = '\uD83D\uDCE5 Download auto-attendance.ps1';
         document.getElementById('downloadBtn2').textContent = '\uD83D\uDCE5 Download Task XML';
+        // Show Windows one-click, hide Mac
+        document.getElementById('oneClickWin').style.display = 'block';
+        document.getElementById('oneClickMac').style.display = 'none';
         cmdsEl.innerHTML = `
-            <code>cd $env:USERPROFILE\\Downloads</code>
+            <code># Move files to OAT folder</code>
             <code>mkdir -Force $env:USERPROFILE\\Desktop\\OAT</code>
-            <code>Move-Item auto-attendance.ps1, auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\</code>
-            <code>Register-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance"</code>
+            <code>Move-Item $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:USERPROFILE\\Desktop\\OAT\\</code>
+            <code>Move-Item $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\</code>
+            <code># Fix path in task config</code>
+            <code>(Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml") -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', "$env:USERPROFILE\\Desktop\\OAT" | Set-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml"</code>
+            <code># Register scheduled task (requires Admin)</code>
+            <code>Register-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force</code>
         `;
-        window._oatCmds = `cd $env:USERPROFILE\\Downloads\nmkdir -Force $env:USERPROFILE\\Desktop\\OAT\nMove-Item auto-attendance.ps1, auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\\nRegister-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance"`;
+        window._oatCmds = `mkdir -Force $env:USERPROFILE\\Desktop\\OAT\nMove-Item $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:USERPROFILE\\Desktop\\OAT\\\nMove-Item $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\\n(Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml") -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', "$env:USERPROFILE\\Desktop\\OAT" | Set-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml"\nRegister-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force`;
     } else {
-        // Mac / Linux
+        // Mac / Linux — show terminal command (avoids permission issues)
         document.getElementById('osIcon').textContent = '\uD83C\uDF4E';
         document.getElementById('osTitle').textContent = 'Mac Setup';
         document.getElementById('osName').textContent = 'macOS';
         document.getElementById('terminalName').textContent = 'Terminal';
         document.getElementById('downloadBtn1').textContent = '\uD83D\uDCE5 Download auto-attendance.sh';
         document.getElementById('downloadBtn2').textContent = '\uD83D\uDCE5 Download LaunchAgent plist';
+        // Show Mac one-click, hide Windows
+        document.getElementById('oneClickMac').style.display = 'block';
+        document.getElementById('oneClickWin').style.display = 'none';
         cmdsEl.innerHTML = `
+            <code># Move files to OAT folder</code>
             <code>mkdir -p ~/Desktop/OAT</code>
             <code>mv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/Desktop/OAT/</code>
             <code>chmod +x ~/Desktop/OAT/auto-attendance.sh</code>
+            <code># Fix script path in plist to match your user</code>
+            <code>sed -i '' "s|/Users/gtripath/Desktop/OAT|$HOME/Desktop/OAT|g" ~/Desktop/OAT/com.oat.wifiattendance.plist</code>
+            <code># Install LaunchAgent (unload old one first if exists)</code>
+            <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null</code>
             <code>cp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
             <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code>
         `;
-        window._oatCmds = `mkdir -p ~/Desktop/OAT\nmv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/Desktop/OAT/\nchmod +x ~/Desktop/OAT/auto-attendance.sh\ncp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/\nlaunchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist`;
+        window._oatCmds = `mkdir -p ~/Desktop/OAT\nmv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/Desktop/OAT/\nchmod +x ~/Desktop/OAT/auto-attendance.sh\nsed -i '' "s|/Users/gtripath/Desktop/OAT|$HOME/Desktop/OAT|g" ~/Desktop/OAT/com.oat.wifiattendance.plist\nlaunchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null\ncp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/\nlaunchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist`;
     }
 }
 
@@ -463,6 +559,93 @@ function copyCommands() {
     }
 }
 
+// ---- Setup Option Tabs ----
+function showSetupOption(option) {
+    document.getElementById('optionOneClick').style.display = option === 'oneclick' ? 'block' : 'none';
+    document.getElementById('optionManual').style.display = option === 'manual' ? 'block' : 'none';
+    document.getElementById('tabOneClick').classList.toggle('active', option === 'oneclick');
+    document.getElementById('tabManual').classList.toggle('active', option === 'manual');
+}
+
+function downloadInstaller() {
+    // Windows only — Mac uses copyInstallCmd() instead
+    const a = document.createElement('a');
+    a.href = 'install-win.bat';
+    a.download = 'install-win.bat';
+    a.click();
+    const btn = document.getElementById('oneClickBtn');
+    btn.textContent = '\u2705 Downloaded! Now open the file.';
+    btn.style.background = 'rgba(0, 184, 148, 0.3)';
+    document.getElementById('installerStatus').textContent = '\u23F3 Waiting for setup to complete...';
+    document.getElementById('installerStatus').style.color = '#fdcb6e';
+    // Start listening for the installer to complete
+    startSetupVerificationListener();
+}
+
+// Listen for cross-tab localStorage changes (installer opens new tab → sets oatScriptActive)
+function startSetupVerificationListener() {
+    // Check immediately in case it's already set
+    if (localStorage.getItem('oatScriptActive')) {
+        onSetupVerified();
+        return;
+    }
+    // Listen for storage events from other tabs
+    window.addEventListener('storage', function onStorage(e) {
+        if (e.key === 'oatScriptActive' && e.newValue) {
+            window.removeEventListener('storage', onStorage);
+            onSetupVerified();
+        }
+    });
+    // Also poll every 2s as fallback (some browsers don't fire storage for same-origin)
+    window._setupPoll = setInterval(() => {
+        if (localStorage.getItem('oatScriptActive')) {
+            clearInterval(window._setupPoll);
+            onSetupVerified();
+        }
+    }, 2000);
+}
+
+function onSetupVerified() {
+    if (window._setupPoll) clearInterval(window._setupPoll);
+    const os = detectOS();
+    if (os === 'windows') {
+        const banner = document.getElementById('setupVerifiedWin');
+        const steps = document.getElementById('winSteps');
+        const btn = document.getElementById('oneClickBtn');
+        if (banner) banner.style.display = 'block';
+        if (steps) steps.style.display = 'none';
+        if (btn) btn.style.display = 'none';
+        document.getElementById('installerStatus').textContent = '\u2705 Setup is complete!';
+        document.getElementById('installerStatus').style.color = '#55efc4';
+    } else {
+        const banner = document.getElementById('setupVerifiedMac');
+        const steps = document.getElementById('macSteps');
+        if (banner) banner.style.display = 'block';
+        if (steps) steps.style.display = 'none';
+        document.getElementById('macInstallStatus').textContent = '\u2705 Setup is complete!';
+        document.getElementById('macInstallStatus').style.color = '#55efc4';
+    }
+}
+
+function copyInstallCmd() {
+    const cmd = document.getElementById('macInstallCmd').textContent;
+    navigator.clipboard.writeText(cmd).then(() => {
+        document.getElementById('macInstallStatus').textContent = '\u2705 Copied! Now paste in Terminal (Cmd+V)';
+        document.getElementById('macInstallStatus').style.color = '#55efc4';
+        startSetupVerificationListener();
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        document.getElementById('macInstallStatus').textContent = '\u2705 Copied! Now paste in Terminal (Cmd+V)';
+        document.getElementById('macInstallStatus').style.color = '#55efc4';
+        startSetupVerificationListener();
+    });
+}
+
 function onboardDone() {
     saveUserName();
     localStorage.setItem('oatOnboarded', 'completed');
@@ -470,4 +653,58 @@ function onboardDone() {
     const name = localStorage.getItem('oatUserName');
     const greeting = name ? `Welcome ${name}! ` : '';
     showNotification(`\uD83C\uDF89 ${greeting}Setup complete! Your attendance will auto-track when you connect to office WiFi.`, 'success');
+}
+
+// ---- Backfill from WiFi Logs ----
+function handleBackfill(dateString) {
+    const dates = dateString.split(',').map(d => d.trim()).filter(d => d);
+    if (dates.length === 0) return;
+
+    let newCount = 0;
+    let skipCount = 0;
+
+    dates.forEach(dateStr => {
+        // Validate date format (YYYY-MM-DD)
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+
+        const parts = dateStr.split('-');
+        const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const dayOfWeek = date.getDay();
+
+        // Skip weekends
+        if (dayOfWeek === 0 || dayOfWeek === 6) return;
+        // Skip holidays
+        if (isHoliday(dateStr)) return;
+        // Skip out of range
+        if (!isInRange(date)) return;
+        // Skip already marked
+        if (checkedDays[dateStr]) {
+            skipCount++;
+            return;
+        }
+
+        // Mark it!
+        checkedDays[dateStr] = true;
+        autoMarkedDays[dateStr] = true;
+        newCount++;
+    });
+
+    localStorage.setItem('officeDays', JSON.stringify(checkedDays));
+    localStorage.setItem('autoMarkedDays', JSON.stringify(autoMarkedDays));
+
+    // Log the backfill
+    const logEntry = `${new Date().toLocaleString()} \u2014 Backfilled ${newCount} days from WiFi logs (${skipCount} already marked)`;
+    autoMarkLog.unshift(logEntry);
+    if (autoMarkLog.length > 30) autoMarkLog.pop();
+    localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
+
+    if (newCount > 0) {
+        showNotification(`\uD83D\uDCE1 Backfilled ${newCount} office days from WiFi history!${skipCount > 0 ? ` (${skipCount} already marked)` : ''}`, 'success');
+    } else if (skipCount > 0) {
+        showNotification(`\u2705 All ${skipCount} days from WiFi history were already marked!`, 'already');
+    } else {
+        showNotification('\uD83D\uDCCB No valid workdays found in the backfill data.', 'info');
+    }
+
+    renderCalendars();
 }

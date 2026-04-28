@@ -5,6 +5,12 @@
 # This script checks if you're connected to the office WiFi
 # and automatically opens the attendance tracker to mark today.
 #
+# Usage:
+#   auto-attendance.ps1                  — Normal mode (auto-mark today)
+#   auto-attendance.ps1 --dry-run        — Test without making changes
+#   auto-attendance.ps1 --backfill       — Scan WiFi logs & backfill past days
+#   auto-attendance.ps1 --backfill-dry   — Preview backfill without opening browser
+#
 # Setup:
 #   1. Right-click this file → Run with PowerShell (to test)
 #   2. Import the scheduled task (see auto-attendance-task.xml)
@@ -16,8 +22,16 @@
 $OFFICE_WIFI = "corp"
 $OFFICE_DNS_DOMAIN = "wlan.netapp.com"
 $TRACKER_URL = "https://tripathigaurav.github.io/OAT/?automark=true"
+$TRACKER_BACKFILL_URL = "https://tripathigaurav.github.io/OAT/?backfill="
 $LOG_FILE = "$PSScriptRoot\auto-attendance.log"
 $LOCK_FILE = "$env:TEMP\oat-automark-$(Get-Date -Format 'yyyy-MM-dd').lock"
+
+# OAT Quarter Range
+$QUARTER_START = [DateTime]"2026-04-27"
+$QUARTER_END = [DateTime]"2026-07-31"
+
+# Holidays (won't be marked)
+$HOLIDAYS = @("2026-05-01", "2026-05-28")
 
 # --- Functions ---
 function Write-Log {
@@ -46,6 +60,153 @@ function Get-DNSDomains {
         return ($output -replace '.*:\s+', '').Trim()
     } catch {}
     return @()
+}
+
+# --- Backfill Functions ---
+function Is-Workday {
+    param([DateTime]$Date)
+    $dateStr = $Date.ToString("yyyy-MM-dd")
+    $dow = $Date.DayOfWeek
+    return ($dow -ne "Saturday" -and $dow -ne "Sunday" -and
+            $Date -ge $QUARTER_START -and $Date -le $QUARTER_END -and
+            $dateStr -notin $HOLIDAYS)
+}
+
+function Get-WiFiHistory {
+    # Scan Windows WLAN Event Log for connections to office WiFi
+    # Event ID 8001 = Successfully connected to a wireless network
+    $officeDates = @()
+
+    Write-Host ""
+    Write-Host "  Scanning Windows WiFi Event Log..." -ForegroundColor Cyan
+    Write-Host ""
+
+    try {
+        # Get all WLAN connection events
+        $events = Get-WinEvent -LogName "Microsoft-Windows-WLAN-AutoConfig/Operational" -ErrorAction Stop |
+            Where-Object { $_.Id -eq 8001 }
+
+        Write-Host "  Found $($events.Count) total WiFi connection events." -ForegroundColor Gray
+
+        foreach ($event in $events) {
+            $msg = $event.Message
+            $eventDate = $event.TimeCreated.Date
+            $dateStr = $eventDate.ToString("yyyy-MM-dd")
+
+            # Check if this was a connection to office WiFi
+            if ($msg -match $OFFICE_WIFI) {
+                if ((Is-Workday $eventDate) -and ($dateStr -notin $officeDates)) {
+                    $officeDates += $dateStr
+                    Write-Host "    Found: $dateStr ($($eventDate.ToString('dddd'))) - Connected to '$OFFICE_WIFI'" -ForegroundColor Green
+                }
+            }
+        }
+    }
+    catch {
+        Write-Host "  Could not read WLAN event log. Trying alternative method..." -ForegroundColor Yellow
+
+        # Fallback: Try netsh wlan show history (limited but doesn't need elevation)
+        try {
+            $output = netsh wlan show wlanreport 2>$null
+            Write-Host "  Generated WLAN report. Check: C:\ProgramData\Microsoft\Windows\WlanReport\wlan-report-latest.html" -ForegroundColor Yellow
+        }
+        catch {
+            Write-Host "  WiFi history not accessible." -ForegroundColor Red
+        }
+    }
+
+    # Also scan Event ID 10000 from NetworkProfile (network connected events) as backup
+    try {
+        $netEvents = Get-WinEvent -LogName "Microsoft-Windows-NetworkProfile/Operational" -ErrorAction SilentlyContinue |
+            Where-Object { $_.Id -eq 10000 }
+
+        foreach ($event in $netEvents) {
+            $msg = $event.Message
+            $eventDate = $event.TimeCreated.Date
+            $dateStr = $eventDate.ToString("yyyy-MM-dd")
+
+            if (($msg -match $OFFICE_WIFI -or $msg -match "netapp" -or $msg -match $OFFICE_DNS_DOMAIN) -and
+                (Is-Workday $eventDate) -and ($dateStr -notin $officeDates)) {
+                $officeDates += $dateStr
+                Write-Host "    Found: $dateStr ($($eventDate.ToString('dddd'))) - Network profile match" -ForegroundColor Green
+            }
+        }
+    }
+    catch { }
+
+    return $officeDates | Sort-Object
+}
+
+function Run-Backfill {
+    param([bool]$DryRun = $false)
+
+    Write-Host "========================================================" -ForegroundColor Cyan
+    Write-Host "  OAT BACKFILL - WiFi Log Scanner" -ForegroundColor Cyan
+    Write-Host "  Scanning WiFi history for past office days..." -ForegroundColor Cyan
+    Write-Host "  Quarter: $($QUARTER_START.ToString('MMM dd')) - $($QUARTER_END.ToString('MMM dd yyyy'))" -ForegroundColor Gray
+    Write-Host "  Office WiFi: '$OFFICE_WIFI'" -ForegroundColor Gray
+    Write-Host "========================================================" -ForegroundColor Cyan
+
+    $dates = Get-WiFiHistory
+
+    if ($dates.Count -eq 0) {
+        Write-Host ""
+        Write-Host "  No past office WiFi connections found in the logs." -ForegroundColor Yellow
+        Write-Host "  This could mean:" -ForegroundColor Gray
+        Write-Host "    - Logs have been cleared" -ForegroundColor Gray
+        Write-Host "    - WiFi was named differently" -ForegroundColor Gray
+        Write-Host "    - You used ethernet instead of WiFi" -ForegroundColor Gray
+        Write-Host ""
+        Write-Log "Backfill: No WiFi history found."
+        return
+    }
+
+    Write-Host ""
+    Write-Host "  ======================================================" -ForegroundColor Green
+    Write-Host "  Found $($dates.Count) office days from WiFi logs:" -ForegroundColor Green
+    Write-Host "  ======================================================" -ForegroundColor Green
+    Write-Host ""
+
+    foreach ($d in $dates) {
+        $dt = [DateTime]$d
+        Write-Host "    $d ($($dt.ToString('dddd')))" -ForegroundColor White
+    }
+
+    Write-Host ""
+
+    if ($DryRun) {
+        Write-Host "  [DRY RUN] Would open tracker to backfill these $($dates.Count) days." -ForegroundColor Yellow
+        Write-Host "  [DRY RUN] Run without --backfill-dry to apply." -ForegroundColor Yellow
+        Write-Log "Backfill dry run: Found $($dates.Count) days."
+    }
+    else {
+        # Build comma-separated date list and open tracker
+        $dateList = $dates -join ","
+        $backfillUrl = "$TRACKER_BACKFILL_URL$dateList"
+
+        Write-Host "  Opening tracker to mark $($dates.Count) days..." -ForegroundColor Cyan
+        Start-Process $backfillUrl
+        Write-Log "Backfill: Opened tracker with $($dates.Count) days: $dateList"
+        Write-Host ""
+        Write-Host "  DONE! Check the tracker in your browser." -ForegroundColor Green
+        Write-Host "  Dates marked: $dateList" -ForegroundColor Gray
+    }
+
+    Write-Host ""
+    Write-Host "========================================================" -ForegroundColor Cyan
+}
+
+# --- Check for Backfill Mode ---
+if ($args -contains "--backfill") {
+    Run-Backfill -DryRun $false
+    Read-Host "  Press Enter to close"
+    exit 0
+}
+
+if ($args -contains "--backfill-dry") {
+    Run-Backfill -DryRun $true
+    Read-Host "  Press Enter to close"
+    exit 0
 }
 
 # --- Main Logic ---

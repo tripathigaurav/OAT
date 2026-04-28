@@ -178,6 +178,211 @@
     line-height: 1.4;
 }
 
+/* Setup Option Tabs */
+.setup-option-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 14px 0 10px;
+}
+
+.setup-option-tab {
+    flex: 1;
+    padding: 10px 8px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    color: #636e72;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.setup-option-tab.active {
+    background: rgba(0, 184, 148, 0.15);
+    border-color: #00b894;
+    color: #55efc4;
+}
+
+.setup-option-tab:hover:not(.active) {
+    background: rgba(255,255,255,0.08);
+    color: #b2bec3;
+}
+
+/* One-Click Box */
+.oneclick-box {
+    background: rgba(0, 184, 148, 0.08);
+    border: 2px solid rgba(0, 184, 148, 0.25);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+}
+
+.oneclick-icon {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+}
+
+.oneclick-box p {
+    font-size: 0.95rem;
+    margin-bottom: 14px;
+}
+
+/* Terminal command box (Mac one-click) */
+.terminal-cmd-box {
+    display: flex;
+    align-items: center;
+    background: #0d1117;
+    border: 1px solid rgba(0, 184, 148, 0.4);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.terminal-cmd-box code {
+    flex: 1;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 0.78rem;
+    color: #55efc4;
+    word-break: break-all;
+    text-align: left;
+    line-height: 1.4;
+    background: none;
+    padding: 0;
+}
+
+.copy-cmd-btn {
+    background: rgba(0, 184, 148, 0.2);
+    border: 1px solid rgba(0, 184, 148, 0.4);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: white;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.copy-cmd-btn:hover {
+    background: rgba(0, 184, 148, 0.4);
+    transform: scale(1.05);
+}
+
+/* Setup Verified Banner */
+.setup-verified-banner {
+    background: rgba(0, 184, 148, 0.15);
+    border: 2px solid rgba(0, 184, 148, 0.5);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 14px;
+    text-align: center;
+    animation: fadeIn 0.4s ease;
+}
+
+.setup-verified-banner .verified-icon {
+    font-size: 2rem;
+    margin-bottom: 6px;
+}
+
+.setup-verified-banner strong {
+    color: #55efc4;
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.setup-verified-banner p {
+    color: #b2bec3;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.onboard-btn.oneclick {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    color: white;
+    padding: 14px 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 12px;
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 8px;
+}
+
+.onboard-btn.oneclick:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 20px rgba(0, 184, 148, 0.4);
+}
+
+.oneclick-steps {
+    margin-top: 14px;
+    text-align: left;
+}
+
+.oneclick-step {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    color: #b2bec3;
+    border-left: 2px solid rgba(0, 184, 148, 0.3);
+    margin-bottom: 4px;
+    padding-left: 12px;
+}
+
+/* Setup Detected / Already Active */
+.setup-detected-box {
+    background: rgba(0, 184, 148, 0.12);
+    border: 2px solid rgba(0, 184, 148, 0.35);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+    margin: 12px 0;
+}
+
+.setup-detected-icon {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+}
+
+.setup-detected-box p {
+    font-size: 1rem;
+    color: #55efc4;
+}
+
+.setup-detected-detail {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: #b2bec3;
+    font-style: italic;
+}
+
+/* Setup Status Badge (on main page) */
+.setup-status-badge {
+    text-align: center;
+    font-size: 0.8rem;
+    padding: 4px 14px;
+    border-radius: 20px;
+    display: inline-block;
+    margin: 0 auto 4px;
+    width: fit-content;
+}
+
+.setup-status-badge.active {
+    background: rgba(0, 184, 148, 0.15);
+    border: 1px solid rgba(0, 184, 148, 0.3);
+    color: #55efc4;
+}
+
+/* Center the badge below h1 */
+h1 + .setup-status-badge {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 /* Onboarding Name Input */
 .onboard-name-group {
     margin: 14px 0;
