@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Label: Unique identifier for this agent -->
+    <key>Label</key>
+    <string>com.oat.wifiattendance</string>
+
+    <!-- Program: Path to the auto-attendance script -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/gtripath/Library/CloudStorage/OneDrive-NetAppInc/Desktop/OAT/auto-attendance.sh</string>
+    </array>
+
+    <!-- WatchPaths: Trigger when network configuration changes -->
+    <key>WatchPaths</key>
+    <array>
+        <string>/Library/Preferences/SystemConfiguration</string>
+    </array>
+
+    <!-- Also run at load (login) as a fallback -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Throttle: Don't run more often than every 30 seconds -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <!-- Standard output/error logs -->
+    <key>StandardOutPath</key>
+    <string>/tmp/oat-wifi-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/oat-wifi-stderr.log</string>
+</dict>
+</plist>

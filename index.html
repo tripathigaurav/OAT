@@ -3,287 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q1 Office Attendance Calendar 📅</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .summary-bar {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-        }
-
-        .summary-row {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            flex-wrap: wrap;
-            margin-bottom: 10px;
-        }
-
-        .summary-row span {
-            font-size: 1.1rem;
-        }
-
-        .total-days { color: #74b9ff; }
-        .office-days { color: #00b894; }
-        .target-days { color: #fdcb6e; }
-        .remaining-days { color: #e17055; }
-
-        .progress-container {
-            width: 80%;
-            max-width: 500px;
-            margin: 10px auto 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 20px;
-            height: 25px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #00b894, #00cec9);
-            border-radius: 20px;
-            transition: width 0.5s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
-        }
-
-        .progress-bar.complete {
-            background: linear-gradient(90deg, #00b894, #55efc4);
-        }
-
-        .target-status {
-            text-align: center;
-            margin-top: 8px;
-            font-size: 1rem;
-        }
-
-        .calendars {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        .month-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 20px;
-            width: 350px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .month-title {
-            text-align: center;
-            font-size: 1.4rem;
-            margin-bottom: 15px;
-            color: #a29bfe;
-        }
-
-        .day-headers {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            text-align: center;
-            margin-bottom: 5px;
-        }
-
-        .day-headers span {
-            font-size: 0.8rem;
-            color: #636e72;
-            padding: 5px;
-        }
-
-        .day-headers span.weekend-header {
-            color: #ff7675;
-            font-weight: bold;
-        }
-
-        .days-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-        }
-
-        .day-cell {
-            text-align: center;
-            padding: 8px 4px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            position: relative;
-            min-height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .day-cell.empty { background: none; }
-
-        .day-cell.saturday {
-            background: rgba(108, 92, 231, 0.25);
-            color: #a29bfe;
-            cursor: not-allowed;
-            border: 1px solid rgba(108, 92, 231, 0.3);
-        }
-
-        .day-cell.sunday {
-            background: rgba(255, 118, 117, 0.25);
-            color: #ff7675;
-            cursor: not-allowed;
-            border: 1px solid rgba(255, 118, 117, 0.3);
-        }
-
-        .day-cell.weekday {
-            background: rgba(255, 255, 255, 0.08);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .day-cell.weekday:hover {
-            background: rgba(116, 185, 255, 0.3);
-            transform: scale(1.1);
-        }
-
-        .day-cell.checked {
-            background: rgba(0, 184, 148, 0.4) !important;
-            border: 2px solid #00b894;
-        }
-
-        .day-cell.checked::after {
-            content: "✅";
-            position: absolute;
-            top: -2px;
-            right: 0px;
-            font-size: 0.6rem;
-        }
-
-        .day-cell.holiday {
-            background: rgba(225, 112, 85, 0.4) !important;
-            border: 2px solid #e17055;
-            cursor: not-allowed;
-        }
-
-        .day-cell.holiday::after {
-            content: "🎉";
-            position: absolute;
-            top: -2px;
-            right: 0px;
-            font-size: 0.6rem;
-        }
-
-        .day-cell.before-range,
-        .day-cell.after-range {
-            opacity: 0.2;
-            cursor: not-allowed;
-        }
-
-        .month-summary {
-            margin-top: 15px;
-            padding: 10px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            text-align: center;
-            font-size: 0.9rem;
-        }
-
-        .month-summary div {
-            margin: 3px 0;
-        }
-
-        .legend {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.85rem;
-        }
-
-        .legend-box {
-            width: 18px;
-            height: 18px;
-            border-radius: 4px;
-        }
-
-        .legend-box.office { background: rgba(0, 184, 148, 0.4); border: 2px solid #00b894; }
-        .legend-box.saturday { background: rgba(108, 92, 231, 0.25); border: 1px solid rgba(108, 92, 231, 0.3); }
-        .legend-box.sunday { background: rgba(255, 118, 117, 0.25); border: 1px solid rgba(255, 118, 117, 0.3); }
-        .legend-box.holiday { background: rgba(225, 112, 85, 0.4); border: 2px solid #e17055; }
-        .legend-box.workday { background: rgba(255, 255, 255, 0.08); }
-
-        .reset-btn {
-            display: block;
-            margin: 20px auto;
-            padding: 10px 30px;
-            background: #e17055;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .reset-btn:hover {
-            background: #d63031;
-            transform: scale(1.05);
-        }
-
-        .holiday-list {
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 0.85rem;
-            color: #e17055;
-        }
-
-        .confetti {
-            display: none;
-            text-align: center;
-            font-size: 2rem;
-            animation: celebrate 1s ease-in-out;
-        }
-
-        @keyframes celebrate {
-            0% { transform: scale(0); }
-            50% { transform: scale(1.3); }
-            100% { transform: scale(1); }
-        }
-    </style>
+    <title>Q1 Office Attendance Calendar</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
     <h1>📅 Q1 Office Attendance Tracker</h1>
     <p style="text-align:center; margin-bottom:5px; opacity:0.6;">27 April 2026 - 31 July 2026</p>
+
+    <!-- WiFi Auto-Mark Notification -->
+    <div class="wifi-notification" id="wifiNotification" style="display:none;">
+        <span id="wifiNotifText"></span>
+        <button onclick="dismissNotification()" style="background:none;border:none;color:white;cursor:pointer;font-size:1.2rem;margin-left:10px;">✕</button>
+    </div>
 
     <div class="holiday-list">
         🎉 Holidays: May Day (1 May, Fri) | Bakrid (28 May, Thu)
@@ -292,6 +24,7 @@
     <div class="legend">
         <div class="legend-item"><div class="legend-box workday"></div> Workday</div>
         <div class="legend-item"><div class="legend-box office"></div> ✅ Office</div>
+        <div class="legend-item"><div class="legend-box auto-marked"></div> 🤖 Auto</div>
         <div class="legend-item"><div class="legend-box saturday"></div> 🟣 Saturday</div>
         <div class="legend-item"><div class="legend-box sunday"></div> 🔴 Sunday</div>
         <div class="legend-item"><div class="legend-box holiday"></div> 🎉 Holiday</div>
@@ -317,173 +50,66 @@
 
     <button class="reset-btn" onclick="resetAll()">🔄 Reset All</button>
 
-    <script>
-        const TARGET = 39;
-        const startDate = new Date(2026, 3, 27);
-        const endDate = new Date(2026, 6, 31);
+    <!-- Settings Panel -->
+    <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
+    <div class="settings-panel" id="settingsPanel" style="display:none;">
+        <h3>🤖 WiFi Auto-Mark Settings</h3>
+        <div class="settings-group">
+            <label>Office WiFi Name (SSID):</label>
+            <input type="text" id="wifiSSID" placeholder="e.g. corp" />
+        </div>
+        <div class="settings-group">
+            <label>
+                <input type="checkbox" id="autoMarkEnabled" />
+                Enable Auto-Mark on WiFi Connect
+            </label>
+        </div>
+        <div class="settings-group">
+            <label>Auto-mark log:</label>
+            <div class="auto-mark-log" id="autoMarkLog">No auto-marks yet.</div>
+        </div>
+        <div class="settings-actions">
+            <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
+            <button class="close-settings-btn" onclick="toggleSettings()">Close</button>
+        </div>
+        <div class="setup-instructions">
+            <h4>📋 Auto-Mark Setup</h4>
+            <p>To enable <strong>automatic attendance</strong> when you connect to office WiFi, pick your OS:</p>
 
-        const holidays = [
-            { date: '2026-05-01', name: 'May Day' },
-            { date: '2026-05-28', name: 'Bakrid' }
-        ];
+            <div class="os-tabs">
+                <button class="os-tab active" onclick="showOS('mac')">🍎 Mac</button>
+                <button class="os-tab" onclick="showOS('win')">🪟 Windows</button>
+            </div>
 
-        const months = [
-            { year: 2026, month: 3, name: 'April 2026' },
-            { year: 2026, month: 4, name: 'May 2026' },
-            { year: 2026, month: 5, name: 'June 2026' },
-            { year: 2026, month: 6, name: 'July 2026' }
-        ];
+            <div class="os-content" id="os-mac">
+                <ol>
+                    <li>Download <a href="auto-attendance.sh" download>auto-attendance.sh</a> &amp; <a href="com.oat.wifiattendance.plist" download>LaunchAgent plist</a></li>
+                    <li>Put both files in a folder (e.g. <code>~/Desktop/OAT/</code>)</li>
+                    <li>Open <strong>Terminal</strong> and run:
+                        <code>chmod +x ~/Desktop/OAT/auto-attendance.sh</code></li>
+                    <li>Install the LaunchAgent:
+                        <code>cp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
+                        <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></li>
+                    <li>Done! ✨ Runs automatically on WiFi change &amp; login.</li>
+                </ol>
+                <p style="font-size:0.75rem;opacity:0.6;">To stop: <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></p>
+            </div>
 
-        let checkedDays = JSON.parse(localStorage.getItem('officeDays') || '{}');
+            <div class="os-content" id="os-win" style="display:none;">
+                <ol>
+                    <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
+                    <li>Put both files in a folder (e.g. <code>C:\Users\YOU\Desktop\OAT\</code>)</li>
+                    <li>Edit <code>auto-attendance-task.xml</code> — update the <code>WorkingDirectory</code> path to your folder</li>
+                    <li>Open <strong>PowerShell as Admin</strong> and run:
+                        <code>Register-ScheduledTask -Xml (Get-Content "C:\Users\YOU\Desktop\OAT\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance"</code></li>
+                    <li>Done! ✨ Runs on network change &amp; login.</li>
+                </ol>
+                <p style="font-size:0.75rem;opacity:0.6;">To stop: <code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance"</code></p>
+            </div>
+        </div>
+    </div>
 
-        function isHoliday(dateStr) {
-            return holidays.some(h => h.date === dateStr);
-        }
-
-        function isInRange(date) {
-            return date >= startDate && date <= endDate;
-        }
-
-        function formatDate(year, month, day) {
-            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        }
-
-        function toggleDay(dateStr) {
-            if (checkedDays[dateStr]) {
-                delete checkedDays[dateStr];
-            } else {
-                checkedDays[dateStr] = true;
-            }
-            localStorage.setItem('officeDays', JSON.stringify(checkedDays));
-            renderCalendars();
-        }
-
-        function resetAll() {
-            if (confirm('Are you sure you want to reset all office days? 🤔')) {
-                checkedDays = {};
-                localStorage.setItem('officeDays', JSON.stringify(checkedDays));
-                renderCalendars();
-            }
-        }
-
-        function renderCalendars() {
-            const container = document.getElementById('calendars');
-            container.innerHTML = '';
-
-            let totalWorkDays = 0;
-            let totalOfficeDays = 0;
-
-            months.forEach(m => {
-                const card = document.createElement('div');
-                card.className = 'month-card';
-
-                const daysInMonth = new Date(m.year, m.month + 1, 0).getDate();
-                const firstDay = new Date(m.year, m.month, 1).getDay();
-                const startDay = firstDay === 0 ? 6 : firstDay - 1;
-
-                let monthWorkDays = 0;
-                let monthOfficeDays = 0;
-                let monthHolidays = 0;
-
-                let daysHTML = '';
-
-                for (let i = 0; i < startDay; i++) {
-                    daysHTML += `<div class="day-cell empty"></div>`;
-                }
-
-                for (let day = 1; day <= daysInMonth; day++) {
-                    const date = new Date(m.year, m.month, day);
-                    const dateStr = formatDate(m.year, m.month, day);
-                    const dayOfWeek = date.getDay();
-                    const inRange = isInRange(date);
-                    const holiday = isHoliday(dateStr);
-                    const isSaturday = dayOfWeek === 6;
-                    const isSunday = dayOfWeek === 0;
-                    const isWeekend = isSaturday || isSunday;
-                    const checked = checkedDays[dateStr];
-
-                    let cellClass = 'day-cell';
-
-                    if (!inRange) {
-                        cellClass += ' before-range';
-                    } else if (holiday) {
-                        cellClass += ' holiday';
-                        monthHolidays++;
-                    } else if (isSaturday) {
-                        cellClass += ' saturday';
-                    } else if (isSunday) {
-                        cellClass += ' sunday';
-                    } else {
-                        cellClass += ' weekday';
-                        monthWorkDays++;
-                        totalWorkDays++;
-                        if (checked) {
-                            cellClass += ' checked';
-                            monthOfficeDays++;
-                            totalOfficeDays++;
-                        }
-                    }
-
-                    const clickHandler = (!inRange || holiday || isWeekend) ? '' : `onclick="toggleDay('${dateStr}')"`;
-
-                    daysHTML += `<div class="${cellClass}" ${clickHandler}>${day}</div>`;
-                }
-
-                card.innerHTML = `
-                    <div class="month-title">${m.name}</div>
-                    <div class="day-headers">
-                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span>
-                        <span class="weekend-header">Sat</span>
-                        <span class="weekend-header">Sun</span>
-                    </div>
-                    <div class="days-grid">
-                        ${daysHTML}
-                    </div>
-                    <div class="month-summary">
-                        <div>📊 Working Days: <strong>${monthWorkDays}</strong></div>
-                        <div style="color:#00b894">✅ Office: <strong>${monthOfficeDays}</strong></div>
-                        ${monthHolidays > 0 ? `<div style="color:#e17055">🎉 Holidays: <strong>${monthHolidays}</strong></div>` : ''}
-                    </div>
-                `;
-
-                container.appendChild(card);
-            });
-
-            // Update summary
-            const remaining = Math.max(0, TARGET - totalOfficeDays);
-            const percentage = Math.min(100, Math.round((totalOfficeDays / TARGET) * 100));
-
-            document.getElementById('totalWorkDays').textContent = totalWorkDays;
-            document.getElementById('totalOfficeDays').textContent = totalOfficeDays;
-            document.getElementById('remainingDays').textContent = remaining;
-
-            const progressBar = document.getElementById('progressBar');
-            progressBar.style.width = percentage + '%';
-            progressBar.textContent = percentage + '%';
-
-            const confetti = document.getElementById('confetti');
-            const status = document.getElementById('targetStatus');
-
-            if (totalOfficeDays >= TARGET) {
-                progressBar.className = 'progress-bar complete';
-                confetti.style.display = 'block';
-                status.innerHTML = '🏆 <strong>Target Achieved!</strong> You are a rockstar! 🌟';
-                status.style.color = '#00b894';
-            } else if (totalOfficeDays >= TARGET * 0.75) {
-                progressBar.className = 'progress-bar';
-                confetti.style.display = 'none';
-                status.innerHTML = '🔥 <strong>Almost there!</strong> Keep going!';
-                status.style.color = '#fdcb6e';
-            } else {
-                progressBar.className = 'progress-bar';
-                confetti.style.display = 'none';
-                status.innerHTML = `💪 <strong>${remaining} more days</strong> to hit the target!`;
-                status.style.color = '#74b9ff';
-            }
-        }
-
-        renderCalendars();
-    </script>
+    <script src="js/app.js"></script>
 </body>
 </html>
 
