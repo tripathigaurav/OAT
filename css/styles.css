@@ -4,6 +4,180 @@
     box-sizing: border-box;
 }
 
+/* ---- Onboarding Modal ---- */
+.onboard-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.onboard-modal {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid rgba(162, 155, 254, 0.4);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.4s ease;
+}
+
+.onboard-icon {
+    text-align: center;
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.onboard-modal h2 {
+    text-align: center;
+    color: #a29bfe;
+    margin-bottom: 12px;
+    font-size: 1.5rem;
+}
+
+.onboard-modal p {
+    text-align: center;
+    color: #dfe6e9;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.onboard-wifi-note {
+    background: rgba(225, 112, 85, 0.15);
+    border: 1px solid rgba(225, 112, 85, 0.3);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 0.82rem;
+    color: #fab1a0;
+    text-align: center;
+    margin: 12px 0;
+    line-height: 1.5;
+}
+
+.onboard-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.onboard-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.onboard-btn.primary {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    color: white;
+}
+
+.onboard-btn.primary:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);
+}
+
+.onboard-btn.secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: #b2bec3;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.onboard-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.onboard-btn.download {
+    background: rgba(116, 185, 255, 0.2);
+    border: 1px solid rgba(116, 185, 255, 0.4);
+    color: #74b9ff;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.onboard-btn.download:hover {
+    background: rgba(116, 185, 255, 0.35);
+}
+
+.onboard-btn.copy {
+    background: rgba(162, 155, 254, 0.2);
+    border: 1px solid rgba(162, 155, 254, 0.4);
+    color: #a29bfe;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.onboard-btn.copy:hover {
+    background: rgba(162, 155, 254, 0.35);
+}
+
+.onboard-download-box, .onboard-cmd-box {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 15px;
+    margin: 12px 0;
+}
+
+.onboard-download-box p, .onboard-cmd-box p {
+    font-size: 0.85rem;
+    color: #a29bfe;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.onboard-download-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.download-status, .copy-status {
+    display: block;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #636e72;
+    margin-top: 6px;
+}
+
+.onboard-cmds {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.onboard-cmds code {
+    display: block;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #55efc4;
+    word-break: break-all;
+    font-family: monospace;
+    line-height: 1.4;
+}
+
 body {
     font-family: 'Arial', sans-serif;
     background: linear-gradient(135deg, #1a1a2e, #16213e);

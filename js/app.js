@@ -294,6 +294,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
     }
+
+    // Show onboarding for first-time visitors
+    if (!localStorage.getItem('oatOnboarded')) {
+        showOnboarding();
+    }
 });
 
 // OS tab switching in settings
@@ -302,4 +307,125 @@ function showOS(os) {
     document.querySelectorAll('.os-tab').forEach(el => el.classList.remove('active'));
     document.getElementById('os-' + os).style.display = 'block';
     event.target.classList.add('active');
+}
+
+// ---- Onboarding Flow ----
+function detectOS() {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('win')) return 'windows';
+    if (ua.includes('mac')) return 'mac';
+    if (ua.includes('linux')) return 'linux';
+    return 'unknown';
+}
+
+function showOnboarding() {
+    document.getElementById('onboardOverlay').style.display = 'flex';
+    document.getElementById('onboardStep1').style.display = 'block';
+    document.getElementById('onboardStep2').style.display = 'none';
+}
+
+function onboardSkip() {
+    localStorage.setItem('oatOnboarded', 'skipped');
+    document.getElementById('onboardOverlay').style.display = 'none';
+}
+
+function onboardYes() {
+    const os = detectOS();
+    document.getElementById('onboardStep1').style.display = 'none';
+    document.getElementById('onboardStep2').style.display = 'block';
+
+    const cmdsEl = document.getElementById('setupCommands');
+
+    if (os === 'windows') {
+        document.getElementById('osIcon').textContent = '\uD83E\uDE9F';
+        document.getElementById('osTitle').textContent = 'Windows Setup';
+        document.getElementById('osName').textContent = 'Windows';
+        document.getElementById('terminalName').textContent = 'PowerShell (Run as Admin)';
+        document.getElementById('downloadBtn1').textContent = '\uD83D\uDCE5 Download auto-attendance.ps1';
+        document.getElementById('downloadBtn2').textContent = '\uD83D\uDCE5 Download Task XML';
+        cmdsEl.innerHTML = `
+            <code>cd $env:USERPROFILE\\Downloads</code>
+            <code>mkdir -Force $env:USERPROFILE\\Desktop\\OAT</code>
+            <code>Move-Item auto-attendance.ps1, auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\</code>
+            <code>Register-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance"</code>
+        `;
+        window._oatCmds = `cd $env:USERPROFILE\\Downloads\nmkdir -Force $env:USERPROFILE\\Desktop\\OAT\nMove-Item auto-attendance.ps1, auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\\nRegister-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance"`;
+    } else {
+        // Mac / Linux
+        document.getElementById('osIcon').textContent = '\uD83C\uDF4E';
+        document.getElementById('osTitle').textContent = 'Mac Setup';
+        document.getElementById('osName').textContent = 'macOS';
+        document.getElementById('terminalName').textContent = 'Terminal';
+        document.getElementById('downloadBtn1').textContent = '\uD83D\uDCE5 Download auto-attendance.sh';
+        document.getElementById('downloadBtn2').textContent = '\uD83D\uDCE5 Download LaunchAgent plist';
+        cmdsEl.innerHTML = `
+            <code>mkdir -p ~/Desktop/OAT</code>
+            <code>mv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/Desktop/OAT/</code>
+            <code>chmod +x ~/Desktop/OAT/auto-attendance.sh</code>
+            <code>cp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
+            <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code>
+        `;
+        window._oatCmds = `mkdir -p ~/Desktop/OAT\nmv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/Desktop/OAT/\nchmod +x ~/Desktop/OAT/auto-attendance.sh\ncp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/\nlaunchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist`;
+    }
+}
+
+function onboardBack() {
+    document.getElementById('onboardStep1').style.display = 'block';
+    document.getElementById('onboardStep2').style.display = 'none';
+}
+
+function downloadFile1() {
+    const os = detectOS();
+    const a = document.createElement('a');
+    a.href = os === 'windows' ? 'auto-attendance.ps1' : 'auto-attendance.sh';
+    a.download = '';
+    a.click();
+    document.getElementById('downloadBtn1').style.opacity = '0.5';
+    document.getElementById('downloadBtn1').textContent = '\u2705 Downloaded!';
+    updateDownloadStatus();
+}
+
+function downloadFile2() {
+    const os = detectOS();
+    const a = document.createElement('a');
+    a.href = os === 'windows' ? 'auto-attendance-task.xml' : 'com.oat.wifiattendance.plist';
+    a.download = '';
+    a.click();
+    document.getElementById('downloadBtn2').style.opacity = '0.5';
+    document.getElementById('downloadBtn2').textContent = '\u2705 Downloaded!';
+    updateDownloadStatus();
+}
+
+function updateDownloadStatus() {
+    const btn1 = document.getElementById('downloadBtn1').textContent;
+    const btn2 = document.getElementById('downloadBtn2').textContent;
+    if (btn1.includes('\u2705') && btn2.includes('\u2705')) {
+        document.getElementById('downloadStatus').textContent = '\u2705 Both files downloaded!';
+        document.getElementById('downloadStatus').style.color = '#55efc4';
+    }
+}
+
+function copyCommands() {
+    if (window._oatCmds) {
+        navigator.clipboard.writeText(window._oatCmds).then(() => {
+            document.getElementById('copyStatus').textContent = '\u2705 Copied!';
+            document.getElementById('copyStatus').style.color = '#55efc4';
+        }).catch(() => {
+            // Fallback for non-HTTPS
+            const ta = document.createElement('textarea');
+            ta.value = window._oatCmds;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            document.getElementById('copyStatus').textContent = '\u2705 Copied!';
+            document.getElementById('copyStatus').style.color = '#55efc4';
+        });
+    }
+}
+
+function onboardDone() {
+    localStorage.setItem('oatOnboarded', 'completed');
+    document.getElementById('onboardOverlay').style.display = 'none';
+    showNotification('\uD83C\uDF89 Setup complete! Your attendance will auto-track when you connect to office WiFi.', 'success');
 }
