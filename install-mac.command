@@ -67,8 +67,8 @@ mkdir -p "$LAUNCH_AGENTS"
 launchctl unload "$LAUNCH_AGENTS/$PLIST_NAME" 2>/dev/null
 
 # Update plist with correct path
-# The plist references the script path — update it to match user's directory
-sed -i '' "s|/Users/gtripath/Library/CloudStorage/OneDrive-NetAppInc/Desktop/OAT/auto-attendance.sh|$OAT_DIR/$SCRIPT_NAME|g" "$OAT_DIR/$PLIST_NAME"
+# The plist references a hardcoded script path — update it to match this user's directory
+sed -i '' "s|<string>/.*auto-attendance.sh</string>|<string>$OAT_DIR/$SCRIPT_NAME</string>|g" "$OAT_DIR/$PLIST_NAME"
 
 cp "$OAT_DIR/$PLIST_NAME" "$LAUNCH_AGENTS/"
 launchctl load "$LAUNCH_AGENTS/$PLIST_NAME"

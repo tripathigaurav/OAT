@@ -178,7 +178,13 @@ function renderAutoMarkLog() {
     if (autoMarkLog.length === 0) {
         logEl.textContent = 'No auto-marks yet.';
     } else {
-        logEl.innerHTML = autoMarkLog.map(entry => `<div>${entry}</div>`).join('');
+        // Use textContent per entry to prevent XSS
+        logEl.innerHTML = '';
+        autoMarkLog.forEach(entry => {
+            const div = document.createElement('div');
+            div.textContent = entry;
+            logEl.appendChild(div);
+        });
     }
 }
 
@@ -193,10 +199,14 @@ function toggleDay(dateStr) {
         return;
     }
     if (checkedDays[dateStr]) {
-        // Unchecking — confirm before removing
+        // Auto-marked days are locked — WiFi-verified, can't undo
+        if (autoMarkedDays[dateStr]) {
+            showNotification('🔒 This day was auto-marked via office WiFi and cannot be removed.', 'info');
+            return;
+        }
+        // Unchecking manual mark — confirm before removing
         if (!confirm(`Remove attendance for ${dateStr}? Are you sure?`)) return;
         delete checkedDays[dateStr];
-        delete autoMarkedDays[dateStr];
     } else {
         // Checking — confirm before marking
         if (!confirm(`Mark ${dateStr} as office day? Are you sure?`)) return;
@@ -207,14 +217,24 @@ function toggleDay(dateStr) {
     renderCalendars();
 }
 
-// Reset all selections
+// Reset only manual selections (auto-marked days are preserved)
 function resetAll() {
-    if (confirm('Are you sure you want to reset all office days?')) {
-        checkedDays = {};
-        autoMarkedDays = {};
+    const autoCount = Object.keys(autoMarkedDays).length;
+    const manualCount = Object.keys(checkedDays).length - autoCount;
+    if (manualCount === 0) {
+        showNotification('Nothing to reset — all marked days are WiFi auto-marks (locked).', 'info');
+        return;
+    }
+    if (confirm(`Reset ${manualCount} manually marked day(s)?\n\n${autoCount} auto-marked day(s) will be preserved (WiFi-verified).`)) {
+        // Keep only auto-marked days
+        const preserved = {};
+        for (const dateStr of Object.keys(autoMarkedDays)) {
+            preserved[dateStr] = true;
+        }
+        checkedDays = preserved;
         localStorage.setItem('officeDays', JSON.stringify(checkedDays));
-        localStorage.setItem('autoMarkedDays', JSON.stringify(autoMarkedDays));
         renderCalendars();
+        showNotification(`🔄 Reset ${manualCount} manual mark(s). ${autoCount} auto-mark(s) preserved.`, 'success');
     }
 }
 
@@ -299,7 +319,7 @@ function renderCalendars() {
                 if (date > today2) {
                     tooltip = 'Future date';
                 } else if (checked) {
-                    tooltip = autoMarkedDays[dateStr] ? '🤖 Auto-marked' : '✅ Office day';
+                    tooltip = autoMarkedDays[dateStr] ? '🔒 Auto-marked (WiFi verified)' : '✅ Office day (click to remove)';
                 } else {
                     tooltip = 'Workday (not marked)';
                 }
@@ -553,14 +573,14 @@ function onboardYes() {
         cmdsEl.innerHTML = `
             <code># Move files to OAT folder</code>
             <code>mkdir -Force $env:USERPROFILE\\Desktop\\OAT</code>
-            <code>Move-Item $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:USERPROFILE\\Desktop\\OAT\\</code>
-            <code>Move-Item $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\</code>
+            <code>Move-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:USERPROFILE\\Desktop\\OAT\\</code>
+            <code>Move-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\</code>
             <code># Fix path in task config</code>
             <code>(Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml") -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', "$env:USERPROFILE\\Desktop\\OAT" | Set-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml"</code>
             <code># Register scheduled task (requires Admin)</code>
             <code>Register-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force</code>
         `;
-        window._oatCmds = `mkdir -Force $env:USERPROFILE\\Desktop\\OAT\nMove-Item $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:USERPROFILE\\Desktop\\OAT\\\nMove-Item $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\\n(Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml") -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', "$env:USERPROFILE\\Desktop\\OAT" | Set-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml"\nRegister-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force`;
+        window._oatCmds = `mkdir -Force $env:USERPROFILE\\Desktop\\OAT\nMove-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:USERPROFILE\\Desktop\\OAT\\\nMove-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\\n(Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml") -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', "$env:USERPROFILE\\Desktop\\OAT" | Set-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml"\nRegister-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force`;
     } else {
         // Mac / Linux — show terminal command (avoids permission issues)
         document.getElementById('osIcon').textContent = '\uD83C\uDF4E';
