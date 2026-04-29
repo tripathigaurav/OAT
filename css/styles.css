@@ -621,7 +621,11 @@ h1 {
 .day-cell.holiday {
     background: rgba(225, 112, 85, 0.4) !important;
     border: 2px solid #e17055;
-    cursor: not-allowed;
+    cursor: default;
+}
+
+.day-cell.holiday:hover {
+    transform: scale(1.1);
 }
 
 .day-cell.holiday::after {
@@ -636,6 +640,57 @@ h1 {
 .day-cell.after-range {
     opacity: 0.2;
     cursor: not-allowed;
+}
+
+.day-cell.weekday.future {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.day-cell.weekday.future:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: none;
+}
+
+/* Custom tooltip for day cells */
+.day-cell[data-tip] {
+    position: relative;
+}
+
+.day-cell[data-tip]:hover::before {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a2e;
+    color: #dfe6e9;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+    border: 1px solid rgba(162, 155, 254, 0.4);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    animation: tipFade 0.15s ease;
+}
+
+.day-cell[data-tip]:hover::after {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(162, 155, 254, 0.4);
+    z-index: 100;
+    pointer-events: none;
+}
+
+@keyframes tipFade {
+    from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .month-summary {
@@ -936,10 +991,32 @@ h1 {
     text-decoration: underline;
 }
 
-.reset-btn {
-    display: block;
+/* Action Buttons Row */
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
     margin: 20px auto;
-    padding: 10px 30px;
+}
+
+.rescan-btn {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #0984e3, #00cec9);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.rescan-btn:hover {
+    background: linear-gradient(135deg, #00cec9, #0984e3);
+    transform: scale(1.05);
+}
+
+.reset-btn {
+    padding: 10px 24px;
     background: #e17055;
     color: white;
     border: none;
@@ -952,13 +1029,6 @@ h1 {
 .reset-btn:hover {
     background: #d63031;
     transform: scale(1.05);
-}
-
-.holiday-list {
-    text-align: center;
-    margin-bottom: 15px;
-    font-size: 0.85rem;
-    color: #e17055;
 }
 
 .confetti {

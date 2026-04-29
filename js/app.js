@@ -26,6 +26,11 @@ function isHoliday(dateStr) {
     return holidays.some(h => h.date === dateStr);
 }
 
+function getHolidayName(dateStr) {
+    const h = holidays.find(h => h.date === dateStr);
+    return h ? h.name : '';
+}
+
 function isInRange(date) {
     return date >= startDate && date <= endDate;
 }
@@ -97,6 +102,52 @@ function dismissNotification() {
     document.getElementById('wifiNotification').style.display = 'none';
 }
 
+function rescanToday() {
+    const todayStr = getTodayStr();
+    if (!isTodayWorkday()) {
+        showNotification('📅 Today is not a working day — nothing to mark.', 'info');
+        return;
+    }
+    if (checkedDays[todayStr]) {
+        const type = autoMarkedDays[todayStr] ? '🤖 auto-marked' : '✅ manually marked';
+        showNotification(`Already ${type} for today. You're all set!`, 'already');
+        return;
+    }
+
+    // Check if WiFi script confirmed office connection today
+    const scriptActive = localStorage.getItem('oatScriptActive');
+    let wifiConfirmedToday = false;
+    if (scriptActive) {
+        const activeDate = new Date(scriptActive);
+        const today = new Date();
+        wifiConfirmedToday = activeDate.toDateString() === today.toDateString();
+    }
+
+    if (!wifiConfirmedToday) {
+        // Not on office WiFi (or script hasn't run today) — warn user
+        const override = confirm(
+            '⚠️ Office WiFi not detected!\n\n' +
+            'The auto-tracking script hasn\'t confirmed an office WiFi connection today.\n\n' +
+            'Are you sure you\'re at the office? Click OK to mark anyway, or Cancel to skip.'
+        );
+        if (!override) return;
+    }
+
+    // Mark today
+    checkedDays[todayStr] = true;
+    autoMarkedDays[todayStr] = wifiConfirmedToday;
+    localStorage.setItem('officeDays', JSON.stringify(checkedDays));
+    localStorage.setItem('autoMarkedDays', JSON.stringify(autoMarkedDays));
+    const source = wifiConfirmedToday ? 'WiFi confirmed' : 'Manual override (no WiFi)';
+    const logEntry = `${new Date().toLocaleString()} — Mark Today: ${todayStr} (${source})`;
+    autoMarkLog.unshift(logEntry);
+    if (autoMarkLog.length > 30) autoMarkLog.pop();
+    localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
+    const icon = wifiConfirmedToday ? '📡' : '✅';
+    showNotification(`${icon} Marked today (${todayStr}) as office day!`, 'success');
+    renderCalendars();
+}
+
 // ---- Settings ----
 function toggleSettings() {
     const panel = document.getElementById('settingsPanel');
@@ -133,6 +184,14 @@ function renderAutoMarkLog() {
 
 // Toggle day selection
 function toggleDay(dateStr) {
+    // Block future dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const clickedDate = new Date(dateStr + 'T00:00:00');
+    if (clickedDate > today) {
+        showNotification('⛔ Cannot mark future dates. Come back on that day!', 'info');
+        return;
+    }
     if (checkedDays[dateStr]) {
         // Unchecking — confirm before removing
         if (!confirm(`Remove attendance for ${dateStr}? Are you sure?`)) return;
@@ -209,6 +268,12 @@ function renderCalendars() {
                 cellClass += ' sunday';
             } else {
                 cellClass += ' weekday';
+                // Future dates get a dimmed style
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (date > today) {
+                    cellClass += ' future';
+                }
                 monthWorkDays++;
                 totalWorkDays++;
                 if (checked) {
@@ -222,9 +287,28 @@ function renderCalendars() {
                 }
             }
 
-            const clickHandler = (!inRange || holiday || isWeekend) ? '' : `onclick="toggleDay('${dateStr}')"`;
+            // Build tooltip
+            let tooltip = '';
+            if (holiday) {
+                tooltip = `🎉 ${getHolidayName(dateStr)}`;
+            } else if (isSaturday || isSunday) {
+                tooltip = 'Weekend';
+            } else if (inRange) {
+                const today2 = new Date();
+                today2.setHours(0, 0, 0, 0);
+                if (date > today2) {
+                    tooltip = 'Future date';
+                } else if (checked) {
+                    tooltip = autoMarkedDays[dateStr] ? '🤖 Auto-marked' : '✅ Office day';
+                } else {
+                    tooltip = 'Workday (not marked)';
+                }
+            }
 
-            daysHTML += `<div class="${cellClass}" ${clickHandler}>${day}</div>`;
+            const clickHandler = (!inRange || holiday || isWeekend) ? '' : `onclick="toggleDay('${dateStr}')"`;
+            const tipAttr = tooltip ? `data-tip="${tooltip}"` : '';
+
+            daysHTML += `<div class="${cellClass}" ${clickHandler} ${tipAttr}>${day}</div>`;
         }
 
         card.innerHTML = `

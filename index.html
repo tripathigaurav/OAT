@@ -147,10 +147,6 @@
         <button onclick="dismissNotification()" style="background:none;border:none;color:white;cursor:pointer;font-size:1.2rem;margin-left:10px;">✕</button>
     </div>
 
-    <div class="holiday-list">
-        🎉 Holidays: May Day (1 May, Fri) | Bakrid (28 May, Thu)
-    </div>
-
     <div class="legend">
         <div class="legend-item"><div class="legend-box workday"></div> Workday</div>
         <div class="legend-item"><div class="legend-box office"></div> ✅ Office</div>
@@ -178,7 +174,10 @@
 
     <div class="calendars" id="calendars"></div>
 
-    <button class="reset-btn" onclick="resetAll()">🔄 Reset All</button>
+    <div class="action-buttons">
+        <button class="rescan-btn" onclick="rescanToday()" title="Mark today as office day">📡 Mark Today</button>
+        <button class="reset-btn" onclick="resetAll()">🔄 Reset All</button>
+    </div>
 
     <!-- Settings Panel -->
     <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
