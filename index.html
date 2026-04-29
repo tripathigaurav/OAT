@@ -84,17 +84,20 @@
                             <p>Auto-tracking is installed and working.</p>
                         </div>
                     </div>
-                    <!-- Windows: Download installer -->
+                    <!-- Windows: Terminal command (same as Mac approach) -->
                     <div class="oneclick-box" id="oneClickWin" style="display:none;">
                         <div class="oneclick-icon">⚡</div>
-                        <p><strong>Download &amp; double-click</strong> — everything installs automatically!</p>
-                        <button class="onboard-btn oneclick" id="oneClickBtn" onclick="downloadInstaller()">📥 Download Installer (.bat)</button>
-                        <span class="download-status" id="installerStatus">One file. Double-click it. Done.</span>
+                        <p><strong>Open PowerShell</strong> and paste this command:</p>
+                        <div class="terminal-cmd-box">
+                            <code id="winInstallCmd">irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code>
+                            <button class="copy-cmd-btn" onclick="copyWinInstallCmd()" title="Copy command">📋</button>
+                        </div>
+                        <span class="download-status" id="winInstallStatus">One command. Paste it. Done.</span>
                         <div class="oneclick-steps" id="winSteps">
-                            <div class="oneclick-step">1️⃣ Click download above</div>
-                            <div class="oneclick-step">2️⃣ Open the downloaded file</div>
-                            <div class="oneclick-step">3️⃣ Click "Yes" on Admin prompt</div>
-                            <div class="oneclick-step">4️⃣ ✅ Setup runs automatically!</div>
+                            <div class="oneclick-step">1️⃣ Open <strong>PowerShell</strong> (Win+X → Terminal)</div>
+                            <div class="oneclick-step">2️⃣ Paste the command above (Ctrl+V)</div>
+                            <div class="oneclick-step">3️⃣ Press Enter — click "Yes" on Admin prompt if asked</div>
+                            <div class="oneclick-step">4️⃣ ✅ Done! Auto-tracking is installed.</div>
                         </div>
                         <!-- Shows after installer runs and sets oatScriptActive -->
                         <div class="setup-verified-banner" id="setupVerifiedWin" style="display:none;">

@@ -672,18 +672,11 @@ function showSetupOption(option) {
 }
 
 function downloadInstaller() {
-    // Windows only — Mac uses copyInstallCmd() instead
+    // Legacy — kept for backward compat; prefer copyWinInstallCmd()
     const a = document.createElement('a');
     a.href = 'install-win.bat';
     a.download = 'install-win.bat';
     a.click();
-    const btn = document.getElementById('oneClickBtn');
-    btn.textContent = '\u2705 Downloaded! Now open the file.';
-    btn.style.background = 'rgba(0, 184, 148, 0.3)';
-    document.getElementById('installerStatus').textContent = '\u23F3 Waiting for setup to complete...';
-    document.getElementById('installerStatus').style.color = '#fdcb6e';
-    // Start listening for the installer to complete
-    startSetupVerificationListener();
 }
 
 // Listen for cross-tab localStorage changes (installer opens new tab → sets oatScriptActive)
@@ -715,12 +708,10 @@ function onSetupVerified() {
     if (os === 'windows') {
         const banner = document.getElementById('setupVerifiedWin');
         const steps = document.getElementById('winSteps');
-        const btn = document.getElementById('oneClickBtn');
         if (banner) banner.style.display = 'block';
         if (steps) steps.style.display = 'none';
-        if (btn) btn.style.display = 'none';
-        document.getElementById('installerStatus').textContent = '\u2705 Setup is complete!';
-        document.getElementById('installerStatus').style.color = '#55efc4';
+        const status = document.getElementById('winInstallStatus');
+        if (status) { status.textContent = '\u2705 Setup is complete!'; status.style.color = '#55efc4'; }
     } else {
         const banner = document.getElementById('setupVerifiedMac');
         const steps = document.getElementById('macSteps');
@@ -746,6 +737,25 @@ function copyInstallCmd() {
         document.body.removeChild(ta);
         document.getElementById('macInstallStatus').textContent = '\u2705 Copied! Now paste in Terminal (Cmd+V)';
         document.getElementById('macInstallStatus').style.color = '#55efc4';
+        startSetupVerificationListener();
+    });
+}
+
+function copyWinInstallCmd() {
+    const cmd = document.getElementById('winInstallCmd').textContent;
+    navigator.clipboard.writeText(cmd).then(() => {
+        document.getElementById('winInstallStatus').textContent = '\u2705 Copied! Now paste in PowerShell (Ctrl+V)';
+        document.getElementById('winInstallStatus').style.color = '#55efc4';
+        startSetupVerificationListener();
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        document.getElementById('winInstallStatus').textContent = '\u2705 Copied! Now paste in PowerShell (Ctrl+V)';
+        document.getElementById('winInstallStatus').style.color = '#55efc4';
         startSetupVerificationListener();
     });
 }
