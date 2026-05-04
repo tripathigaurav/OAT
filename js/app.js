@@ -593,18 +593,19 @@ function onboardYes() {
         document.getElementById('oneClickMac').style.display = 'block';
         document.getElementById('oneClickWin').style.display = 'none';
         cmdsEl.innerHTML = `
-            <code># Move files to OAT folder</code>
-            <code>mkdir -p ~/Desktop/OAT</code>
-            <code>mv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/Desktop/OAT/</code>
-            <code>chmod +x ~/Desktop/OAT/auto-attendance.sh</code>
+            <code># Move files to ~/.oat/ (local path — avoids cloud-sync issues)</code>
+            <code>mkdir -p ~/.oat</code>
+            <code>mv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/.oat/</code>
+            <code>chmod +x ~/.oat/auto-attendance.sh</code>
+            <code>xattr -cr ~/.oat/auto-attendance.sh 2>/dev/null</code>
             <code># Fix script path in plist to match your user</code>
-            <code>sed -i '' "s|/Users/gtripath/Desktop/OAT|$HOME/Desktop/OAT|g" ~/Desktop/OAT/com.oat.wifiattendance.plist</code>
+            <code>sed -i '' "s|/Users/USERNAME/PLACEHOLDER/auto-attendance.sh|$HOME/.oat/auto-attendance.sh|g" ~/.oat/com.oat.wifiattendance.plist</code>
             <code># Install LaunchAgent (unload old one first if exists)</code>
             <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null</code>
-            <code>cp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
+            <code>cp ~/.oat/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
             <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code>
         `;
-        window._oatCmds = `mkdir -p ~/Desktop/OAT\nmv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/Desktop/OAT/\nchmod +x ~/Desktop/OAT/auto-attendance.sh\nsed -i '' "s|/Users/gtripath/Desktop/OAT|$HOME/Desktop/OAT|g" ~/Desktop/OAT/com.oat.wifiattendance.plist\nlaunchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null\ncp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/\nlaunchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist`;
+        window._oatCmds = `mkdir -p ~/.oat\nmv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/.oat/\nchmod +x ~/.oat/auto-attendance.sh\nxattr -cr ~/.oat/auto-attendance.sh 2>/dev/null\nsed -i '' "s|/Users/USERNAME/PLACEHOLDER/auto-attendance.sh|$HOME/.oat/auto-attendance.sh|g" ~/.oat/com.oat.wifiattendance.plist\nlaunchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null\ncp ~/.oat/com.oat.wifiattendance.plist ~/Library/LaunchAgents/\nlaunchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist`;
     }
 }
 

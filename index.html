@@ -216,14 +216,14 @@
             <div class="os-content" id="os-mac">
                 <ol>
                     <li>Download <a href="auto-attendance.sh" download>auto-attendance.sh</a> &amp; <a href="com.oat.wifiattendance.plist" download>LaunchAgent plist</a></li>
-                    <li>Put both files in <code>~/Desktop/OAT/</code></li>
+                    <li>Put both files in <code>~/.oat/</code> (local path — avoids cloud-sync issues)</li>
                     <li>Open <strong>Terminal</strong> and run:
-                        <code>chmod +x ~/Desktop/OAT/auto-attendance.sh</code></li>
+                        <code>mkdir -p ~/.oat && chmod +x ~/.oat/auto-attendance.sh && xattr -cr ~/.oat/auto-attendance.sh 2>/dev/null</code></li>
                     <li>Fix the script path in the plist for your user:
-                        <code>sed -i '' "s|/Users/gtripath/Desktop/OAT|$HOME/Desktop/OAT|g" ~/Desktop/OAT/com.oat.wifiattendance.plist</code></li>
+                        <code>sed -i '' "s|/Users/USERNAME/PLACEHOLDER/auto-attendance.sh|$HOME/.oat/auto-attendance.sh|g" ~/.oat/com.oat.wifiattendance.plist</code></li>
                     <li>Install the LaunchAgent:
                         <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null</code>
-                        <code>cp ~/Desktop/OAT/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
+                        <code>cp ~/.oat/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
                         <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></li>
                     <li>Done! ✨ Runs automatically on WiFi change &amp; login.</li>
                 </ol>
