@@ -38,8 +38,8 @@
     <Exec>
       <Command>powershell.exe</Command>
       <Arguments>-ExecutionPolicy Bypass -WindowStyle Hidden -File "auto-attendance.ps1"</Arguments>
-      <!-- UPDATE THIS to your actual path -->
-      <WorkingDirectory>C:\Users\YOUR_USERNAME\Desktop\OAT</WorkingDirectory>
+      <!-- Path is updated by installer to match your local directory -->
+      <WorkingDirectory>%LOCALAPPDATA%\OAT</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>

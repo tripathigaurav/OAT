@@ -16,7 +16,9 @@ Write-Host ""
 
 # --- Configuration ---
 $GITHUB_BASE = "https://tripathigaurav.github.io/OAT"
-$OAT_DIR = "$env:USERPROFILE\Desktop\OAT"
+# Install to %LOCALAPPDATA%\OAT (local path) — NOT Desktop which may be
+# synced to OneDrive. Windows blocks scheduled tasks from cloud-synced dirs.
+$OAT_DIR = "$env:LOCALAPPDATA\OAT"
 $PS_SCRIPT = "auto-attendance.ps1"
 $TASK_XML = "auto-attendance-task.xml"
 
@@ -51,7 +53,9 @@ Write-Host ""
 # --- Step 3: Fix path in XML ---
 Write-Host "  [3/5] Configuring task with your path..."
 $xmlContent = Get-Content "$OAT_DIR\$TASK_XML" -Raw
+$xmlContent = $xmlContent -replace '%LOCALAPPDATA%\\OAT', $OAT_DIR
 $xmlContent = $xmlContent -replace 'C:\\Users\\YOUR_USERNAME\\Desktop\\OAT', $OAT_DIR
+$xmlContent = $xmlContent -replace '\$env:USERPROFILE\\Desktop\\OAT', $OAT_DIR
 $xmlContent | Set-Content "$OAT_DIR\$TASK_XML"
 Write-Host "        Done" -ForegroundColor Green
 Write-Host ""

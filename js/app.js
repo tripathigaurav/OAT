@@ -526,11 +526,9 @@ function checkForStaleSetup() {
     const detail = document.getElementById('updateBannerDetail');
     if (detail) {
         if (scriptActive) {
-            const lastRun = new Date(scriptActive);
-            const daysSince = Math.floor((new Date() - lastRun) / (1000 * 60 * 60 * 24));
-            detail.textContent = `Auto-tracking hasn't triggered in ${daysSince} days. Click Auto-Fix to repair it instantly.`;
+            detail.textContent = 'A new update is available that improves auto-tracking reliability. Quick one-click fix!';
         } else {
-            detail.textContent = 'Auto-tracking was set up but never triggered. Click Auto-Fix to repair it.';
+            detail.textContent = 'A new update is available to get your auto-tracking working. Quick one-click fix!';
         }
     }
     banner.style.display = 'block';
@@ -539,7 +537,7 @@ function checkForStaleSetup() {
     const badge = document.getElementById('setupStatusBadge');
     if (badge) {
         badge.className = 'setup-status-badge stale';
-        badge.innerHTML = '⚠️ Auto-tracking needs update';
+        badge.innerHTML = '🔄 Update available';
     }
 }
 
@@ -610,13 +608,20 @@ rm -f "$0" 2>/dev/null
 function triggerAutoPatch() {
     const os = detectOS();
     if (os === 'windows') {
-        // Windows: copy PowerShell command to clipboard
-        const cmd = 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex';
-        navigator.clipboard.writeText(cmd).then(() => {
-            showPatchBannerState('copied-win');
-        }).catch(() => {
-            showPatchBannerState('manual-win');
-        });
+        // Windows: generate & auto-download a .ps1 fix script
+        const script = generateWinFixScript();
+        const blob = new Blob([script], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'fix-oat.ps1';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showPatchBannerState('downloaded-win');
+        startPatchVerification();
         return;
     }
 
@@ -650,6 +655,11 @@ function showPatchBannerState(state) {
         title.textContent = 'Fix downloaded! One more step:';
         detail.innerHTML = 'Open <strong>Downloads</strong> folder → double-click <strong>fix-oat.command</strong><br><span style="font-size:0.75rem;opacity:0.7;">If macOS blocks it: right-click → Open → Open</span>';
         actions.innerHTML = '<button class="update-banner-btn primary" onclick="openDownloadsFolder()">📂 Open Downloads</button><button class="update-banner-btn dismiss" onclick="triggerAutoPatch()">🔄 Re-download</button>';
+    } else if (state === 'downloaded-win') {
+        icon.textContent = '📥';
+        title.textContent = 'Fix downloaded! One more step:';
+        detail.innerHTML = 'Open <strong>Downloads</strong> folder → right-click <strong>fix-oat.ps1</strong> → <strong>Run with PowerShell</strong><br><span style="font-size:0.75rem;opacity:0.7;">Click "Yes" if Windows asks for permission</span>';
+        actions.innerHTML = '<button class="update-banner-btn primary" onclick="openDownloadsFolder()">📂 Open Downloads</button><button class="update-banner-btn dismiss" onclick="triggerAutoPatch()">🔄 Re-download</button>';
     } else if (state === 'verified') {
         icon.textContent = '✅';
         title.textContent = 'Auto-tracking fixed!';
@@ -663,17 +673,74 @@ function showPatchBannerState(state) {
         // Update status badge
         updateSetupStatus();
         localStorage.removeItem('oatUpdateDismissed');
-    } else if (state === 'copied-win') {
-        icon.textContent = '📋';
-        title.textContent = 'Fix command copied!';
-        detail.innerHTML = 'Open <strong>PowerShell</strong> → paste (Ctrl+V) → press Enter';
-        actions.innerHTML = '<button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Done</button>';
-    } else if (state === 'manual-win') {
-        icon.textContent = '🔧';
-        title.textContent = 'Run this in PowerShell:';
-        detail.innerHTML = '<code style="font-size:0.8rem;">irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code>';
-        actions.innerHTML = '<button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Done</button>';
     }
+}
+
+function generateWinFixScript() {
+    return `# OAT Auto-Patch for Windows
+# Generated: ${new Date().toLocaleString()}
+# Right-click this file -> Run with PowerShell
+
+Write-Host ""
+Write-Host "  =======================================" -ForegroundColor Cyan
+Write-Host "  OAT Auto-Patch" -ForegroundColor Cyan
+Write-Host "  =======================================" -ForegroundColor Cyan
+Write-Host ""
+
+$GITHUB_BASE = "https://tripathigaurav.github.io/OAT"
+$OAT_DIR = "$env:LOCALAPPDATA\\OAT"
+
+Write-Host "  [1/4] Creating $OAT_DIR ..."
+New-Item -ItemType Directory -Force -Path $OAT_DIR | Out-Null
+Write-Host "        Done" -ForegroundColor Green
+
+Write-Host "  [2/4] Downloading latest files..."
+try {
+    Invoke-WebRequest -Uri "$GITHUB_BASE/auto-attendance.ps1" -OutFile "$OAT_DIR\\auto-attendance.ps1" -ErrorAction Stop
+    Invoke-WebRequest -Uri "$GITHUB_BASE/auto-attendance-task.xml" -OutFile "$OAT_DIR\\auto-attendance-task.xml" -ErrorAction Stop
+    Write-Host "        Downloaded" -ForegroundColor Green
+} catch {
+    Write-Host "        Download failed. Check internet." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
+Write-Host "  [3/4] Updating Scheduled Task..."
+$xmlContent = Get-Content "$OAT_DIR\\auto-attendance-task.xml" -Raw
+$xmlContent = $xmlContent -replace '%LOCALAPPDATA%\\\\OAT', $OAT_DIR
+$xmlContent = $xmlContent -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', $OAT_DIR
+$xmlContent = $xmlContent -replace '\\$env:USERPROFILE\\\\Desktop\\\\OAT', $OAT_DIR
+$xmlContent | Set-Content "$OAT_DIR\\auto-attendance-task.xml"
+try {
+    Register-ScheduledTask -Xml (Get-Content "$OAT_DIR\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force -ErrorAction Stop | Out-Null
+    Write-Host "        Task registered" -ForegroundColor Green
+} catch {
+    try {
+        $regCmd = "Register-ScheduledTask -Xml (Get-Content '$OAT_DIR\\auto-attendance-task.xml' | Out-String) -TaskName 'OAT-WiFiAttendance' -Force"
+        Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -Command $regCmd" -Verb RunAs -Wait -ErrorAction Stop
+        Write-Host "        Task registered (via Admin)" -ForegroundColor Green
+    } catch {
+        Write-Host "        Could not register task automatically." -ForegroundColor Yellow
+    }
+}
+
+Write-Host "  [4/4] Cleaning up..."
+Remove-Item "$env:TEMP\\oat-automark-*.lock" -Force -ErrorAction SilentlyContinue
+Write-Host "        Done" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "  =======================================" -ForegroundColor Green
+Write-Host "  PATCH COMPLETE!" -ForegroundColor Green
+Write-Host "  =======================================" -ForegroundColor Green
+Write-Host "  Files: $OAT_DIR" -ForegroundColor White
+Write-Host ""
+
+# Open tracker to verify
+Start-Process "$GITHUB_BASE/?automark=true"
+
+# Self-delete
+Remove-Item $MyInvocation.MyCommand.Source -Force -ErrorAction SilentlyContinue
+`;
 }
 
 function openDownloadsFolder() {
@@ -793,16 +860,16 @@ function onboardYes() {
         document.getElementById('oneClickWin').style.display = 'block';
         document.getElementById('oneClickMac').style.display = 'none';
         cmdsEl.innerHTML = `
-            <code># Move files to OAT folder</code>
-            <code>mkdir -Force $env:USERPROFILE\\Desktop\\OAT</code>
-            <code>Move-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:USERPROFILE\\Desktop\\OAT\\</code>
-            <code>Move-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\</code>
+            <code># Move files to local OAT folder (avoids OneDrive sync issues)</code>
+            <code>mkdir -Force $env:LOCALAPPDATA\OAT</code>
+            <code>Move-Item -Force $env:USERPROFILE\Downloads\auto-attendance.ps1 $env:LOCALAPPDATA\OAT\</code>
+            <code>Move-Item -Force $env:USERPROFILE\Downloads\auto-attendance-task.xml $env:LOCALAPPDATA\OAT\</code>
             <code># Fix path in task config</code>
-            <code>(Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml") -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', "$env:USERPROFILE\\Desktop\\OAT" | Set-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml"</code>
+            <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code>
             <code># Register scheduled task (requires Admin)</code>
-            <code>Register-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force</code>
+            <code>Register-ScheduledTask -Xml (Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force</code>
         `;
-        window._oatCmds = `mkdir -Force $env:USERPROFILE\\Desktop\\OAT\nMove-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:USERPROFILE\\Desktop\\OAT\\\nMove-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:USERPROFILE\\Desktop\\OAT\\\n(Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml") -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', "$env:USERPROFILE\\Desktop\\OAT" | Set-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml"\nRegister-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\\Desktop\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force`;
+        window._oatCmds = `mkdir -Force $env:LOCALAPPDATA\\OAT\nMove-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:LOCALAPPDATA\\OAT\\\nMove-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:LOCALAPPDATA\\OAT\\\n(Get-Content "$env:LOCALAPPDATA\\OAT\\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\\\OAT', "$env:LOCALAPPDATA\\OAT" | Set-Content "$env:LOCALAPPDATA\\OAT\\auto-attendance-task.xml"\nRegister-ScheduledTask -Xml (Get-Content "$env:LOCALAPPDATA\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force`;
     } else {
         // Mac / Linux — show terminal command (avoids permission issues)
         document.getElementById('osIcon').textContent = '\uD83C\uDF4E';

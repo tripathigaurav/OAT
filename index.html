@@ -147,10 +147,10 @@
     <!-- Update Required Banner (for existing users with stale/broken setup) -->
     <div class="update-banner" id="updateBanner" style="display:none;">
         <div class="update-banner-content">
-            <div class="update-banner-icon" id="updateBannerIcon">⚠️</div>
+            <div class="update-banner-icon" id="updateBannerIcon">🔄</div>
             <div class="update-banner-text">
-                <strong id="updateBannerTitle">Auto-tracking needs updating!</strong>
-                <span id="updateBannerDetail">Your setup may be using an old path that no longer works on macOS.</span>
+                <strong id="updateBannerTitle">Update available!</strong>
+                <span id="updateBannerDetail">A new update is available that improves auto-tracking reliability.</span>
             </div>
             <div class="update-banner-actions" id="updateBannerActions">
                 <button class="update-banner-btn primary" onclick="triggerAutoPatch()">🔧 Auto-Fix</button>
@@ -248,11 +248,11 @@
             <div class="os-content" id="os-win" style="display:none;">
                 <ol>
                     <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
-                    <li>Put both files in <code>C:\Users\YOU\Desktop\OAT\</code></li>
+                    <li>Put both files in <code>%LOCALAPPDATA%\OAT\</code> (local path &mdash; avoids OneDrive sync issues)</li>
                     <li>Open <strong>PowerShell as Admin</strong> and fix the path in the XML:
-                        <code>(Get-Content "$env:USERPROFILE\Desktop\OAT\auto-attendance-task.xml") -replace 'C:\\Users\\YOUR_USERNAME\\Desktop\\OAT', "$env:USERPROFILE\Desktop\OAT" | Set-Content "$env:USERPROFILE\Desktop\OAT\auto-attendance-task.xml"</code></li>
+                        <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code></li>
                     <li>Register the scheduled task:
-                        <code>Register-ScheduledTask -Xml (Get-Content "$env:USERPROFILE\Desktop\OAT\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force</code></li>
+                        <code>Register-ScheduledTask -Xml (Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force</code></li>
                     <li>Done! ✨ Runs on network change &amp; login.</li>
                 </ol>
                 <p style="font-size:0.75rem;opacity:0.6;">To stop: <code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance"</code></p>
