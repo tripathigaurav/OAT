@@ -519,6 +519,29 @@ function isSetupStale() {
 function checkForStaleSetup() {
     if (!isSetupStale()) return;
 
+    // Check if user already dismissed the popup this session
+    const dismissed = sessionStorage.getItem('oatPopupDismissed');
+
+    if (!dismissed) {
+        // Show the popup modal first
+        const popup = document.getElementById('updatePopupOverlay');
+        if (popup) {
+            const scriptActive = localStorage.getItem('oatScriptActive');
+            const desc = popup.querySelector('.update-popup-desc');
+            if (desc) {
+                desc.textContent = scriptActive
+                    ? 'A new version of OAT is ready with important improvements:'
+                    : 'Your auto-tracking needs a quick update to get working:';
+            }
+            popup.style.display = 'flex';
+        }
+    } else {
+        // Popup was dismissed — show the smaller banner as fallback
+        showUpdateBanner();
+    }
+}
+
+function showUpdateBanner() {
     const banner = document.getElementById('updateBanner');
     if (!banner) return;
 
@@ -533,6 +556,12 @@ function checkForStaleSetup() {
     }
     banner.style.display = 'block';
 
+    // Show notification dot on settings gear + card inside settings
+    const dot = document.getElementById('settingsUpdateDot');
+    if (dot) dot.style.display = 'block';
+    const card = document.getElementById('settingsUpdateCard');
+    if (card) card.style.display = 'flex';
+
     // Also update the status badge to show warning
     const badge = document.getElementById('setupStatusBadge');
     if (badge) {
@@ -541,107 +570,144 @@ function checkForStaleSetup() {
     }
 }
 
+function reopenUpdatePopup() {
+    sessionStorage.removeItem('oatPopupDismissed');
+    const popup = document.getElementById('updatePopupOverlay');
+    if (popup) popup.style.display = 'flex';
+    // Reset modal content in case it was replaced by copied state
+    const modal = popup && popup.querySelector('.update-popup-modal');
+    if (modal && !modal.querySelector('.update-popup-features')) {
+        const scriptActive = localStorage.getItem('oatScriptActive');
+        modal.innerHTML = `
+            <div class="update-popup-icon">🔄</div>
+            <h2>Update Available!</h2>
+            <p class="update-popup-desc">${scriptActive ? 'A new version of OAT is ready with important improvements:' : 'Your auto-tracking needs a quick update to get working:'}</p>
+            <ul class="update-popup-features">
+                <li>🛡️ Fixed auto-tracking on cloud-synced folders (OneDrive/iCloud)</li>
+                <li>⚡ Faster &amp; more reliable WiFi detection</li>
+                <li>📂 Scripts now install to a safe local path</li>
+            </ul>
+            <p class="update-popup-note">It's a quick one-command update — takes less than 10 seconds.</p>
+            <div class="update-popup-actions">
+                <button class="update-popup-btn primary" onclick="updatePopupNow()">🚀 Update Now</button>
+                <button class="update-popup-btn secondary" onclick="updatePopupLater()">Maybe Later</button>
+            </div>
+        `;
+    }
+}
+
+function updatePopupNow() {
+    const os = detectOS();
+    const cmd = os === 'windows'
+        ? 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex'
+        : 'curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash';
+
+    navigator.clipboard.writeText(cmd).then(() => {
+        showPopupCopiedState(os);
+        startPatchVerification();
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showPopupCopiedState(os);
+        startPatchVerification();
+    });
+}
+
+function showPopupCopiedState(os) {
+    const modal = document.querySelector('.update-popup-modal');
+    if (!modal) return;
+
+    const isMac = os !== 'windows';
+    const cmd = isMac
+        ? 'curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash'
+        : 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex';
+
+    modal.innerHTML = `
+        <div class="update-popup-icon">✅</div>
+        <h2>Command Copied!</h2>
+        <div class="patch-cmd-box"><code>${cmd}</code></div>
+        <div class="patch-instructions">
+            ${isMac
+                ? '1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Cmd+Space</span> → type "Terminal"<br>2. Paste &nbsp;<span class="keys">Cmd+V</span> → press <span class="keys">Enter</span>'
+                : '1. Open <strong>PowerShell</strong> &nbsp;<span class="keys">Win+X</span> → Terminal<br>2. Paste &nbsp;<span class="keys">Ctrl+V</span> → press <span class="keys">Enter</span>'
+            }
+        </div>
+        <div class="update-popup-actions" style="margin-top:18px;">
+            <button class="update-popup-btn primary" onclick="updatePopupNow()">📋 Copy Again</button>
+            <button class="update-popup-btn secondary" onclick="updatePopupLater()">Later</button>
+        </div>
+    `;
+}
+
+function updatePopupLater() {
+    const popup = document.getElementById('updatePopupOverlay');
+    if (popup) popup.style.display = 'none';
+    sessionStorage.setItem('oatPopupDismissed', '1');
+    // Show the smaller banner as fallback
+    showUpdateBanner();
+}
+
+function copyWinRunNow() {
+    const cmd = '& "$env:LOCALAPPDATA\OAT\auto-attendance.ps1"';
+    navigator.clipboard.writeText(cmd).then(() => {
+        showWinRunStatus('copied');
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showWinRunStatus('copied');
+    });
+}
+
+function showWinRunStatus(state) {
+    const status = document.getElementById('winManualRunStatus');
+    const btn = document.querySelector('.manual-run-btn');
+    if (state === 'copied') {
+        if (status) {
+            status.textContent = '✅ Copied! Open PowerShell → paste → press Enter';
+            status.style.color = '#55efc4';
+        }
+        if (btn) btn.textContent = '📋 Copy Again';
+        setTimeout(() => {
+            if (status) status.textContent = '';
+            if (btn) btn.textContent = '▶ Run WiFi Check Now';
+        }, 5000);
+    }
+}
+
 function dismissUpdateBanner() {
     document.getElementById('updateBanner').style.display = 'none';
     localStorage.setItem('oatUpdateDismissed', new Date().toISOString());
 }
 
-// ---- Automatic Patch Fix ----
-function generateFixScript() {
-    // Generate a self-contained bash script that fixes the setup
-    return `#!/bin/bash
-# OAT Auto-Patch — Fixes auto-tracking for cloud-synced Desktop
-# Generated: ${new Date().toLocaleString()}
-echo ""
-echo "  ======================================="
-echo "  🔧 OAT Auto-Patch"
-echo "  ======================================="
-echo ""
-
-GITHUB_BASE="https://tripathigaurav.github.io/OAT"
-OAT_DIR="$HOME/.oat"
-PLIST_NAME="com.oat.wifiattendance.plist"
-SCRIPT_NAME="auto-attendance.sh"
-LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
-
-echo "  [1/4] Creating ~/.oat/ ..."
-mkdir -p "$OAT_DIR"
-echo "        ✅ Done"
-
-echo "  [2/4] Downloading latest files..."
-curl -sL "$GITHUB_BASE/$SCRIPT_NAME" -o "$OAT_DIR/$SCRIPT_NAME"
-curl -sL "$GITHUB_BASE/$PLIST_NAME" -o "$OAT_DIR/$PLIST_NAME"
-chmod +x "$OAT_DIR/$SCRIPT_NAME"
-xattr -cr "$OAT_DIR/$SCRIPT_NAME" 2>/dev/null
-xattr -cr "$OAT_DIR/$PLIST_NAME" 2>/dev/null
-echo "        ✅ Downloaded & permissions set"
-
-echo "  [3/4] Updating LaunchAgent..."
-launchctl unload "$LAUNCH_AGENTS/$PLIST_NAME" 2>/dev/null
-launchctl remove com.oat.wifiattendance 2>/dev/null
-sed -i '' "s|<string>/.*auto-attendance.sh</string>|<string>$OAT_DIR/$SCRIPT_NAME</string>|g" "$OAT_DIR/$PLIST_NAME"
-cp "$OAT_DIR/$PLIST_NAME" "$LAUNCH_AGENTS/"
-launchctl load "$LAUNCH_AGENTS/$PLIST_NAME"
-echo "        ✅ LaunchAgent reinstalled"
-
-echo "  [4/4] Cleaning up old install..."
-rm -f /tmp/oat-automark-*.lock 2>/dev/null
-echo "        ✅ Done"
-
-echo ""
-echo "  ======================================="
-echo "  🎉 PATCH COMPLETE!"
-echo "  ======================================="
-echo "  Auto-tracking is now fixed."
-echo "  Files: ~/.oat/"
-echo "  ======================================="
-echo ""
-
-# Open tracker to verify
-open "$GITHUB_BASE/?automark=true"
-
-# Self-delete the patch file
-rm -f "$0" 2>/dev/null
-`;
-}
-
 function triggerAutoPatch() {
     const os = detectOS();
-    if (os === 'windows') {
-        // Windows: generate & auto-download a .ps1 fix script
-        const script = generateWinFixScript();
-        const blob = new Blob([script], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'fix-oat.ps1';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    const cmd = os === 'windows'
+        ? 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex'
+        : 'curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash';
 
-        showPatchBannerState('downloaded-win');
+    // Copy command to clipboard
+    navigator.clipboard.writeText(cmd).then(() => {
+        showPatchBannerState(os === 'windows' ? 'copied-win' : 'copied-mac');
         startPatchVerification();
-        return;
-    }
-
-    // Mac: generate & auto-download a .command fix script
-    const script = generateFixScript();
-    const blob = new Blob([script], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'fix-oat.command';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    // Update the banner to show next step
-    showPatchBannerState('downloaded');
-
-    // Start polling for fix completion
-    startPatchVerification();
+    }).catch(() => {
+        // Fallback for non-HTTPS or permission denied
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showPatchBannerState(os === 'windows' ? 'copied-win' : 'copied-mac');
+        startPatchVerification();
+    });
 }
 
 function showPatchBannerState(state) {
@@ -650,19 +716,32 @@ function showPatchBannerState(state) {
     const detail = document.getElementById('updateBannerDetail');
     const actions = document.getElementById('updateBannerActions');
 
-    if (state === 'downloaded') {
-        icon.textContent = '📥';
-        title.textContent = 'Fix downloaded! One more step:';
-        detail.innerHTML = 'Open <strong>Downloads</strong> folder → double-click <strong>fix-oat.command</strong><br><span style="font-size:0.75rem;opacity:0.7;">If macOS blocks it: right-click → Open → Open</span>';
-        actions.innerHTML = '<button class="update-banner-btn primary" onclick="openDownloadsFolder()">📂 Open Downloads</button><button class="update-banner-btn dismiss" onclick="triggerAutoPatch()">🔄 Re-download</button>';
-    } else if (state === 'downloaded-win') {
-        icon.textContent = '📥';
-        title.textContent = 'Fix downloaded! One more step:';
-        detail.innerHTML = 'Open <strong>Downloads</strong> folder → right-click <strong>fix-oat.ps1</strong> → <strong>Run with PowerShell</strong><br><span style="font-size:0.75rem;opacity:0.7;">Click "Yes" if Windows asks for permission</span>';
-        actions.innerHTML = '<button class="update-banner-btn primary" onclick="openDownloadsFolder()">📂 Open Downloads</button><button class="update-banner-btn dismiss" onclick="triggerAutoPatch()">🔄 Re-download</button>';
+    if (state === 'copied-mac') {
+        icon.textContent = '✅';
+        title.textContent = 'Command copied to clipboard!';
+        detail.innerHTML = `
+            <div class="patch-cmd-box"><code>curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash</code></div>
+            <div class="patch-instructions">
+                1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Cmd+Space</span> → type "Terminal"<br>
+                2. Paste &nbsp;<span class="keys">Cmd+V</span> → press <span class="keys">Enter</span>
+            </div>`;
+        actions.innerHTML = '<button class="update-banner-btn primary" onclick="triggerAutoPatch()">📋 Copy Again</button><button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Later</button>';
+        // Switch to stacked layout
+        document.querySelector('.update-banner-content').classList.add('has-command');
+    } else if (state === 'copied-win') {
+        icon.textContent = '✅';
+        title.textContent = 'Command copied to clipboard!';
+        detail.innerHTML = `
+            <div class="patch-cmd-box"><code>irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code></div>
+            <div class="patch-instructions">
+                1. Open <strong>PowerShell</strong> &nbsp;<span class="keys">Win+X</span> → Terminal<br>
+                2. Paste &nbsp;<span class="keys">Ctrl+V</span> → press <span class="keys">Enter</span>
+            </div>`;
+        actions.innerHTML = '<button class="update-banner-btn primary" onclick="triggerAutoPatch()">📋 Copy Again</button><button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Later</button>';
+        document.querySelector('.update-banner-content').classList.add('has-command');
     } else if (state === 'verified') {
         icon.textContent = '✅';
-        title.textContent = 'Auto-tracking fixed!';
+        title.textContent = 'Auto-tracking updated!';
         detail.textContent = 'Your setup has been updated and is working again.';
         actions.innerHTML = '<button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Dismiss</button>';
         // Remove pulse animation
@@ -674,79 +753,6 @@ function showPatchBannerState(state) {
         updateSetupStatus();
         localStorage.removeItem('oatUpdateDismissed');
     }
-}
-
-function generateWinFixScript() {
-    return `# OAT Auto-Patch for Windows
-# Generated: ${new Date().toLocaleString()}
-# Right-click this file -> Run with PowerShell
-
-Write-Host ""
-Write-Host "  =======================================" -ForegroundColor Cyan
-Write-Host "  OAT Auto-Patch" -ForegroundColor Cyan
-Write-Host "  =======================================" -ForegroundColor Cyan
-Write-Host ""
-
-$GITHUB_BASE = "https://tripathigaurav.github.io/OAT"
-$OAT_DIR = "$env:LOCALAPPDATA\\OAT"
-
-Write-Host "  [1/4] Creating $OAT_DIR ..."
-New-Item -ItemType Directory -Force -Path $OAT_DIR | Out-Null
-Write-Host "        Done" -ForegroundColor Green
-
-Write-Host "  [2/4] Downloading latest files..."
-try {
-    Invoke-WebRequest -Uri "$GITHUB_BASE/auto-attendance.ps1" -OutFile "$OAT_DIR\\auto-attendance.ps1" -ErrorAction Stop
-    Invoke-WebRequest -Uri "$GITHUB_BASE/auto-attendance-task.xml" -OutFile "$OAT_DIR\\auto-attendance-task.xml" -ErrorAction Stop
-    Write-Host "        Downloaded" -ForegroundColor Green
-} catch {
-    Write-Host "        Download failed. Check internet." -ForegroundColor Red
-    Read-Host "Press Enter to exit"
-    exit 1
-}
-
-Write-Host "  [3/4] Updating Scheduled Task..."
-$xmlContent = Get-Content "$OAT_DIR\\auto-attendance-task.xml" -Raw
-$xmlContent = $xmlContent -replace '%LOCALAPPDATA%\\\\OAT', $OAT_DIR
-$xmlContent = $xmlContent -replace 'C:\\\\Users\\\\YOUR_USERNAME\\\\Desktop\\\\OAT', $OAT_DIR
-$xmlContent = $xmlContent -replace '\\$env:USERPROFILE\\\\Desktop\\\\OAT', $OAT_DIR
-$xmlContent | Set-Content "$OAT_DIR\\auto-attendance-task.xml"
-try {
-    Register-ScheduledTask -Xml (Get-Content "$OAT_DIR\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force -ErrorAction Stop | Out-Null
-    Write-Host "        Task registered" -ForegroundColor Green
-} catch {
-    try {
-        $regCmd = "Register-ScheduledTask -Xml (Get-Content '$OAT_DIR\\auto-attendance-task.xml' | Out-String) -TaskName 'OAT-WiFiAttendance' -Force"
-        Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -Command $regCmd" -Verb RunAs -Wait -ErrorAction Stop
-        Write-Host "        Task registered (via Admin)" -ForegroundColor Green
-    } catch {
-        Write-Host "        Could not register task automatically." -ForegroundColor Yellow
-    }
-}
-
-Write-Host "  [4/4] Cleaning up..."
-Remove-Item "$env:TEMP\\oat-automark-*.lock" -Force -ErrorAction SilentlyContinue
-Write-Host "        Done" -ForegroundColor Green
-
-Write-Host ""
-Write-Host "  =======================================" -ForegroundColor Green
-Write-Host "  PATCH COMPLETE!" -ForegroundColor Green
-Write-Host "  =======================================" -ForegroundColor Green
-Write-Host "  Files: $OAT_DIR" -ForegroundColor White
-Write-Host ""
-
-# Open tracker to verify
-Start-Process "$GITHUB_BASE/?automark=true"
-
-# Self-delete
-Remove-Item $MyInvocation.MyCommand.Source -Force -ErrorAction SilentlyContinue
-`;
-}
-
-function openDownloadsFolder() {
-    // Can't reliably open Finder from browser, but we can try
-    // The file is already in Downloads, so just remind the user
-    showNotification('📂 Check your Downloads folder for fix-oat.command and double-click it!', 'info');
 }
 
 function startPatchVerification() {

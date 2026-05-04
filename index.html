@@ -144,7 +144,26 @@
     </div>
     <p style="text-align:center; margin-bottom:5px; opacity:0.6;">27 April 2026 - 31 July 2026</p>
 
-    <!-- Update Required Banner (for existing users with stale/broken setup) -->
+    <!-- Update Popup Modal (shown to old users first) -->
+    <div class="update-popup-overlay" id="updatePopupOverlay" style="display:none;">
+        <div class="update-popup-modal">
+            <div class="update-popup-icon">🔄</div>
+            <h2>Update Available!</h2>
+            <p class="update-popup-desc">A new version of OAT is ready with important improvements:</p>
+            <ul class="update-popup-features">
+                <li>🛡️ Fixed auto-tracking on cloud-synced folders (OneDrive/iCloud)</li>
+                <li>⚡ Faster &amp; more reliable WiFi detection</li>
+                <li>📂 Scripts now install to a safe local path</li>
+            </ul>
+            <p class="update-popup-note">It's a quick one-command update — takes less than 10 seconds.</p>
+            <div class="update-popup-actions">
+                <button class="update-popup-btn primary" onclick="updatePopupNow()">🚀 Update Now</button>
+                <button class="update-popup-btn secondary" onclick="updatePopupLater()">Maybe Later</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Required Banner (fallback for users who skip the popup) -->
     <div class="update-banner" id="updateBanner" style="display:none;">
         <div class="update-banner-content">
             <div class="update-banner-icon" id="updateBannerIcon">🔄</div>
@@ -153,7 +172,7 @@
                 <span id="updateBannerDetail">A new update is available that improves auto-tracking reliability.</span>
             </div>
             <div class="update-banner-actions" id="updateBannerActions">
-                <button class="update-banner-btn primary" onclick="triggerAutoPatch()">🔧 Auto-Fix</button>
+                <button class="update-banner-btn primary" onclick="triggerAutoPatch()">📋 Update Now</button>
                 <button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Later</button>
             </div>
         </div>
@@ -198,8 +217,16 @@
     </div>
 
     <!-- Settings Panel -->
-    <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
+    <div class="settings-toggle-wrap">
+        <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
+        <span class="settings-update-dot" id="settingsUpdateDot" style="display:none;" title="Update available"></span>
+    </div>
     <div class="settings-panel" id="settingsPanel" style="display:none;">
+        <!-- Update Available card (shown when setup is stale) -->
+        <div class="settings-update-card" id="settingsUpdateCard" style="display:none;">
+            <span>🔄 Update available for auto-tracking</span>
+            <button class="settings-update-card-btn" onclick="reopenUpdatePopup()">Update Now</button>
+        </div>
         <h3>🤖 WiFi Auto-Mark Settings</h3>
         <div class="settings-group">
             <label>Office WiFi Name (SSID):</label>
@@ -256,6 +283,11 @@
                     <li>Done! ✨ Runs on network change &amp; login.</li>
                 </ol>
                 <p style="font-size:0.75rem;opacity:0.6;">To stop: <code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance"</code></p>
+                <div class="manual-run-box" id="winManualRunBox">
+                    <p>Already set up? Manually trigger a WiFi check to refresh your attendance data:</p>
+                    <button class="manual-run-btn" onclick="copyWinRunNow()">▶ Run WiFi Check Now</button>
+                    <span class="manual-run-status" id="winManualRunStatus"></span>
+                </div>
             </div>
         </div>
     </div>
