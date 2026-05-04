@@ -21,7 +21,10 @@ echo ""
 
 # --- Configuration ---
 GITHUB_BASE="https://tripathigaurav.github.io/OAT"
-OAT_DIR="$HOME/Desktop/OAT"
+# Install to ~/.oat/ (local path) — NOT ~/Desktop which may be
+# synced to OneDrive/iCloud. macOS blocks LaunchAgents from
+# executing scripts in cloud-synced directories.
+OAT_DIR="$HOME/.oat"
 PLIST_NAME="com.oat.wifiattendance.plist"
 SCRIPT_NAME="auto-attendance.sh"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
@@ -31,6 +34,13 @@ echo "  [1/5] Creating folder: $OAT_DIR"
 mkdir -p "$OAT_DIR"
 echo "        ✅ Done"
 echo ""
+
+# Detect if Desktop is cloud-synced (OneDrive/iCloud)
+if [[ "$(readlink -f "$HOME/Desktop" 2>/dev/null || echo "$HOME/Desktop")" == *"CloudStorage"* ]] || \
+   [[ -d "$HOME/Library/CloudStorage" && -L "$HOME/Desktop" ]]; then
+    echo "        ℹ️  Cloud-synced Desktop detected — using ~/.oat/ (safe local path)"
+    echo ""
+fi
 
 # --- Step 2: Download files ---
 echo "  [2/5] Downloading files from GitHub..."
@@ -53,10 +63,12 @@ else
 fi
 echo ""
 
-# --- Step 3: Set permissions ---
+# --- Step 3: Set permissions & clear quarantine ---
 echo "  [3/5] Setting permissions..."
 chmod +x "$OAT_DIR/$SCRIPT_NAME"
-echo "        ✅ Made script executable"
+xattr -cr "$OAT_DIR/$SCRIPT_NAME" 2>/dev/null
+xattr -cr "$OAT_DIR/$PLIST_NAME" 2>/dev/null
+echo "        ✅ Made script executable & cleared quarantine"
 echo ""
 
 # --- Step 4: Install LaunchAgent ---
