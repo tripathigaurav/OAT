@@ -147,45 +147,14 @@
     <!-- Update Required Banner (for existing users with stale/broken setup) -->
     <div class="update-banner" id="updateBanner" style="display:none;">
         <div class="update-banner-content">
-            <div class="update-banner-icon">⚠️</div>
+            <div class="update-banner-icon" id="updateBannerIcon">⚠️</div>
             <div class="update-banner-text">
-                <strong>Auto-tracking needs updating!</strong>
+                <strong id="updateBannerTitle">Auto-tracking needs updating!</strong>
                 <span id="updateBannerDetail">Your setup may be using an old path that no longer works on macOS.</span>
             </div>
-            <div class="update-banner-actions">
-                <button class="update-banner-btn primary" onclick="showReinstallModal()">🔧 Fix Now</button>
+            <div class="update-banner-actions" id="updateBannerActions">
+                <button class="update-banner-btn primary" onclick="triggerAutoPatch()">🔧 Auto-Fix</button>
                 <button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Later</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Reinstall Modal -->
-    <div class="onboard-overlay" id="reinstallOverlay" style="display:none;">
-        <div class="onboard-modal">
-            <div class="onboard-step">
-                <div class="onboard-icon">🔧</div>
-                <h2>Update Auto-Tracking</h2>
-                <p>Your setup needs a quick update. The old install path (<code>~/Desktop/OAT</code>) is blocked by macOS on cloud-synced folders (OneDrive/iCloud).</p>
-                <p style="margin-top:8px;">Run this <strong>one command</strong> in Terminal to fix it:</p>
-                <div class="terminal-cmd-box">
-                    <code id="reinstallCmd">curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash</code>
-                    <button class="copy-cmd-btn" onclick="copyReinstallCmd()" title="Copy command">📋</button>
-                </div>
-                <span class="download-status" id="reinstallStatus">One command. Paste it. Done. ✨</span>
-                <div class="oneclick-steps" id="reinstallSteps">
-                    <div class="oneclick-step">1️⃣ Open <strong>Terminal</strong> (Cmd+Space → type "Terminal")</div>
-                    <div class="oneclick-step">2️⃣ Paste the command above (Cmd+V)</div>
-                    <div class="oneclick-step">3️⃣ Press Enter — it reinstalls to a safe local path (~/.oat/)</div>
-                    <div class="oneclick-step">4️⃣ ✅ Done! Auto-tracking will work again.</div>
-                </div>
-                <div class="setup-verified-banner" id="reinstallVerified" style="display:none;">
-                    <div class="verified-icon">🎉</div>
-                    <strong>Update Complete!</strong>
-                    <p>Auto-tracking is fixed and working.</p>
-                </div>
-                <div class="onboard-buttons" style="margin-top:15px;">
-                    <button class="onboard-btn secondary" onclick="closeReinstallModal()">Close</button>
-                </div>
             </div>
         </div>
     </div>

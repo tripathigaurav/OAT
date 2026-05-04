@@ -528,9 +528,9 @@ function checkForStaleSetup() {
         if (scriptActive) {
             const lastRun = new Date(scriptActive);
             const daysSince = Math.floor((new Date() - lastRun) / (1000 * 60 * 60 * 24));
-            detail.textContent = `Auto-tracking hasn't triggered in ${daysSince} days. Your setup likely needs updating.`;
+            detail.textContent = `Auto-tracking hasn't triggered in ${daysSince} days. Click Auto-Fix to repair it instantly.`;
         } else {
-            detail.textContent = 'Auto-tracking was set up but never triggered. It may need reinstalling.';
+            detail.textContent = 'Auto-tracking was set up but never triggered. Click Auto-Fix to repair it.';
         }
     }
     banner.style.display = 'block';
@@ -548,55 +548,155 @@ function dismissUpdateBanner() {
     localStorage.setItem('oatUpdateDismissed', new Date().toISOString());
 }
 
-function showReinstallModal() {
-    document.getElementById('reinstallOverlay').style.display = 'flex';
-    // Start listening for setup verification
-    startSetupVerificationListener();
-    // Also listen specifically for reinstall success
-    const checkReinstall = setInterval(() => {
+// ---- Automatic Patch Fix ----
+function generateFixScript() {
+    // Generate a self-contained bash script that fixes the setup
+    return `#!/bin/bash
+# OAT Auto-Patch — Fixes auto-tracking for cloud-synced Desktop
+# Generated: ${new Date().toLocaleString()}
+echo ""
+echo "  ======================================="
+echo "  🔧 OAT Auto-Patch"
+echo "  ======================================="
+echo ""
+
+GITHUB_BASE="https://tripathigaurav.github.io/OAT"
+OAT_DIR="$HOME/.oat"
+PLIST_NAME="com.oat.wifiattendance.plist"
+SCRIPT_NAME="auto-attendance.sh"
+LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
+
+echo "  [1/4] Creating ~/.oat/ ..."
+mkdir -p "$OAT_DIR"
+echo "        ✅ Done"
+
+echo "  [2/4] Downloading latest files..."
+curl -sL "$GITHUB_BASE/$SCRIPT_NAME" -o "$OAT_DIR/$SCRIPT_NAME"
+curl -sL "$GITHUB_BASE/$PLIST_NAME" -o "$OAT_DIR/$PLIST_NAME"
+chmod +x "$OAT_DIR/$SCRIPT_NAME"
+xattr -cr "$OAT_DIR/$SCRIPT_NAME" 2>/dev/null
+xattr -cr "$OAT_DIR/$PLIST_NAME" 2>/dev/null
+echo "        ✅ Downloaded & permissions set"
+
+echo "  [3/4] Updating LaunchAgent..."
+launchctl unload "$LAUNCH_AGENTS/$PLIST_NAME" 2>/dev/null
+launchctl remove com.oat.wifiattendance 2>/dev/null
+sed -i '' "s|<string>/.*auto-attendance.sh</string>|<string>$OAT_DIR/$SCRIPT_NAME</string>|g" "$OAT_DIR/$PLIST_NAME"
+cp "$OAT_DIR/$PLIST_NAME" "$LAUNCH_AGENTS/"
+launchctl load "$LAUNCH_AGENTS/$PLIST_NAME"
+echo "        ✅ LaunchAgent reinstalled"
+
+echo "  [4/4] Cleaning up old install..."
+rm -f /tmp/oat-automark-*.lock 2>/dev/null
+echo "        ✅ Done"
+
+echo ""
+echo "  ======================================="
+echo "  🎉 PATCH COMPLETE!"
+echo "  ======================================="
+echo "  Auto-tracking is now fixed."
+echo "  Files: ~/.oat/"
+echo "  ======================================="
+echo ""
+
+# Open tracker to verify
+open "$GITHUB_BASE/?automark=true"
+
+# Self-delete the patch file
+rm -f "$0" 2>/dev/null
+`;
+}
+
+function triggerAutoPatch() {
+    const os = detectOS();
+    if (os === 'windows') {
+        // Windows: copy PowerShell command to clipboard
+        const cmd = 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex';
+        navigator.clipboard.writeText(cmd).then(() => {
+            showPatchBannerState('copied-win');
+        }).catch(() => {
+            showPatchBannerState('manual-win');
+        });
+        return;
+    }
+
+    // Mac: generate & auto-download a .command fix script
+    const script = generateFixScript();
+    const blob = new Blob([script], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fix-oat.command';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Update the banner to show next step
+    showPatchBannerState('downloaded');
+
+    // Start polling for fix completion
+    startPatchVerification();
+}
+
+function showPatchBannerState(state) {
+    const icon = document.getElementById('updateBannerIcon');
+    const title = document.getElementById('updateBannerTitle');
+    const detail = document.getElementById('updateBannerDetail');
+    const actions = document.getElementById('updateBannerActions');
+
+    if (state === 'downloaded') {
+        icon.textContent = '📥';
+        title.textContent = 'Fix downloaded! One more step:';
+        detail.innerHTML = 'Open <strong>Downloads</strong> folder → double-click <strong>fix-oat.command</strong><br><span style="font-size:0.75rem;opacity:0.7;">If macOS blocks it: right-click → Open → Open</span>';
+        actions.innerHTML = '<button class="update-banner-btn primary" onclick="openDownloadsFolder()">📂 Open Downloads</button><button class="update-banner-btn dismiss" onclick="triggerAutoPatch()">🔄 Re-download</button>';
+    } else if (state === 'verified') {
+        icon.textContent = '✅';
+        title.textContent = 'Auto-tracking fixed!';
+        detail.textContent = 'Your setup has been updated and is working again.';
+        actions.innerHTML = '<button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Dismiss</button>';
+        // Remove pulse animation
+        document.getElementById('updateBanner').style.animation = 'none';
+        document.getElementById('updateBanner').style.borderColor = 'rgba(0, 184, 148, 0.4)';
+        document.getElementById('updateBanner').style.background = 'linear-gradient(135deg, rgba(0,184,148,0.15), rgba(85,239,196,0.08))';
+        title.style.color = '#55efc4';
+        // Update status badge
+        updateSetupStatus();
+        localStorage.removeItem('oatUpdateDismissed');
+    } else if (state === 'copied-win') {
+        icon.textContent = '📋';
+        title.textContent = 'Fix command copied!';
+        detail.innerHTML = 'Open <strong>PowerShell</strong> → paste (Ctrl+V) → press Enter';
+        actions.innerHTML = '<button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Done</button>';
+    } else if (state === 'manual-win') {
+        icon.textContent = '🔧';
+        title.textContent = 'Run this in PowerShell:';
+        detail.innerHTML = '<code style="font-size:0.8rem;">irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code>';
+        actions.innerHTML = '<button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Done</button>';
+    }
+}
+
+function openDownloadsFolder() {
+    // Can't reliably open Finder from browser, but we can try
+    // The file is already in Downloads, so just remind the user
+    showNotification('📂 Check your Downloads folder for fix-oat.command and double-click it!', 'info');
+}
+
+function startPatchVerification() {
+    // Poll for the fix to take effect (installer opens ?automark=true when done)
+    const checkInterval = setInterval(() => {
         const scriptActive = localStorage.getItem('oatScriptActive');
         if (scriptActive) {
             const lastRun = new Date(scriptActive);
             const now = new Date();
             if (lastRun.toDateString() === now.toDateString()) {
-                clearInterval(checkReinstall);
-                // Show verified banner
-                const verified = document.getElementById('reinstallVerified');
-                const steps = document.getElementById('reinstallSteps');
-                const status = document.getElementById('reinstallStatus');
-                if (verified) verified.style.display = 'block';
-                if (steps) steps.style.display = 'none';
-                if (status) { status.textContent = '✅ Update complete!'; status.style.color = '#55efc4'; }
-                // Hide the update banner
-                document.getElementById('updateBanner').style.display = 'none';
-                // Reset the status badge
-                updateSetupStatus();
-                // Clear the dismissed flag
-                localStorage.removeItem('oatUpdateDismissed');
+                clearInterval(checkInterval);
+                showPatchBannerState('verified');
             }
         }
     }, 2000);
-}
-
-function closeReinstallModal() {
-    document.getElementById('reinstallOverlay').style.display = 'none';
-}
-
-function copyReinstallCmd() {
-    const cmd = document.getElementById('reinstallCmd').textContent;
-    navigator.clipboard.writeText(cmd).then(() => {
-        document.getElementById('reinstallStatus').textContent = '✅ Copied! Now paste in Terminal (Cmd+V)';
-        document.getElementById('reinstallStatus').style.color = '#55efc4';
-    }).catch(() => {
-        const ta = document.createElement('textarea');
-        ta.value = cmd;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        document.getElementById('reinstallStatus').textContent = '✅ Copied! Now paste in Terminal (Cmd+V)';
-        document.getElementById('reinstallStatus').style.color = '#55efc4';
-    });
+    // Stop polling after 5 minutes
+    setTimeout(() => clearInterval(checkInterval), 5 * 60 * 1000);
 }
 
 function showOnboarding() {
