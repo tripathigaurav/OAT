@@ -418,6 +418,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update setup status indicator
     updateSetupStatus();
 
+    // Check if existing users need to update their setup
+    checkForStaleSetup();
+
     // Show user greeting if name is saved
     showUserGreeting();
 });
@@ -475,6 +478,125 @@ function updateSetupStatus() {
         const header = document.querySelector('h1');
         if (header) header.after(badge);
     }
+}
+
+// ---- Stale Setup Detection & Reinstall ----
+function isSetupStale() {
+    // Check if user had setup before but it hasn't triggered recently
+    const scriptActive = localStorage.getItem('oatScriptActive');
+    const onboarded = localStorage.getItem('oatOnboarded');
+    const dismissed = localStorage.getItem('oatUpdateDismissed');
+
+    // Not an existing user — skip
+    if (!onboarded && !scriptActive && Object.keys(autoMarkedDays).length === 0) return false;
+
+    // User dismissed the banner today — don't nag
+    if (dismissed) {
+        const dismissDate = new Date(dismissed);
+        const today = new Date();
+        if (dismissDate.toDateString() === today.toDateString()) return false;
+    }
+
+    // If the page was opened via ?automark=true, script is working — not stale
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('automark') === 'true') return false;
+
+    // If last auto-mark trigger was more than 3 days ago on a workday, setup is likely broken
+    if (scriptActive) {
+        const lastRun = new Date(scriptActive);
+        const now = new Date();
+        const daysSince = Math.floor((now - lastRun) / (1000 * 60 * 60 * 24));
+        // Count how many workdays have passed since last trigger
+        if (daysSince >= 3) return true;
+    }
+
+    // User completed onboarding but script never triggered at all
+    if (onboarded === 'completed' && !scriptActive) return true;
+
+    return false;
+}
+
+function checkForStaleSetup() {
+    if (!isSetupStale()) return;
+
+    const banner = document.getElementById('updateBanner');
+    if (!banner) return;
+
+    const scriptActive = localStorage.getItem('oatScriptActive');
+    const detail = document.getElementById('updateBannerDetail');
+    if (detail) {
+        if (scriptActive) {
+            const lastRun = new Date(scriptActive);
+            const daysSince = Math.floor((new Date() - lastRun) / (1000 * 60 * 60 * 24));
+            detail.textContent = `Auto-tracking hasn't triggered in ${daysSince} days. Your setup likely needs updating.`;
+        } else {
+            detail.textContent = 'Auto-tracking was set up but never triggered. It may need reinstalling.';
+        }
+    }
+    banner.style.display = 'block';
+
+    // Also update the status badge to show warning
+    const badge = document.getElementById('setupStatusBadge');
+    if (badge) {
+        badge.className = 'setup-status-badge stale';
+        badge.innerHTML = '⚠️ Auto-tracking needs update';
+    }
+}
+
+function dismissUpdateBanner() {
+    document.getElementById('updateBanner').style.display = 'none';
+    localStorage.setItem('oatUpdateDismissed', new Date().toISOString());
+}
+
+function showReinstallModal() {
+    document.getElementById('reinstallOverlay').style.display = 'flex';
+    // Start listening for setup verification
+    startSetupVerificationListener();
+    // Also listen specifically for reinstall success
+    const checkReinstall = setInterval(() => {
+        const scriptActive = localStorage.getItem('oatScriptActive');
+        if (scriptActive) {
+            const lastRun = new Date(scriptActive);
+            const now = new Date();
+            if (lastRun.toDateString() === now.toDateString()) {
+                clearInterval(checkReinstall);
+                // Show verified banner
+                const verified = document.getElementById('reinstallVerified');
+                const steps = document.getElementById('reinstallSteps');
+                const status = document.getElementById('reinstallStatus');
+                if (verified) verified.style.display = 'block';
+                if (steps) steps.style.display = 'none';
+                if (status) { status.textContent = '✅ Update complete!'; status.style.color = '#55efc4'; }
+                // Hide the update banner
+                document.getElementById('updateBanner').style.display = 'none';
+                // Reset the status badge
+                updateSetupStatus();
+                // Clear the dismissed flag
+                localStorage.removeItem('oatUpdateDismissed');
+            }
+        }
+    }, 2000);
+}
+
+function closeReinstallModal() {
+    document.getElementById('reinstallOverlay').style.display = 'none';
+}
+
+function copyReinstallCmd() {
+    const cmd = document.getElementById('reinstallCmd').textContent;
+    navigator.clipboard.writeText(cmd).then(() => {
+        document.getElementById('reinstallStatus').textContent = '✅ Copied! Now paste in Terminal (Cmd+V)';
+        document.getElementById('reinstallStatus').style.color = '#55efc4';
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        document.getElementById('reinstallStatus').textContent = '✅ Copied! Now paste in Terminal (Cmd+V)';
+        document.getElementById('reinstallStatus').style.color = '#55efc4';
+    });
 }
 
 function showOnboarding() {
