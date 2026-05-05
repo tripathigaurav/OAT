@@ -386,6 +386,7 @@ function renderCalendars() {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     renderCalendars();
 
     // Check for auto-mark trigger via URL parameter
@@ -431,6 +432,96 @@ function showOS(os) {
     document.querySelectorAll('.os-tab').forEach(el => el.classList.remove('active'));
     document.getElementById('os-' + os).style.display = 'block';
     event.target.classList.add('active');
+}
+
+// ---- Feedback ----
+const TEAMS_WEBHOOK = 'https://default4b0911a0929b4715944bc03745165b.3a.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/486c0ca0c71548cb9209647f253bd7f0/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=N1OnL8F7umiI2e3flX76BAkyGjYTgfsjjOpcO41ZVzg';
+
+let _feedbackRating = 0;
+
+function openFeedback() {
+    _feedbackRating = 0;
+    document.getElementById('feedbackMsg').value = '';
+    document.getElementById('feedbackName').value = localStorage.getItem('oatUserName') || '';
+    document.getElementById('feedbackStatus').textContent = '';
+    document.getElementById('feedbackStatus').className = 'feedback-status';
+    document.getElementById('feedbackOverlay').style.display = 'flex';
+}
+
+function closeFeedback() {
+    document.getElementById('feedbackOverlay').style.display = 'none';
+}
+
+function submitFeedback() {
+    const msg = document.getElementById('feedbackMsg').value.trim();
+    const name = document.getElementById('feedbackName').value.trim() || 'Anonymous';
+    const status = document.getElementById('feedbackStatus');
+    const btn = document.querySelector('.feedback-submit-btn');
+
+    if (!msg) {
+        status.textContent = 'Please add a message before sending.';
+        status.className = 'feedback-status error';
+        return;
+    }
+
+    const os = detectOS() === 'windows' ? '🪟 Windows' : detectOS() === 'mac' ? '🍎 Mac' : '🖥️ Other';
+    const date = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+    const body = {
+        text: `📝 **OAT Feedback**\n\n👤 **From:** ${name} (${os})\n💬 **Message:** ${msg}\n🕐 **Time:** ${date}`
+    };
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    fetch(TEAMS_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    }).then(res => {
+        status.textContent = '✅ Thanks! Feedback sent successfully.';
+        status.className = 'feedback-status success';
+        btn.textContent = 'Sent!';
+        setTimeout(() => closeFeedback(), 2000);
+    }).catch(() => {
+        status.textContent = '❌ Could not send. Please try again.';
+        status.className = 'feedback-status error';
+        btn.disabled = false;
+        btn.textContent = 'Send Feedback 🚀';
+    });
+}
+
+// ---- Theme Toggle ----
+function initTheme() {
+    const saved = localStorage.getItem('oatTheme');
+    if (saved === 'light') {
+        document.body.classList.add('light-mode');
+        _setSwitch(true);
+    } else {
+        _setSwitch(false);
+    }
+}
+
+function toggleTheme() {
+    const isLight = document.body.classList.toggle('light-mode');
+    _setSwitch(isLight);
+    localStorage.setItem('oatTheme', isLight ? 'light' : 'dark');
+}
+
+function _setSwitch(isLight) {
+    const sw = document.getElementById('themeSwitch');
+    const dark = document.getElementById('themeLabelDark');
+    const light = document.getElementById('themeLabelLight');
+    if (!sw) return;
+    if (isLight) {
+        sw.classList.add('light-on');
+        if (dark) dark.classList.remove('active');
+        if (light) light.classList.add('active');
+    } else {
+        sw.classList.remove('light-on');
+        if (dark) dark.classList.add('active');
+        if (light) light.classList.remove('active');
+    }
 }
 
 // ---- Onboarding Flow ----
@@ -633,7 +724,7 @@ function showPopupCopiedState(os) {
         <div class="patch-instructions">
             ${isMac
                 ? '1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Cmd+Space</span> → type "Terminal"<br>2. Paste &nbsp;<span class="keys">Cmd+V</span> → press <span class="keys">Enter</span>'
-                : '1. Open <strong>PowerShell</strong> &nbsp;<span class="keys">Win+X</span> → Terminal<br>2. Paste &nbsp;<span class="keys">Ctrl+V</span> → press <span class="keys">Enter</span>'
+                : '1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Win+X</span> → Terminal or Command Prompt<br>2. Paste &nbsp;<span class="keys">Ctrl+V</span> → press <span class="keys">Enter</span>'
             }
         </div>
         <div class="update-popup-actions" style="margin-top:18px;">
@@ -671,7 +762,7 @@ function showWinRunStatus(state) {
     const btn = document.querySelector('.manual-run-btn');
     if (state === 'copied') {
         if (status) {
-            status.textContent = '✅ Copied! Open PowerShell → paste → press Enter';
+            status.textContent = '✅ Copied! Open Terminal → paste → press Enter';
             status.style.color = '#55efc4';
         }
         if (btn) btn.textContent = '📋 Copy Again';
@@ -734,7 +825,7 @@ function showPatchBannerState(state) {
         detail.innerHTML = `
             <div class="patch-cmd-box"><code>irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code></div>
             <div class="patch-instructions">
-                1. Open <strong>PowerShell</strong> &nbsp;<span class="keys">Win+X</span> → Terminal<br>
+                1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Win+X</span> → Terminal or Command Prompt<br>
                 2. Paste &nbsp;<span class="keys">Ctrl+V</span> → press <span class="keys">Enter</span>
             </div>`;
         actions.innerHTML = '<button class="update-banner-btn primary" onclick="triggerAutoPatch()">📋 Copy Again</button><button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Later</button>';
@@ -859,7 +950,7 @@ function onboardYes() {
         document.getElementById('osIcon').textContent = '\uD83E\uDE9F';
         document.getElementById('osTitle').textContent = 'Windows Setup';
         document.getElementById('osName').textContent = 'Windows';
-        document.getElementById('terminalName').textContent = 'PowerShell (Run as Admin)';
+        document.getElementById('terminalName').textContent = 'Terminal / Command Prompt';
         document.getElementById('downloadBtn1').textContent = '\uD83D\uDCE5 Download auto-attendance.ps1';
         document.getElementById('downloadBtn2').textContent = '\uD83D\uDCE5 Download Task XML';
         // Show Windows one-click, hide Mac
@@ -1040,7 +1131,7 @@ function copyInstallCmd() {
 function copyWinInstallCmd() {
     const cmd = document.getElementById('winInstallCmd').textContent;
     navigator.clipboard.writeText(cmd).then(() => {
-        document.getElementById('winInstallStatus').textContent = '\u2705 Copied! Now paste in PowerShell (Ctrl+V)';
+        document.getElementById('winInstallStatus').textContent = '✅ Copied! Now paste in Terminal (Ctrl+V)';
         document.getElementById('winInstallStatus').style.color = '#55efc4';
         startSetupVerificationListener();
     }).catch(() => {
@@ -1050,7 +1141,7 @@ function copyWinInstallCmd() {
         ta.select();
         document.execCommand('copy');
         document.body.removeChild(ta);
-        document.getElementById('winInstallStatus').textContent = '\u2705 Copied! Now paste in PowerShell (Ctrl+V)';
+        document.getElementById('winInstallStatus').textContent = '✅ Copied! Now paste in Terminal (Ctrl+V)';
         document.getElementById('winInstallStatus').style.color = '#55efc4';
         startSetupVerificationListener();
     });

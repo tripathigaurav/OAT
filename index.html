@@ -87,14 +87,14 @@
                     <!-- Windows: Terminal command (same as Mac approach) -->
                     <div class="oneclick-box" id="oneClickWin" style="display:none;">
                         <div class="oneclick-icon">⚡</div>
-                        <p><strong>Open PowerShell</strong> and paste this command:</p>
+                        <p><strong>Open Terminal</strong> and paste this command:</p>
                         <div class="terminal-cmd-box">
                             <code id="winInstallCmd">irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code>
                             <button class="copy-cmd-btn" onclick="copyWinInstallCmd()" title="Copy command">📋</button>
                         </div>
                         <span class="download-status" id="winInstallStatus">One command. Paste it. Done.</span>
                         <div class="oneclick-steps" id="winSteps">
-                            <div class="oneclick-step">1️⃣ Open <strong>PowerShell</strong> (Win+X → Terminal)</div>
+                            <div class="oneclick-step">1️⃣ Open <strong>Terminal</strong> (Win+X → Terminal or Command Prompt)</div>
                             <div class="oneclick-step">2️⃣ Paste the command above (Ctrl+V)</div>
                             <div class="oneclick-step">3️⃣ Press Enter — click "Yes" on Admin prompt if asked</div>
                             <div class="oneclick-step">4️⃣ ✅ Done! Auto-tracking is installed.</div>
@@ -216,8 +216,18 @@
         <button class="reset-btn" onclick="resetAll()">🔄 Reset All</button>
     </div>
 
+    <!-- Theme Toggle Switch (top-right) -->
+    <div class="theme-switch-wrap" id="themeSwitchWrap">
+        <span class="theme-label active" id="themeLabelDark">🌙 Dark</span>
+        <div class="theme-switch" id="themeSwitch" onclick="toggleTheme()" role="button" title="Toggle theme">
+            <div class="theme-switch-knob" id="themeSwitchKnob"></div>
+        </div>
+        <span class="theme-label" id="themeLabelLight">☀️ Light</span>
+    </div>
+
     <!-- Settings Panel -->
     <div class="settings-toggle-wrap">
+        <button class="feedback-btn" onclick="openFeedback()" title="Feedback">💬</button>
         <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
         <span class="settings-update-dot" id="settingsUpdateDot" style="display:none;" title="Update available"></span>
     </div>
@@ -276,7 +286,7 @@
                 <ol>
                     <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
                     <li>Put both files in <code>%LOCALAPPDATA%\OAT\</code> (local path &mdash; avoids OneDrive sync issues)</li>
-                    <li>Open <strong>PowerShell</strong> and fix the path in the XML:
+                    <li>Open <strong>Terminal</strong> and fix the path in the XML:
                         <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code></li>
                     <li>Register the scheduled task:
                         <code>schtasks /Create /TN "OAT-WiFiAttendance" /XML "%LOCALAPPDATA%\OAT\auto-attendance-task.xml" /F</code></li>
@@ -289,6 +299,25 @@
                     <span class="manual-run-status" id="winManualRunStatus"></span>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div class="feedback-overlay" id="feedbackOverlay" style="display:none;">
+        <div class="feedback-modal">
+            <button class="feedback-close" onclick="closeFeedback()">×</button>
+            <div class="feedback-icon">💬</div>
+            <h2>Share Your Feedback</h2>
+            <p>Help improve OAT for everyone at NetApp!</p>
+            <div class="feedback-fields">
+                <textarea id="feedbackMsg" placeholder="What do you like? What can be improved?" maxlength="500" rows="4"></textarea>
+                <input type="text" id="feedbackName" placeholder="Your name (optional)" maxlength="40" />
+            </div>
+            <div class="feedback-actions">
+                <button class="feedback-submit-btn" onclick="submitFeedback()">Send Feedback 🚀</button>
+                <button class="feedback-cancel-btn" onclick="closeFeedback()">Cancel</button>
+            </div>
+            <div class="feedback-status" id="feedbackStatus"></div>
         </div>
     </div>
 
