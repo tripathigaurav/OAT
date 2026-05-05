@@ -476,9 +476,10 @@ function submitFeedback() {
 
     fetch(TEAMS_WEBHOOK, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(body)
-    }).then(res => {
+    }).then(() => {
         status.textContent = '✅ Thanks! Feedback sent successfully.';
         status.className = 'feedback-status success';
         btn.textContent = 'Sent!';
