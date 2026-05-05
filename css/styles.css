@@ -416,6 +416,7 @@ h1 + .setup-status-badge {
     align-items: center;
     justify-content: center;
     padding: 20px;
+    overflow-y: auto;
     animation: fadeIn 0.4s ease;
 }
 
@@ -426,6 +427,8 @@ h1 + .setup-status-badge {
     padding: 24px 28px 28px;
     max-width: 440px;
     width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
     animation: slideUp 0.4s ease;
     text-align: center;
 }
@@ -519,6 +522,13 @@ h1 + .setup-status-badge {
 /* Update popup command state (after clicking Update Now) */
 .update-popup-modal .patch-cmd-box {
     text-align: left;
+    overflow-x: auto;
+    word-break: break-all;
+}
+
+.update-popup-modal .patch-cmd-box code {
+    white-space: pre-wrap;
+    word-break: break-all;
 }
 
 .update-popup-modal .patch-instructions {

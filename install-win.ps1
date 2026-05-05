@@ -62,21 +62,40 @@ Write-Host ""
 
 # --- Step 4: Install Scheduled Task ---
 Write-Host "  [4/5] Installing Scheduled Task..."
-Write-Host "        (This may ask for Admin permission)" -ForegroundColor Yellow
 
+$taskInstalled = $false
+
+# Method 1: schtasks.exe — works WITHOUT admin for user-level tasks
 try {
-    # Try direct registration first (works if already admin)
-    Register-ScheduledTask -Xml (Get-Content "$OAT_DIR\$TASK_XML" | Out-String) -TaskName "OAT-WiFiAttendance" -Force -ErrorAction Stop | Out-Null
-    Write-Host "        Scheduled Task installed!" -ForegroundColor Green
-} catch {
-    # Need elevation — launch admin PowerShell
+    $result = schtasks /Create /TN "OAT-WiFiAttendance" /XML "$OAT_DIR\$TASK_XML" /F 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "        Scheduled Task installed (no admin needed)!" -ForegroundColor Green
+        $taskInstalled = $true
+    }
+} catch {}
+
+# Method 2: Register-ScheduledTask (may prompt UAC on some systems)
+if (-not $taskInstalled) {
     try {
-        $regCmd = "Register-ScheduledTask -Xml (Get-Content '$OAT_DIR\$TASK_XML' | Out-String) -TaskName 'OAT-WiFiAttendance' -Force"
+        Register-ScheduledTask -Xml (Get-Content "$OAT_DIR\$TASK_XML" | Out-String) -TaskName "OAT-WiFiAttendance" -Force -ErrorAction Stop | Out-Null
+        Write-Host "        Scheduled Task installed!" -ForegroundColor Green
+        $taskInstalled = $true
+    } catch {}
+}
+
+# Method 3: Elevated PowerShell as last resort
+if (-not $taskInstalled) {
+    Write-Host "        Trying with elevated permissions..." -ForegroundColor Yellow
+    try {
+        $regCmd = "schtasks /Create /TN 'OAT-WiFiAttendance' /XML '$OAT_DIR\$TASK_XML' /F"
         Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -Command $regCmd" -Verb RunAs -Wait -ErrorAction Stop
-        Write-Host "        Scheduled Task installed (via Admin)!" -ForegroundColor Green
+        $taskInstalled = $true
+        Write-Host "        Scheduled Task installed (elevated)!" -ForegroundColor Green
     } catch {
-        Write-Host "        Could not register task. You may need to run manually:" -ForegroundColor Yellow
-        Write-Host "        Register-ScheduledTask -Xml (Get-Content '$OAT_DIR\$TASK_XML' | Out-String) -TaskName 'OAT-WiFiAttendance' -Force" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "        Could not install automatically." -ForegroundColor Yellow
+        Write-Host "        Run this once in PowerShell as Admin:" -ForegroundColor Yellow
+        Write-Host "        schtasks /Create /TN ""OAT-WiFiAttendance"" /XML ""$OAT_DIR\$TASK_XML"" /F" -ForegroundColor Gray
     }
 }
 Write-Host ""

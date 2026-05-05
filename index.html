@@ -276,10 +276,10 @@
                 <ol>
                     <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
                     <li>Put both files in <code>%LOCALAPPDATA%\OAT\</code> (local path &mdash; avoids OneDrive sync issues)</li>
-                    <li>Open <strong>PowerShell as Admin</strong> and fix the path in the XML:
+                    <li>Open <strong>PowerShell</strong> and fix the path in the XML:
                         <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code></li>
                     <li>Register the scheduled task:
-                        <code>Register-ScheduledTask -Xml (Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force</code></li>
+                        <code>schtasks /Create /TN "OAT-WiFiAttendance" /XML "%LOCALAPPDATA%\OAT\auto-attendance-task.xml" /F</code></li>
                     <li>Done! ✨ Runs on network change &amp; login.</li>
                 </ol>
                 <p style="font-size:0.75rem;opacity:0.6;">To stop: <code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance"</code></p>
