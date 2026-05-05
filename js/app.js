@@ -434,6 +434,14 @@ function showOS(os) {
     event.target.classList.add('active');
 }
 
+// ---- Feedback ----
+function openFeedback() {
+    const name = localStorage.getItem('oatUserName') || '';
+    const subject = encodeURIComponent('OAT Feedback');
+    const body = encodeURIComponent(`Hi Gaurav,\n\n[Your feedback here]\n\n---\nFrom: ${name || 'OAT User'}`);
+    window.open(`mailto:gtripath@netapp.com?subject=${subject}&body=${body}`);
+}
+
 // ---- Theme Toggle ----
 function initTheme() {
     const saved = localStorage.getItem('oatTheme');

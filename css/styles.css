@@ -1110,11 +1110,39 @@ h1 {
 }
 
 /* Settings Panel */
+.feedback-fab {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0,184,148,0.25);
+    border: 2px solid rgba(0,184,148,0.5);
+    color: #55efc4;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.feedback-fab:hover {
+    background: rgba(0,184,148,0.45);
+    transform: scale(1.1);
+}
+body.light-mode .feedback-fab {
+    background: rgba(0,150,120,0.12);
+    border-color: rgba(0,150,120,0.35);
+    color: #1a7a6e;
+}
+
 .settings-toggle-wrap {
     position: fixed;
     bottom: 20px;
     right: 20px;
     z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
 
 .settings-toggle {
