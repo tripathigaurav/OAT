@@ -56,32 +56,49 @@ get_wifi_ssid() {
 }
 
 # --- Main Logic ---
+# Require BOTH WiFi SSID = 'corp' AND DNS domain = 'wlan.netapp.com'
+# This prevents false triggers from:
+#   - VPN from home (DNS matches but SSID is home WiFi)
+#   - Home WiFi renamed to 'corp' (SSID matches but no NetApp DNS)
 
-# Method 1 (Primary): Detect office network via DNS search domain
-# This is the most reliable method — macOS redacts SSID but DNS is always visible.
-DNS_DOMAINS=$(scutil --dns 2>/dev/null | grep "search domain" | awk '{print $NF}')
 ON_OFFICE_NET=false
 DETECTED_VIA=""
 
-if echo "$DNS_DOMAINS" | grep -qi "$OFFICE_DNS_DOMAIN"; then
-    ON_OFFICE_NET=true
-    DETECTED_VIA="DNS domain ($OFFICE_DNS_DOMAIN)"
+CURRENT_WIFI=$(get_wifi_ssid)
+DNS_DOMAINS=$(scutil --dns 2>/dev/null | grep "search domain" | awk '{print $NF}')
+
+SSID_MATCH=false
+DNS_MATCH=false
+
+if [ -n "$CURRENT_WIFI" ] && [ "$CURRENT_WIFI" != "<redacted>" ]; then
+    CURRENT_WIFI_LOWER=$(echo "$CURRENT_WIFI" | tr '[:upper:]' '[:lower:]')
+    OFFICE_WIFI_LOWER=$(echo "$OFFICE_WIFI" | tr '[:upper:]' '[:lower:]')
+    [ "$CURRENT_WIFI_LOWER" = "$OFFICE_WIFI_LOWER" ] && SSID_MATCH=true
 fi
 
-# Method 2 (Fallback): Try WiFi SSID if DNS didn't match
-if [ "$ON_OFFICE_NET" = false ]; then
-    CURRENT_WIFI=$(get_wifi_ssid)
-    if [ -n "$CURRENT_WIFI" ] && [ "$CURRENT_WIFI" != "<redacted>" ]; then
-        log_msg "Current WiFi SSID: '$CURRENT_WIFI'"
-        if [ "$(echo "$CURRENT_WIFI" | tr '[:upper:]' '[:lower:]')" = "$(echo "$OFFICE_WIFI" | tr '[:upper:]' '[:lower:]')" ]; then
-            ON_OFFICE_NET=true
-            DETECTED_VIA="WiFi SSID ($CURRENT_WIFI)"
-        fi
+echo "$DNS_DOMAINS" | grep -qi "$OFFICE_DNS_DOMAIN" && DNS_MATCH=true
+
+log_msg "WiFi SSID: '$CURRENT_WIFI' | SSID match: $SSID_MATCH | DNS match: $DNS_MATCH"
+
+if [ "$SSID_MATCH" = true ] && [ "$DNS_MATCH" = true ]; then
+    ON_OFFICE_NET=true
+    DETECTED_VIA="WiFi SSID ($CURRENT_WIFI) + DNS ($OFFICE_DNS_DOMAIN)"
+elif [ "$SSID_MATCH" = true ] && [ "$DNS_MATCH" = false ]; then
+    log_msg "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?). Skipping."
+    exit 0
+elif [ "$DNS_MATCH" = true ] && [ "$SSID_MATCH" = false ]; then
+    log_msg "NetApp DNS found but SSID '$CURRENT_WIFI' != 'corp' (VPN from home?). Skipping."
+    exit 0
+elif [ -z "$CURRENT_WIFI" ] || [ "$CURRENT_WIFI" = "<redacted>" ]; then
+    # SSID undetectable (wired/ethernet) — DNS alone is sufficient
+    if [ "$DNS_MATCH" = true ]; then
+        ON_OFFICE_NET=true
+        DETECTED_VIA="DNS domain ($OFFICE_DNS_DOMAIN) — WiFi SSID undetectable (wired?)"
     fi
 fi
 
 if [ "$ON_OFFICE_NET" = false ]; then
-    log_msg "Not on office network. DNS domains: $(echo $DNS_DOMAINS | tr '\n' ', '). Skipping."
+    log_msg "Not on office network. Skipping."
     exit 0
 fi
 
@@ -104,7 +121,7 @@ if [ "$1" = "--dry-run" ]; then
     echo ""
     echo "  📡 Network Detection:"
     echo "     Detected via: $DETECTED_VIA"
-    echo "     DNS domains:  $(echo $DNS_DOMAINS | tr '\n' ', ')"
+    echo "     WiFi SSID:    ${CURRENT_WIFI:-(not detected / redacted)}"
     echo ""
     echo "  📋 What would happen:"
     echo "     ✅ Create lock file: $LOCK_FILE"

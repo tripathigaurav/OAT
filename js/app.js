@@ -18,7 +18,9 @@ const months = [
 // State
 let checkedDays = JSON.parse(localStorage.getItem('officeDays') || '{}');
 let autoMarkedDays = JSON.parse(localStorage.getItem('autoMarkedDays') || '{}');
-let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"wifiSSID":"corp","autoMarkEnabled":true}');
+const OFFICE_WIFI_SSID = 'corp'; // Fixed — NetApp office WiFi
+let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"autoMarkEnabled":true}');
+settings.wifiSSID = OFFICE_WIFI_SSID; // Always enforce corp, regardless of saved value
 let autoMarkLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
 
 // Utility functions
@@ -158,19 +160,15 @@ function toggleSettings() {
 }
 
 function loadSettingsUI() {
-    document.getElementById('wifiSSID').value = settings.wifiSSID || '';
     document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
     renderAutoMarkLog();
 }
 
 function saveSettings() {
-    settings.wifiSSID = document.getElementById('wifiSSID').value.trim();
+    settings.wifiSSID = OFFICE_WIFI_SSID; // Always corp
     settings.autoMarkEnabled = document.getElementById('autoMarkEnabled').checked;
     localStorage.setItem('oatSettings', JSON.stringify(settings));
-
-    // Also write SSID to a config file accessible by the shell script
-    // (The script reads from localStorage via this page, so this is for display only)
-    showNotification('⚙️ Settings saved! WiFi SSID: ' + settings.wifiSSID, 'success');
+    showNotification('⚙️ Settings saved!', 'success');
 }
 
 function renderAutoMarkLog() {

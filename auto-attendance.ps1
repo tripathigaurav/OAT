@@ -210,34 +210,40 @@ if ($args -contains "--backfill-dry") {
 }
 
 # --- Main Logic ---
+# Require BOTH WiFi SSID = 'corp' AND DNS domain = 'wlan.netapp.com'
+# This prevents false triggers from:
+#   - VPN from home (DNS matches but SSID is home WiFi)
+#   - Home WiFi renamed to 'corp' (SSID matches but no NetApp DNS)
 
 $onOfficeNet = $false
 $detectedVia = ""
 
-# Method 1 (Primary): Check DNS search domain
+$currentWifi = Get-WiFiSSID
 $dnsDomains = Get-DNSDomains
-foreach ($domain in $dnsDomains) {
-    if ($domain -like "*$OFFICE_DNS_DOMAIN*") {
+$ssidMatch = $currentWifi -and ($currentWifi -ieq $OFFICE_WIFI)
+$dnsMatch = ($dnsDomains | Where-Object { $_ -like "*$OFFICE_DNS_DOMAIN*" }).Count -gt 0
+
+Write-Log "WiFi SSID: '$currentWifi' | DNS match: $dnsMatch | SSID match: $ssidMatch"
+
+if ($ssidMatch -and $dnsMatch) {
+    $onOfficeNet = $true
+    $detectedVia = "WiFi SSID ($currentWifi) + DNS ($OFFICE_DNS_DOMAIN)"
+} elseif ($ssidMatch -and -not $dnsMatch) {
+    Write-Log "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?). Skipping."
+    exit 0
+} elseif ($dnsMatch -and -not $ssidMatch) {
+    Write-Log "NetApp DNS found but SSID '$currentWifi' != 'corp' (VPN from home?). Skipping."
+    exit 0
+} elseif (-not $currentWifi) {
+    # SSID undetectable (wired/ethernet) — DNS alone is sufficient
+    if ($dnsMatch) {
         $onOfficeNet = $true
-        $detectedVia = "DNS domain ($domain)"
-        break
-    }
-}
-
-# Method 2 (Fallback): Check WiFi SSID
-if (-not $onOfficeNet) {
-    $currentWifi = Get-WiFiSSID
-    if ($currentWifi) {
-        Write-Log "Current WiFi SSID: '$currentWifi'"
-        if ($currentWifi -ieq $OFFICE_WIFI) {
-            $onOfficeNet = $true
-            $detectedVia = "WiFi SSID ($currentWifi)"
-        }
+        $detectedVia = "DNS domain ($OFFICE_DNS_DOMAIN) — WiFi SSID undetectable (wired?)"
     }
 }
 
 if (-not $onOfficeNet) {
-    Write-Log "Not on office network. DNS domains: $($dnsDomains -join ', '). Skipping."
+    Write-Log "Not on office network. Skipping."
     exit 0
 }
 
@@ -259,7 +265,7 @@ if ($args -contains "--dry-run") {
     Write-Host ""
     Write-Host "  Network Detection:"
     Write-Host "     Detected via: $detectedVia"
-    Write-Host "     DNS domains:  $($dnsDomains -join ', ')"
+    Write-Host "     WiFi SSID:    $(if($currentWifi){$currentWifi}else{'(not detected)'})"
     Write-Host ""
     Write-Host "  What would happen:"
     Write-Host "     Create lock file: $LOCK_FILE"
