@@ -87,14 +87,14 @@
                     <!-- Windows: Terminal command (same as Mac approach) -->
                     <div class="oneclick-box" id="oneClickWin" style="display:none;">
                         <div class="oneclick-icon">⚡</div>
-                        <p><strong>Open Terminal</strong> and paste this command:</p>
+                        <p><strong>Open PowerShell</strong> and paste this command:</p>
                         <div class="terminal-cmd-box">
                             <code id="winInstallCmd">irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code>
                             <button class="copy-cmd-btn" onclick="copyWinInstallCmd()" title="Copy command">📋</button>
                         </div>
-                        <span class="download-status" id="winInstallStatus">One command. Paste it. Done.</span>
+                        <span class="download-status" id="winInstallStatus">⚠️ Must use PowerShell — not Command Prompt</span>
                         <div class="oneclick-steps" id="winSteps">
-                            <div class="oneclick-step">1️⃣ Open <strong>Terminal</strong> (Win+X → Terminal or Command Prompt)</div>
+                            <div class="oneclick-step">1️⃣ Press <strong>Win + R</strong>, type <strong>powershell</strong>, press Enter</div>
                             <div class="oneclick-step">2️⃣ Paste the command above (Ctrl+V)</div>
                             <div class="oneclick-step">3️⃣ Press Enter — click "Yes" on Admin prompt if asked</div>
                             <div class="oneclick-step">4️⃣ ✅ Done! Auto-tracking is installed.</div>
@@ -281,7 +281,7 @@
                 <ol>
                     <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
                     <li>Put both files in <code>%LOCALAPPDATA%\OAT\</code> (local path &mdash; avoids OneDrive sync issues)</li>
-                    <li>Open <strong>Terminal</strong> and fix the path in the XML:
+                    <li>Open <strong>PowerShell</strong> (Win+R → type <strong>powershell</strong> → Enter) and fix the path in the XML:
                         <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code></li>
                     <li>Register the scheduled task:
                         <code>schtasks /Create /TN "OAT-WiFiAttendance" /XML "%LOCALAPPDATA%\OAT\auto-attendance-task.xml" /F</code></li>
