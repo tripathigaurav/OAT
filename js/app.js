@@ -494,34 +494,20 @@ function submitFeedback() {
 // ---- Theme Toggle ----
 function initTheme() {
     const saved = localStorage.getItem('oatTheme');
+    const btn = document.getElementById('themeBtn');
     if (saved === 'light') {
         document.body.classList.add('light-mode');
-        _setSwitch(true);
+        if (btn) btn.textContent = '☀️';
     } else {
-        _setSwitch(false);
+        if (btn) btn.textContent = '🌙';
     }
 }
 
 function toggleTheme() {
     const isLight = document.body.classList.toggle('light-mode');
-    _setSwitch(isLight);
+    const btn = document.getElementById('themeBtn');
+    if (btn) btn.textContent = isLight ? '☀️' : '🌙';
     localStorage.setItem('oatTheme', isLight ? 'light' : 'dark');
-}
-
-function _setSwitch(isLight) {
-    const sw = document.getElementById('themeSwitch');
-    const dark = document.getElementById('themeLabelDark');
-    const light = document.getElementById('themeLabelLight');
-    if (!sw) return;
-    if (isLight) {
-        sw.classList.add('light-on');
-        if (dark) dark.classList.remove('active');
-        if (light) light.classList.add('active');
-    } else {
-        sw.classList.remove('light-on');
-        if (dark) dark.classList.add('active');
-        if (light) light.classList.remove('active');
-    }
 }
 
 // ---- Onboarding Flow ----

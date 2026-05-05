@@ -216,18 +216,14 @@
         <button class="reset-btn" onclick="resetAll()">🔄 Reset All</button>
     </div>
 
-    <!-- Theme Toggle Switch (top-right) -->
-    <div class="theme-switch-wrap" id="themeSwitchWrap">
-        <span class="theme-label active" id="themeLabelDark">🌙 Dark</span>
-        <div class="theme-switch" id="themeSwitch" onclick="toggleTheme()" role="button" title="Toggle theme">
-            <div class="theme-switch-knob" id="themeSwitchKnob"></div>
-        </div>
-        <span class="theme-label" id="themeLabelLight">☀️ Light</span>
+    <!-- Top-right buttons: Theme only -->
+    <div class="topright-actions">
+        <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
     </div>
 
     <!-- Settings Panel -->
     <div class="settings-toggle-wrap">
-        <button class="feedback-btn" onclick="openFeedback()" title="Feedback">💬</button>
+        <button class="feedback-fab" onclick="openFeedback()" title="Send Feedback">💬</button>
         <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
         <span class="settings-update-dot" id="settingsUpdateDot" style="display:none;" title="Update available"></span>
     </div>
