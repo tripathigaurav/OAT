@@ -223,7 +223,6 @@
 
     <!-- Settings Panel -->
     <div class="settings-toggle-wrap">
-        <button class="feedback-fab" onclick="openFeedback()" title="Send Feedback">💬</button>
         <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
         <span class="settings-update-dot" id="settingsUpdateDot" style="display:none;" title="Update available"></span>
     </div>
@@ -295,25 +294,6 @@
                     <span class="manual-run-status" id="winManualRunStatus"></span>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Feedback Modal -->
-    <div class="feedback-overlay" id="feedbackOverlay" style="display:none;">
-        <div class="feedback-modal">
-            <button class="feedback-close" onclick="closeFeedback()">×</button>
-            <div class="feedback-icon">💬</div>
-            <h2>Share Your Feedback</h2>
-            <p>Help improve OAT for everyone at NetApp!</p>
-            <div class="feedback-fields">
-                <textarea id="feedbackMsg" placeholder="What do you like? What can be improved?" maxlength="500" rows="4"></textarea>
-                <input type="text" id="feedbackName" placeholder="Your name (optional)" maxlength="40" />
-            </div>
-            <div class="feedback-actions">
-                <button class="feedback-submit-btn" onclick="submitFeedback()">Send Feedback 🚀</button>
-                <button class="feedback-cancel-btn" onclick="closeFeedback()">Cancel</button>
-            </div>
-            <div class="feedback-status" id="feedbackStatus"></div>
         </div>
     </div>
 

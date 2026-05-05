@@ -434,64 +434,6 @@ function showOS(os) {
     event.target.classList.add('active');
 }
 
-// ---- Feedback ----
-const TEAMS_WEBHOOK = 'https://default4b0911a0929b4715944bc03745165b.3a.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/486c0ca0c71548cb9209647f253bd7f0/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=N1OnL8F7umiI2e3flX76BAkyGjYTgfsjjOpcO41ZVzg';
-
-let _feedbackRating = 0;
-
-function openFeedback() {
-    _feedbackRating = 0;
-    document.getElementById('feedbackMsg').value = '';
-    document.getElementById('feedbackName').value = localStorage.getItem('oatUserName') || '';
-    document.getElementById('feedbackStatus').textContent = '';
-    document.getElementById('feedbackStatus').className = 'feedback-status';
-    document.getElementById('feedbackOverlay').style.display = 'flex';
-}
-
-function closeFeedback() {
-    document.getElementById('feedbackOverlay').style.display = 'none';
-}
-
-function submitFeedback() {
-    const msg = document.getElementById('feedbackMsg').value.trim();
-    const name = document.getElementById('feedbackName').value.trim() || 'Anonymous';
-    const status = document.getElementById('feedbackStatus');
-    const btn = document.querySelector('.feedback-submit-btn');
-
-    if (!msg) {
-        status.textContent = 'Please add a message before sending.';
-        status.className = 'feedback-status error';
-        return;
-    }
-
-    const os = detectOS() === 'windows' ? '🪟 Windows' : detectOS() === 'mac' ? '🍎 Mac' : '🖥️ Other';
-    const date = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-
-    const body = {
-        text: `📝 **OAT Feedback**\n\n👤 **From:** ${name} (${os})\n💬 **Message:** ${msg}\n🕐 **Time:** ${date}`
-    };
-
-    btn.disabled = true;
-    btn.textContent = 'Sending...';
-
-    fetch(TEAMS_WEBHOOK, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(body)
-    }).then(() => {
-        status.textContent = '✅ Thanks! Feedback sent successfully.';
-        status.className = 'feedback-status success';
-        btn.textContent = 'Sent!';
-        setTimeout(() => closeFeedback(), 2000);
-    }).catch(() => {
-        status.textContent = '❌ Could not send. Please try again.';
-        status.className = 'feedback-status error';
-        btn.disabled = false;
-        btn.textContent = 'Send Feedback 🚀';
-    });
-}
-
 // ---- Theme Toggle ----
 function initTheme() {
     const saved = localStorage.getItem('oatTheme');
