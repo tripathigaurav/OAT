@@ -69,7 +69,7 @@ $taskInstalled = $false
 try {
     $result = schtasks /Create /TN "OAT-WiFiAttendance" /XML "$OAT_DIR\$TASK_XML" /F 2>&1
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "        Scheduled Task installed (no admin needed)!" -ForegroundColor Green
+        Write-Host "        Scheduled Task installed!" -ForegroundColor Green
         $taskInstalled = $true
     }
 } catch {}
@@ -85,43 +85,65 @@ if (-not $taskInstalled) {
 
 # Method 3: Elevated PowerShell as last resort
 if (-not $taskInstalled) {
-    Write-Host "        Trying with elevated permissions..." -ForegroundColor Yellow
+    Write-Host "        Trying with admin permissions..." -ForegroundColor Yellow
     try {
         $regCmd = "schtasks /Create /TN 'OAT-WiFiAttendance' /XML '$OAT_DIR\$TASK_XML' /F"
         Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -Command $regCmd" -Verb RunAs -Wait -ErrorAction Stop
         $taskInstalled = $true
-        Write-Host "        Scheduled Task installed (elevated)!" -ForegroundColor Green
+        Write-Host "        Scheduled Task installed!" -ForegroundColor Green
     } catch {
-        Write-Host ""
-        Write-Host "        Could not install automatically." -ForegroundColor Yellow
-        Write-Host "        Run this once in PowerShell as Admin:" -ForegroundColor Yellow
-        Write-Host "        schtasks /Create /TN ""OAT-WiFiAttendance"" /XML ""$OAT_DIR\$TASK_XML"" /F" -ForegroundColor Gray
+        Write-Host "        Admin prompt was dismissed or denied." -ForegroundColor Yellow
     }
 }
 Write-Host ""
 
-# --- Step 5: Verify ---
-Write-Host "  [5/5] Verifying installation..."
+# --- Step 5: Verify & Summary ---
+Write-Host "  [5/5] Installation Summary..."
 $task = Get-ScheduledTask -TaskName "OAT-WiFiAttendance" -ErrorAction SilentlyContinue
+
 if ($task) {
-    Write-Host "        Task is registered!" -ForegroundColor Green
+    Write-Host "        ✅ Scheduled Task is registered!" -ForegroundColor Green
+    $fullySetup = $true
 } else {
-    Write-Host "        Task not found (may need admin re-run)" -ForegroundColor Yellow
+    Write-Host "        ⚠️  Scheduled Task NOT installed (admin permissions required)" -ForegroundColor Yellow
+    $fullySetup = $false
 }
 Write-Host ""
 
-# --- Done! ---
+# --- Summary & Next Steps ---
 Write-Host "  ======================================================" -ForegroundColor Green
-Write-Host "  SETUP COMPLETE!" -ForegroundColor Green
+Write-Host "  INSTALLATION SUMMARY" -ForegroundColor Green
 Write-Host "  ======================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Files installed to: $OAT_DIR" -ForegroundColor White
-Write-Host "  Scheduled Task: OAT-WiFiAttendance" -ForegroundColor White
-Write-Host "  WiFi trigger: 'corp' network (NetApp)" -ForegroundColor White
+
+if ($fullySetup) {
+    Write-Host "  Scheduled Task: OAT-WiFiAttendance (ACTIVE)" -ForegroundColor Green
+    Write-Host "  Status: COMPLETE - Auto-tracking enabled ✅" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  Your attendance WILL auto-mark when you connect to" -ForegroundColor White
+    Write-Host "  office WiFi. No further action needed!" -ForegroundColor White
+} else {
+    Write-Host "  Scheduled Task: ❌ NOT INSTALLED" -ForegroundColor Red
+    Write-Host "  Status: PARTIAL - Manual mode only" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  ⚡ TO FIX (REQUIRED for auto-tracking):" -ForegroundColor Yellow
+    Write-Host "     1. Close PowerShell completely" -ForegroundColor White
+    Write-Host "     2. Press Win+R, type 'powershell', and press Ctrl+Shift+Enter" -ForegroundColor White
+    Write-Host "     3. Type (or copy-paste) THIS command:" -ForegroundColor White
+    Write-Host ""
+    Write-Host "        schtasks /Create /TN ""OAT-WiFiAttendance"" /XML ""$OAT_DIR\$TASK_XML"" /F" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "     4. Press Enter and confirm the admin prompt" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  🔄 Alternatively: You can still use the app!  Just visit:" -ForegroundColor Cyan
+    Write-Host "     • Click '▶ Run WiFi Check Now' in Settings to check manually" -ForegroundColor White
+    Write-Host "     • Use '📜 Scan WiFi History' to backfill past office days" -ForegroundColor White
+    Write-Host "     • Still mark days manually on the calendar" -ForegroundColor White
+}
+
 Write-Host ""
-Write-Host "  Your attendance will auto-mark every time" -ForegroundColor White
-Write-Host "  you connect to office WiFi. No action needed!" -ForegroundColor White
-Write-Host ""
+Write-Host "  WiFi trigger: 'corp' network (NetApp DNS required)" -ForegroundColor White
 Write-Host "  Tracker: $GITHUB_BASE" -ForegroundColor Cyan
 Write-Host "  ======================================================" -ForegroundColor Green
 Write-Host ""

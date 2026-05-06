@@ -103,9 +103,9 @@ OAT/
 |---|---|
 | `'irm' is not recognized` error on Windows | Use **PowerShell**, not Command Prompt |
 | `running scripts is disabled on this system` | Use the "Run WiFi Check Now" button in Settings — it copies the command with `-ExecutionPolicy Bypass` included |
+| Scheduled Task NOT installed after running installer | Installer needs **admin** to create the task. Close PowerShell, open as Admin (**Win+R → PowerShell → Ctrl+Shift+Enter**), then run the command shown in the installer's final summary |
 | Attendance marked while working from home | Re-run installer to get VPN fix (requires both SSID + DNS) |
 | LaunchAgent blocked on Mac | Scripts must be in `~/.oat/`, not Desktop (OneDrive/iCloud blocks execution) |
-| Scheduled Task needs admin on Windows | Use `schtasks /Create` (no admin needed for user-level tasks) |
 
 ---
 
