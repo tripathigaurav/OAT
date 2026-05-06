@@ -1,4 +1,5 @@
 // Configuration
+const REQUIRED_SCRIPT_VERSION = '2.1'; // Bump this to force update prompts
 const TARGET = 39;
 const startDate = new Date(2026, 3, 27);
 const endDate = new Date(2026, 6, 31);
@@ -547,9 +548,20 @@ function isSetupStale() {
         if (dismissDate.toDateString() === today.toDateString()) return false;
     }
 
-    // If the page was opened via ?automark=true, script is working — not stale
+    // If the page was opened via ?automark=true, script is working — save version & not stale
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('automark') === 'true') return false;
+    if (urlParams.get('automark') === 'true') {
+        const sv = urlParams.get('scriptver');
+        if (sv) localStorage.setItem('oatScriptVersion', sv);
+        return false;
+    }
+
+    // Windows users with an old script version need to update
+    const scriptVer = localStorage.getItem('oatScriptVersion');
+    const onWindows = /Win/i.test(navigator.platform) || /Windows/i.test(navigator.userAgent);
+    if (onWindows && scriptVer && scriptVer !== REQUIRED_SCRIPT_VERSION) return true;
+    // Windows users who have run the old script (no version stored) also need update
+    if (onWindows && scriptActive && !scriptVer) return true;
 
     // If last auto-mark trigger was more than 3 days ago on a workday, setup is likely broken
     if (scriptActive) {
@@ -633,9 +645,10 @@ function reopenUpdatePopup() {
             <h2>Update Available!</h2>
             <p class="update-popup-desc">${scriptActive ? 'A new version of OAT is ready with important improvements:' : 'Your auto-tracking needs a quick update to get working:'}</p>
             <ul class="update-popup-features">
-                <li>🛡️ Fixed auto-tracking on cloud-synced folders (OneDrive/iCloud)</li>
-                <li>⚡ Faster &amp; more reliable WiFi detection</li>
-                <li>📂 Scripts now install to a safe local path</li>
+                <li>🛡️ Fixed execution policy error when running manually</li>
+                <li>🔍 Fixed VPN false-positive (requires both SSID + NetApp DNS)</li>
+                <li>📜 New: Scan WiFi History to backfill past office days</li>
+                <li>⚡ More reliable WiFi detection overall</li>
             </ul>
             <p class="update-popup-note">It's a quick one-command update — takes less than 10 seconds.</p>
             <div class="update-popup-actions">

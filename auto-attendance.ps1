@@ -19,9 +19,10 @@
 # ============================================================
 
 # --- Configuration ---
+$SCRIPT_VERSION = "2.1"
 $OFFICE_WIFI = "corp"
 $OFFICE_DNS_DOMAIN = "wlan.netapp.com"
-$TRACKER_URL = "https://tripathigaurav.github.io/OAT/?automark=true"
+$TRACKER_URL = "https://tripathigaurav.github.io/OAT/?automark=true&scriptver=$SCRIPT_VERSION"
 $TRACKER_BACKFILL_URL = "https://tripathigaurav.github.io/OAT/?backfill="
 $LOG_FILE = "$PSScriptRoot\auto-attendance.log"
 $LOCK_FILE = "$env:TEMP\oat-automark-$(Get-Date -Format 'yyyy-MM-dd').lock"
