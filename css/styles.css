@@ -720,6 +720,28 @@ h1 + .setup-status-badge {
     line-height: 1.4;
 }
 
+.auto-track-status-box {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: rgba(0, 184, 148, 0.08);
+    border-left: 3px solid rgba(0, 184, 148, 0.5);
+    font-size: 0.85rem;
+}
+
+.status-indicator {
+    display: block;
+    font-weight: 500;
+}
+
+.status-indicator.active {
+    color: #00b894;
+}
+
+.status-indicator.manual {
+    color: #fdcb6e;
+}
+
 .clear-log-btn {
     background: none;
     border: none;

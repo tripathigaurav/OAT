@@ -148,7 +148,13 @@ Write-Host "  Tracker: $GITHUB_BASE" -ForegroundColor Cyan
 Write-Host "  ======================================================" -ForegroundColor Green
 Write-Host ""
 
-# Open the tracker
-Start-Process "$GITHUB_BASE/?automark=true"
+# Open the tracker with manual_mode parameter
+$trackerUrl = "$GITHUB_BASE/?automark=true&manual_mode="
+if ($fullySetup) {
+    $trackerUrl += "false"  # Scheduled task installed = not manual
+} else {
+    $trackerUrl += "true"   # Scheduled task not installed = manual mode
+}
+Start-Process $trackerUrl
 Write-Host "  Opening tracker in browser..."
 Write-Host ""

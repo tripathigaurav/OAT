@@ -63,6 +63,25 @@ If WiFi SSID is undetectable (wired ethernet), DNS alone is used as fallback.
 
 ---
 
+## Manual Mode (Windows Without Admin)
+
+If the installer fails at **Stage 4** (you don't have admin rights), the app still works 100% in **Manual Mode**:
+
+### What You Can Still Do
+- ✅ Click **"▶ Run WiFi Check Now"** in Settings → copies a command → paste in PowerShell → checks TODAY's WiFi
+- ✅ Click **"📜 Scan WiFi History"** in Settings → copies a command → paste in PowerShell → backfills all past office days from WiFi logs
+- ✅ Manually check/uncheck days on the calendar anytime
+- ❌ Auto-trigger on WiFi connect (requires admin Scheduled Task)
+
+### Getting Full Auto-Tracking Later
+If you later get admin rights, just re-run the installer and it will complete **Stage 4**:
+```powershell
+# Open PowerShell as Admin: Win+R → powershell → Ctrl+Shift+Enter
+irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex
+```
+
+---
+
 ## Uninstall
 
 ### Mac

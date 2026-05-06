@@ -162,9 +162,40 @@ function toggleSettings() {
 
 function loadSettingsUI() {
     document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
+    
     // Show "Run WiFi Check Now" only for Windows users
+    const os = detectOS();
     const runBox = document.getElementById('winManualRunBox');
-    if (runBox) runBox.style.display = detectOS() === 'windows' ? 'block' : 'none';
+    if (runBox) runBox.style.display = os === 'windows' ? 'block' : 'none';
+    
+    // ---- Auto-tracking status for Windows ----
+    if (os === 'windows') {
+        const hasScheduledTask = localStorage.getItem('oatScheduledTaskInstalled') === 'true';
+        const statusBox = document.getElementById('autoTrackStatusBox');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const manualModeNote = document.getElementById('manualModeNote');
+        const manualModeGuide = document.getElementById('manualModeGuide');
+        const autoMarkModeHint = document.getElementById('autoMarkModeHint');
+        
+        if (hasScheduledTask) {
+            // Automatic mode
+            if (statusBox) statusBox.style.display = 'block';
+            if (statusIndicator) statusIndicator.innerHTML = '✅ <strong>Auto-Tracking Active</strong> — Runs automatically on WiFi connect';
+            if (statusIndicator) statusIndicator.className = 'status-indicator active';
+            if (manualModeNote) manualModeNote.style.display = 'none';
+            if (manualModeGuide) manualModeGuide.style.display = 'none';
+            if (autoMarkModeHint) autoMarkModeHint.textContent = '(automatic)';
+        } else {
+            // Manual mode
+            if (statusBox) statusBox.style.display = 'block';
+            if (statusIndicator) statusIndicator.innerHTML = '⚠️ <strong>Manual Mode</strong> — Use buttons to check/backfill';
+            if (statusIndicator) statusIndicator.className = 'status-indicator manual';
+            if (manualModeNote) manualModeNote.style.display = 'block';
+            if (manualModeGuide) manualModeGuide.style.display = 'block';
+            if (autoMarkModeHint) autoMarkModeHint.textContent = '(not active — scheduled task not installed)';
+        }
+    }
+    
     renderAutoMarkLog();
 }
 
@@ -425,6 +456,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clean up URL (remove ?automark=true) without reload
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    // Check if this was opened from installer in manual mode
+    const manualMode = urlParams.get('manual_mode');
+    if (manualMode === 'true') {
+        localStorage.setItem('oatScheduledTaskInstalled', 'false');
+    } else if (manualMode === 'false') {
+        localStorage.setItem('oatScheduledTaskInstalled', 'true');
     }
 
     // Check for backfill trigger via URL parameter (?backfill=2026-05-05,2026-05-06,...)
