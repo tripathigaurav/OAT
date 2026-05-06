@@ -161,6 +161,9 @@ function toggleSettings() {
 
 function loadSettingsUI() {
     document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
+    // Show "Run WiFi Check Now" only for Windows users
+    const runBox = document.getElementById('winManualRunBox');
+    if (runBox) runBox.style.display = detectOS() === 'windows' ? 'block' : 'none';
     renderAutoMarkLog();
 }
 
@@ -691,7 +694,7 @@ function updatePopupLater() {
 }
 
 function copyWinRunNow() {
-    const cmd = '& "$env:LOCALAPPDATA\OAT\auto-attendance.ps1"';
+    const cmd = '& "$env:LOCALAPPDATA\\OAT\\auto-attendance.ps1"';
     navigator.clipboard.writeText(cmd).then(() => {
         showWinRunStatus('copied');
     }).catch(() => {
@@ -705,19 +708,37 @@ function copyWinRunNow() {
     });
 }
 
+function copyWinBackfill() {
+    const cmd = '& "$env:LOCALAPPDATA\\OAT\\auto-attendance.ps1" --backfill';
+    const note = document.getElementById('winScanNote');
+    navigator.clipboard.writeText(cmd).then(() => {
+        showWinRunStatus('backfill');
+        if (note) note.style.display = 'block';
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showWinRunStatus('backfill');
+        if (note) note.style.display = 'block';
+    });
+}
+
 function showWinRunStatus(state) {
     const status = document.getElementById('winManualRunStatus');
     const btn = document.querySelector('.manual-run-btn');
     if (state === 'copied') {
         if (status) {
-            status.textContent = '✅ Copied! Open Terminal → paste → press Enter';
+            status.textContent = '✅ Copied! Paste in PowerShell (Ctrl+V) and press Enter';
             status.style.color = '#55efc4';
         }
-        if (btn) btn.textContent = '📋 Copy Again';
-        setTimeout(() => {
-            if (status) status.textContent = '';
-            if (btn) btn.textContent = '▶ Run WiFi Check Now';
-        }, 5000);
+    } else if (state === 'backfill') {
+        if (status) {
+            status.textContent = '✅ Copied backfill command! Paste in PowerShell → it will open the tracker with past days.';
+            status.style.color = '#74b9ff';
+        }
     }
 }
 
@@ -1126,15 +1147,20 @@ function handleBackfill(dateString) {
         if (isHoliday(dateStr)) return;
         // Skip out of range
         if (!isInRange(date)) return;
-        // Skip already marked
-        if (checkedDays[dateStr]) {
+
+        // If already WiFi-verified, skip
+        if (autoMarkedDays[dateStr]) {
             skipCount++;
             return;
         }
 
-        // Mark it!
+        // Mark it — overwrite manual entry with WiFi-verified data
+        const wasManual = checkedDays[dateStr] && !autoMarkedDays[dateStr];
         checkedDays[dateStr] = true;
         autoMarkedDays[dateStr] = true;
+        if (wasManual) {
+            // upgraded from manual → wifi-verified
+        }
         newCount++;
     });
 
@@ -1148,9 +1174,9 @@ function handleBackfill(dateString) {
     localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
 
     if (newCount > 0) {
-        showNotification(`\uD83D\uDCE1 Backfilled ${newCount} office days from WiFi history!${skipCount > 0 ? ` (${skipCount} already marked)` : ''}`, 'success');
+        showNotification(`📡 Backfilled ${newCount} days from WiFi history!${skipCount > 0 ? ` (${skipCount} already WiFi-verified)` : ''}`, 'success');
     } else if (skipCount > 0) {
-        showNotification(`\u2705 All ${skipCount} days from WiFi history were already marked!`, 'already');
+        showNotification(`✅ All ${skipCount} days from WiFi history already WiFi-verified!`, 'already');
     } else {
         showNotification('\uD83D\uDCCB No valid workdays found in the backfill data.', 'info');
     }

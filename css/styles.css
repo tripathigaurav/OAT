@@ -683,6 +683,12 @@ h1 + .setup-status-badge {
     margin-bottom: 8px;
 }
 
+.manual-run-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .manual-run-btn {
     background: linear-gradient(135deg, rgba(116, 185, 255, 0.2), rgba(116, 185, 255, 0.1));
     border: 1px solid rgba(116, 185, 255, 0.4);
@@ -693,6 +699,25 @@ h1 + .setup-status-badge {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+}
+
+.manual-run-btn.scan-btn {
+    background: linear-gradient(135deg, rgba(162,155,254,0.2), rgba(162,155,254,0.1));
+    border-color: rgba(162,155,254,0.4);
+    color: #a29bfe;
+}
+
+.manual-run-btn.scan-btn:hover {
+    background: rgba(162,155,254,0.28);
+    transform: scale(1.03);
+}
+
+.scan-note {
+    font-size: 0.76rem;
+    color: #74b9ff;
+    margin-top: 8px;
+    opacity: 0.8;
+    line-height: 1.4;
 }
 
 .manual-run-btn:hover {

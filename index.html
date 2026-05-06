@@ -237,6 +237,15 @@
             <button class="settings-update-card-btn" onclick="reopenUpdatePopup()">Update Now</button>
         </div>
         <h3>🤖 WiFi Auto-Mark Settings</h3>
+        <div class="manual-run-box" id="winManualRunBox" style="display:none;">
+            <p>Manually trigger a WiFi check or scan past history:</p>
+            <div class="manual-run-btns">
+                <button class="manual-run-btn" onclick="copyWinRunNow()">▶ Run WiFi Check Now</button>
+                <button class="manual-run-btn scan-btn" onclick="copyWinBackfill()">📜 Scan WiFi History</button>
+            </div>
+            <span class="manual-run-status" id="winManualRunStatus"></span>
+            <p class="scan-note" id="winScanNote" style="display:none;">💡 Scans Windows WiFi event logs for past office days and marks them automatically. Overwrites manual entries with verified WiFi data.</p>
+        </div>
         <div class="settings-group" style="opacity:0.6;font-size:0.82rem;">
             📡 Office WiFi: <strong>corp</strong> (NetApp)
         </div>
@@ -291,11 +300,6 @@
                     <li>Done! ✨ Runs on network change &amp; login.</li>
                 </ol>
                 <p style="font-size:0.75rem;opacity:0.6;">To stop: <code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance"</code></p>
-                <div class="manual-run-box" id="winManualRunBox">
-                    <p>Already set up? Manually trigger a WiFi check to refresh your attendance data:</p>
-                    <button class="manual-run-btn" onclick="copyWinRunNow()">▶ Run WiFi Check Now</button>
-                    <span class="manual-run-status" id="winManualRunStatus"></span>
-                </div>
             </div>
         </div>
     </div>
