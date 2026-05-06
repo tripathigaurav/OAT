@@ -102,6 +102,7 @@ OAT/
 | Issue | Fix |
 |---|---|
 | `'irm' is not recognized` error on Windows | Use **PowerShell**, not Command Prompt |
+| `running scripts is disabled on this system` | Use the "Run WiFi Check Now" button in Settings — it copies the command with `-ExecutionPolicy Bypass` included |
 | Attendance marked while working from home | Re-run installer to get VPN fix (requires both SSID + DNS) |
 | LaunchAgent blocked on Mac | Scripts must be in `~/.oat/`, not Desktop (OneDrive/iCloud blocks execution) |
 | Scheduled Task needs admin on Windows | Use `schtasks /Create` (no admin needed for user-level tasks) |

@@ -174,6 +174,14 @@ function saveSettings() {
     showNotification('⚙️ Settings saved!', 'success');
 }
 
+function clearAutoMarkLog() {
+    if (!confirm('Clear the auto-mark activity log? This only removes the log display — your attendance data is not changed.')) return;
+    autoMarkLog = [];
+    localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
+    renderAutoMarkLog();
+    showNotification('🗑 Auto-mark log cleared.', 'info');
+}
+
 function renderAutoMarkLog() {
     const logEl = document.getElementById('autoMarkLog');
     if (autoMarkLog.length === 0) {
@@ -694,7 +702,7 @@ function updatePopupLater() {
 }
 
 function copyWinRunNow() {
-    const cmd = '& "$env:LOCALAPPDATA\\OAT\\auto-attendance.ps1"';
+    const cmd = 'powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\\OAT\\auto-attendance.ps1"';
     navigator.clipboard.writeText(cmd).then(() => {
         showWinRunStatus('copied');
     }).catch(() => {
@@ -709,7 +717,7 @@ function copyWinRunNow() {
 }
 
 function copyWinBackfill() {
-    const cmd = '& "$env:LOCALAPPDATA\\OAT\\auto-attendance.ps1" --backfill';
+    const cmd = 'powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\\OAT\\auto-attendance.ps1" --backfill';
     const note = document.getElementById('winScanNote');
     navigator.clipboard.writeText(cmd).then(() => {
         showWinRunStatus('backfill');
@@ -731,7 +739,7 @@ function showWinRunStatus(state) {
     const btn = document.querySelector('.manual-run-btn');
     if (state === 'copied') {
         if (status) {
-            status.textContent = '✅ Copied! Paste in PowerShell (Ctrl+V) and press Enter';
+            status.textContent = '✅ Copied! Paste in PowerShell (Ctrl+V) and press Enter. Uses -ExecutionPolicy Bypass automatically.';
             status.style.color = '#55efc4';
         }
     } else if (state === 'backfill') {
