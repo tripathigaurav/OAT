@@ -361,12 +361,13 @@
 
 /* Setup Status Badge (on main page) */
 .setup-status-badge {
-    font-size: 0.75rem;
-    padding: 2px 10px;
+    font-size: 0.72rem;
+    padding: 3px 10px;
     border-radius: 20px;
     display: none;
     align-items: center;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .setup-status-badge.active {
@@ -775,20 +776,21 @@ h1 + .setup-status-badge {
 }
 
 .user-greeting {
-    font-size: 0.9rem;
+    font-size: 1.15rem;
     color: #a29bfe;
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     animation: fadeIn 0.5s ease;
     display: none;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 6px;
     text-align: center;
 }
 
 .user-greeting strong {
     color: #a29bfe;
-    font-size: 0.92rem;
+    font-size: 1.25rem;
+    font-weight: 700;
 }
 
 .edit-name-btn {

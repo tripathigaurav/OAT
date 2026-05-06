@@ -143,7 +143,6 @@
             👋 <strong id="userName"></strong>
             <button onclick="editUserName()" class="edit-name-btn" title="Edit name">✏️</button>
         </div>
-        <span class="setup-status-badge" id="setupStatusBadge" style="display:none;"></span>
     </div>
 
     <!-- Update Popup Modal (shown to old users first) -->
@@ -219,8 +218,9 @@
         <button class="reset-btn" onclick="resetAll()">🔄 Reset All</button>
     </div>
 
-    <!-- Top-right buttons: Theme only -->
+    <!-- Top-right buttons: Theme + Auto-tracking badge -->
     <div class="topright-actions">
+        <span class="setup-status-badge" id="setupStatusBadge" style="display:none;"></span>
         <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
     </div>
 
