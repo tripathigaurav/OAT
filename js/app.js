@@ -372,14 +372,29 @@ function renderCalendars() {
     } else if (totalOfficeDays >= TARGET * 0.75) {
         progressBar.className = 'progress-bar';
         confetti.style.display = 'none';
-        status.innerHTML = '🔥 <strong>Almost there!</strong> Keep going!';
-        status.style.color = '#fdcb6e';
+        renderFlipCounter(status, remaining, '🔥 Almost there!', 'Keep pushing — you\'re so close!', '#fdcb6e');
     } else {
         progressBar.className = 'progress-bar';
         confetti.style.display = 'none';
-        status.innerHTML = `💪 <strong>${remaining} more days</strong> to hit the target!`;
-        status.style.color = '#74b9ff';
+        renderFlipCounter(status, remaining, 'DAYS TO GO', 'Keep showing up 💪', '#74b9ff');
     }
+}
+
+function renderFlipCounter(el, newVal, label, subtext, color) {
+    const digits = String(newVal).padStart(2, '0').split('');
+    const existing = el.querySelectorAll('.flip-digit');
+    const oldDigits = existing.length ? Array.from(existing).map(d => d.textContent) : [];
+
+    el.innerHTML = `
+        <div class="flip-counter-wrap">
+            <div class="flip-number">
+                ${digits.map((d, i) => `<div class="flip-digit${d !== oldDigits[i] ? ' flip-animate' : ''}" style="color:${color};border-color:${color}44;">${d}</div>`).join('')}
+                <div class="flip-inline-text">
+                    <div class="flip-label" style="color:${color};">${label}</div>
+                    <div class="flip-subtext">${subtext}</div>
+                </div>
+            </div>
+        </div>`;
 }
 
 // Initialize on DOM ready
@@ -491,18 +506,16 @@ function getSetupStatusText() {
 }
 
 function updateSetupStatus() {
-    // Show a small status indicator on the main page if setup is active
-    const existing = document.getElementById('setupStatusBadge');
-    if (existing) existing.remove();
+    const badge = document.getElementById('setupStatusBadge');
+    if (!badge) return;
 
     if (isSetupAlreadyDone()) {
-        const badge = document.createElement('div');
-        badge.id = 'setupStatusBadge';
         badge.className = 'setup-status-badge active';
         badge.innerHTML = '🤖 Auto-tracking active';
         badge.title = getSetupStatusText();
-        const header = document.querySelector('h1');
-        if (header) header.after(badge);
+        badge.style.display = 'inline-flex';
+    } else {
+        badge.style.display = 'none';
     }
 }
 
@@ -854,7 +867,7 @@ function showUserGreeting() {
     const nameEl = document.getElementById('userName');
     if (name && greetingEl && nameEl) {
         nameEl.textContent = name;
-        greetingEl.style.display = 'block';
+        greetingEl.style.display = 'flex';
     }
 }
 

@@ -137,12 +137,14 @@
         </div>
     </div>
 
-    <h1>📅 Q1 Office Attendance Tracker</h1>
-    <div class="user-greeting" id="userGreeting" style="display:none;">
-        👋 Hello, <strong id="userName"></strong>!
-        <button onclick="editUserName()" class="edit-name-btn" title="Edit name">✏️</button>
+    <div class="app-header">
+        <h1>📅 Office Attendance Tracker</h1>
+        <div class="user-greeting" id="userGreeting" style="display:none;">
+            👋 <strong id="userName"></strong>
+            <button onclick="editUserName()" class="edit-name-btn" title="Edit name">✏️</button>
+        </div>
+        <span class="setup-status-badge" id="setupStatusBadge" style="display:none;"></span>
     </div>
-    <p style="text-align:center; margin-bottom:5px; opacity:0.6;">27 April 2026 - 31 July 2026</p>
 
     <!-- Update Popup Modal (shown to old users first) -->
     <div class="update-popup-overlay" id="updatePopupOverlay" style="display:none;">
@@ -184,15 +186,6 @@
         <button onclick="dismissNotification()" style="background:none;border:none;color:white;cursor:pointer;font-size:1.2rem;margin-left:10px;">✕</button>
     </div>
 
-    <div class="legend">
-        <div class="legend-item"><div class="legend-box workday"></div> Workday</div>
-        <div class="legend-item"><div class="legend-box office"></div> ✅ Office</div>
-        <div class="legend-item"><div class="legend-box auto-marked"></div> 🤖 Auto</div>
-        <div class="legend-item"><div class="legend-box saturday"></div> 🟣 Saturday</div>
-        <div class="legend-item"><div class="legend-box sunday"></div> 🔴 Sunday</div>
-        <div class="legend-item"><div class="legend-box holiday"></div> 🎉 Holiday</div>
-    </div>
-
     <div class="summary-bar">
         <div class="summary-row">
             <span class="total-days">📊 Total Working Days: <strong id="totalWorkDays">0</strong></span>
@@ -210,6 +203,16 @@
     </div>
 
     <div class="calendars" id="calendars"></div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-box workday"></div> Workday</div>
+        <div class="legend-item"><div class="legend-box office"></div> ✅ Office</div>
+        <div class="legend-item"><div class="legend-box auto-marked"></div> 🤖 Auto</div>
+        <div class="legend-item"><div class="legend-box saturday"></div> 🟣 Saturday</div>
+        <div class="legend-item"><div class="legend-box sunday"></div> 🔴 Sunday</div>
+        <div class="legend-item"><div class="legend-box holiday"></div> 🎉 Holiday</div>
+        <span class="legend-date">Apr 27 – Jul 31, 2026</span>
+    </div>
 
     <div class="action-buttons">
         <button class="rescan-btn" onclick="rescanToday()" title="Mark today as office day">📡 Mark Today</button>
