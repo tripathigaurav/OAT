@@ -226,9 +226,21 @@
 
     <!-- Settings Panel -->
     <div class="settings-toggle-wrap">
+        <button class="info-fab" onclick="toggleInfoMini()" title="What this tracker does">ℹ️</button>
         <button class="feedback-fab" onclick="openFeedback()" title="Send Feedback">💬</button>
         <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
         <span class="settings-update-dot" id="settingsUpdateDot" style="display:none;" title="Update available"></span>
+    </div>
+    <div class="info-mini-panel" id="infoMiniPanel" style="display:none;">
+        <h4>What OAT can do</h4>
+        <ul>
+            <li>Track office attendance across Apr–Jul 2026</li>
+            <li>Auto-mark on office WiFi (<strong>corp</strong> + NetApp DNS)</li>
+            <li>Run manual WiFi check for today (Windows)</li>
+            <li>Backfill past office days from WiFi history (Windows)</li>
+            <li>Work fully in manual mode if no admin rights</li>
+        </ul>
+        <div class="developer-credit">Developed by <strong>Gaurav Tripathi</strong></div>
     </div>
     <div class="settings-panel" id="settingsPanel" style="display:none;">
         <!-- Update Available card (shown when setup is stale) -->
@@ -260,8 +272,12 @@
         </div>
         <p class="manual-mode-note" id="manualModeNote" style="display:none;font-size:0.78rem;color:#74b9ff;margin:8px 0;padding:8px;background:rgba(116,185,255,0.08);border-radius:4px;">💡 <strong>Manual Mode:</strong> Scheduled task not installed (no admin). Use the buttons above to check and backfill, or re-run installer as admin.</p>
         <div class="settings-group">
-            <label>Auto-mark log: <button class="clear-log-btn" onclick="clearAutoMarkLog()" title="Clear activity log">🗑 Clear Log</button></label>
-            <div class="auto-mark-log" id="autoMarkLog">No auto-marks yet.</div>
+            <label>
+                Auto-mark log:
+                <button class="check-log-btn" id="checkAutoLogBtn" onclick="toggleAutoMarkLog()" title="Show or hide activity log">📋 Check Log</button>
+                <button class="clear-log-btn" onclick="clearAutoMarkLog()" title="Clear activity log">🗑 Clear Log</button>
+            </label>
+            <div class="auto-mark-log" id="autoMarkLog" style="display:none;">No auto-marks yet.</div>
         </div>
         <div class="settings-actions">
             <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
@@ -286,35 +302,61 @@
             </div>
 
             <div class="os-content" id="os-mac">
-                <ol>
-                    <li>Download <a href="auto-attendance.sh" download>auto-attendance.sh</a> &amp; <a href="com.oat.wifiattendance.plist" download>LaunchAgent plist</a></li>
-                    <li>Put both files in <code>~/.oat/</code> (local path — avoids cloud-sync issues)</li>
-                    <li>Open <strong>Terminal</strong> and run:
-                        <code>mkdir -p ~/.oat && chmod +x ~/.oat/auto-attendance.sh && xattr -cr ~/.oat/auto-attendance.sh 2>/dev/null</code></li>
-                    <li>Fix the script path in the plist for your user:
-                        <code>sed -i '' "s|/Users/USERNAME/PLACEHOLDER/auto-attendance.sh|$HOME/.oat/auto-attendance.sh|g" ~/.oat/com.oat.wifiattendance.plist</code></li>
-                    <li>Install the LaunchAgent:
-                        <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null</code>
-                        <code>cp ~/.oat/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
-                        <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></li>
-                    <li>Done! ✨ Runs automatically on WiFi change &amp; login.</li>
-                </ol>
-                <p style="font-size:0.75rem;opacity:0.6;">To stop: <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></p>
+                <details class="setup-dropdown" open>
+                    <summary>Manual setup steps (Mac)</summary>
+                    <ol>
+                        <li>Download <a href="auto-attendance.sh" download>auto-attendance.sh</a> &amp; <a href="com.oat.wifiattendance.plist" download>LaunchAgent plist</a></li>
+                        <li>Put both files in <code>~/.oat/</code> (local path — avoids cloud-sync issues)</li>
+                        <li>Open <strong>Terminal</strong> and run:
+                            <code>mkdir -p ~/.oat && chmod +x ~/.oat/auto-attendance.sh && xattr -cr ~/.oat/auto-attendance.sh 2>/dev/null</code></li>
+                        <li>Fix the script path in the plist for your user:
+                            <code>sed -i '' "s|/Users/USERNAME/PLACEHOLDER/auto-attendance.sh|$HOME/.oat/auto-attendance.sh|g" ~/.oat/com.oat.wifiattendance.plist</code></li>
+                        <li>Install the LaunchAgent:
+                            <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null</code>
+                            <code>cp ~/.oat/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
+                            <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></li>
+                        <li>Done! ✨ Runs automatically on WiFi change &amp; login.</li>
+                    </ol>
+                </details>
+                <details class="setup-dropdown">
+                    <summary>How to stop auto-tracking (Mac)</summary>
+                    <p><code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></p>
+                </details>
             </div>
 
             <div class="os-content" id="os-win" style="display:none;">
-                <ol>
-                    <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
-                    <li>Put both files in <code>%LOCALAPPDATA%\OAT\</code> (local path &mdash; avoids OneDrive sync issues)</li>
-                    <li>Open <strong>PowerShell</strong> (Win+R → type <strong>powershell</strong> → Enter) and fix the path in the XML:
-                        <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code></li>
-                    <li>Register the scheduled task:
-                        <code>schtasks /Create /TN "OAT-WiFiAttendance" /XML "%LOCALAPPDATA%\OAT\auto-attendance-task.xml" /F</code></li>
-                    <li>Done! ✨ Runs on network change &amp; login.</li>
-                </ol>
-                <p style="font-size:0.75rem;opacity:0.6;">To stop: <code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance"</code></p>
+                <details class="setup-dropdown" open>
+                    <summary>Manual setup steps (Windows)</summary>
+                    <ol>
+                        <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
+                        <li>Put both files in <code>%LOCALAPPDATA%\OAT\</code> (local path &mdash; avoids OneDrive sync issues)</li>
+                        <li>Open <strong>PowerShell</strong> (Win+R → type <strong>powershell</strong> → Enter) and fix the path in the XML:
+                            <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code></li>
+                        <li>Register the scheduled task:
+                            <code>schtasks /Create /TN "OAT-WiFiAttendance" /XML "%LOCALAPPDATA%\OAT\auto-attendance-task.xml" /F</code></li>
+                        <li>Done! ✨ Runs on network change &amp; login.</li>
+                    </ol>
+                </details>
+                <details class="setup-dropdown">
+                    <summary>How to stop auto-tracking (Windows)</summary>
+                    <p><code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance"</code></p>
+                </details>
             </div>
+
+            <details class="setup-dropdown uninstall-dropdown">
+                <summary>🧹 Remove OAT completely from this system</summary>
+                <div class="uninstall-step">
+                    <p><strong>Step 1:</strong> Copy uninstall command and run it in your OS terminal.</p>
+                    <button class="manual-run-btn uninstall-copy-btn" onclick="copyUninstallCommand()">📋 Copy Uninstall Command</button>
+                    <span class="manual-run-status" id="uninstallStatus"></span>
+                </div>
+                <div class="uninstall-step">
+                    <p><strong>Step 2:</strong> Delete OAT data saved in this browser.</p>
+                    <button class="danger-action-btn" onclick="wipeOATBrowserData()">🗑 Delete OAT Browser Data</button>
+                </div>
+            </details>
         </div>
+        <div class="settings-credit">Developed by <strong>Gaurav Tripathi</strong></div>
     </div>
 
     <script src="js/app.js"></script>

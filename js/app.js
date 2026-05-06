@@ -154,10 +154,20 @@ function rescanToday() {
 // ---- Settings ----
 function toggleSettings() {
     const panel = document.getElementById('settingsPanel');
+    const infoPanel = document.getElementById('infoMiniPanel');
+    if (infoPanel) infoPanel.style.display = 'none';
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
     if (panel.style.display === 'block') {
         loadSettingsUI();
     }
+}
+
+function toggleInfoMini() {
+    const panel = document.getElementById('infoMiniPanel');
+    const settings = document.getElementById('settingsPanel');
+    if (!panel) return;
+    if (settings) settings.style.display = 'none';
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
 
 function loadSettingsUI() {
@@ -195,6 +205,11 @@ function loadSettingsUI() {
             if (autoMarkModeHint) autoMarkModeHint.textContent = '(not active — scheduled task not installed)';
         }
     }
+
+    const logEl = document.getElementById('autoMarkLog');
+    const logBtn = document.getElementById('checkAutoLogBtn');
+    if (logEl) logEl.style.display = 'none';
+    if (logBtn) logBtn.textContent = '📋 Check Log';
     
     renderAutoMarkLog();
 }
@@ -212,6 +227,67 @@ function clearAutoMarkLog() {
     localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
     renderAutoMarkLog();
     showNotification('🗑 Auto-mark log cleared.', 'info');
+}
+
+function toggleAutoMarkLog() {
+    const logEl = document.getElementById('autoMarkLog');
+    const logBtn = document.getElementById('checkAutoLogBtn');
+    if (!logEl || !logBtn) return;
+
+    const hidden = logEl.style.display === 'none' || logEl.style.display === '';
+    logEl.style.display = hidden ? 'block' : 'none';
+    logBtn.textContent = hidden ? '🙈 Hide Log' : '📋 Check Log';
+}
+
+function copyUninstallCommand() {
+    const os = detectOS();
+    const statusEl = document.getElementById('uninstallStatus');
+    const cmd = os === 'windows'
+        ? 'Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance" -Confirm:$false -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force "$env:LOCALAPPDATA\\OAT" -ErrorAction SilentlyContinue'
+        : 'launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null; rm -f ~/Library/LaunchAgents/com.oat.wifiattendance.plist; rm -rf ~/.oat';
+
+    navigator.clipboard.writeText(cmd).then(() => {
+        if (statusEl) {
+            statusEl.textContent = os === 'windows'
+                ? '✅ Command copied. Paste in PowerShell and press Enter.'
+                : '✅ Command copied. Paste in Terminal and press Enter.';
+            statusEl.style.color = '#55efc4';
+        }
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (statusEl) {
+            statusEl.textContent = os === 'windows'
+                ? '✅ Command copied. Paste in PowerShell and press Enter.'
+                : '✅ Command copied. Paste in Terminal and press Enter.';
+            statusEl.style.color = '#55efc4';
+        }
+    });
+}
+
+function wipeOATBrowserData() {
+    const ok = confirm('Delete all OAT data from this browser?\n\nThis will remove attendance marks, logs, settings, and onboarding state.');
+    if (!ok) return;
+
+    localStorage.removeItem('officeDays');
+    localStorage.removeItem('autoMarkedDays');
+    localStorage.removeItem('oatSettings');
+    localStorage.removeItem('autoMarkLog');
+    localStorage.removeItem('oatOnboarded');
+    localStorage.removeItem('oatScriptActive');
+    localStorage.removeItem('oatScriptVersion');
+    localStorage.removeItem('oatScheduledTaskInstalled');
+    localStorage.removeItem('oatTheme');
+    localStorage.removeItem('oatUserName');
+    localStorage.removeItem('oatUpdateDismissed');
+    sessionStorage.removeItem('oatPopupDismissed');
+
+    alert('OAT browser data deleted. The page will reload now.');
+    window.location.href = window.location.pathname + '?newuser=true';
 }
 
 function renderAutoMarkLog() {
