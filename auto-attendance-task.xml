@@ -1,11 +1,16 @@
-<?xml version="1.0" encoding="UTF-16"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <Description>OAT - Auto-mark office attendance when connected to office WiFi</Description>
     <Author>OAT</Author>
   </RegistrationInfo>
   <Triggers>
-    <!-- Trigger on any network state change -->
+    <!-- Trigger on WiFi connection (most reliable for wireless) -->
+    <EventTrigger>
+      <Enabled>true</Enabled>
+      <Subscription>&lt;QueryList&gt;&lt;Query Id="0" Path="Microsoft-Windows-WLAN-AutoConfig/Operational"&gt;&lt;Select Path="Microsoft-Windows-WLAN-AutoConfig/Operational"&gt;*[System[EventID=8001]]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>
+    </EventTrigger>
+    <!-- Fallback: trigger on any network profile connected (wired/VPN) -->
     <EventTrigger>
       <Enabled>true</Enabled>
       <Subscription>&lt;QueryList&gt;&lt;Query Id="0" Path="Microsoft-Windows-NetworkProfile/Operational"&gt;&lt;Select Path="Microsoft-Windows-NetworkProfile/Operational"&gt;*[System[EventID=10000]]&lt;/Select&gt;&lt;/Query&gt;&lt;/QueryList&gt;</Subscription>
@@ -37,8 +42,8 @@
   <Actions Context="Author">
     <Exec>
       <Command>powershell.exe</Command>
-      <Arguments>-ExecutionPolicy Bypass -WindowStyle Hidden -File "auto-attendance.ps1"</Arguments>
-      <!-- Path is updated by installer to match your local directory -->
+      <Arguments>-ExecutionPolicy Bypass -WindowStyle Hidden -File "%LOCALAPPDATA%\OAT\auto-attendance.ps1"</Arguments>
+      <!-- %LOCALAPPDATA%\OAT is replaced by installer with the actual path -->
       <WorkingDirectory>%LOCALAPPDATA%\OAT</WorkingDirectory>
     </Exec>
   </Actions>

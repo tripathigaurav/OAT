@@ -52,11 +52,12 @@ Write-Host ""
 
 # --- Step 3: Fix path in XML ---
 Write-Host "  [3/5] Configuring task with your path..."
-$xmlContent = Get-Content "$OAT_DIR\$TASK_XML" -Raw
-$xmlContent = $xmlContent -replace '%LOCALAPPDATA%\\OAT', $OAT_DIR
+$xmlContent = Get-Content "$OAT_DIR\$TASK_XML" -Raw -Encoding UTF8
+# Replace all occurrences of the placeholder path with the real install path
+$xmlContent = $xmlContent -replace [regex]::Escape('%LOCALAPPDATA%\OAT'), $OAT_DIR
 $xmlContent = $xmlContent -replace 'C:\\Users\\YOUR_USERNAME\\Desktop\\OAT', $OAT_DIR
 $xmlContent = $xmlContent -replace '\$env:USERPROFILE\\Desktop\\OAT', $OAT_DIR
-$xmlContent | Set-Content "$OAT_DIR\$TASK_XML"
+$xmlContent | Set-Content "$OAT_DIR\$TASK_XML" -Encoding UTF8
 Write-Host "        Done" -ForegroundColor Green
 Write-Host ""
 
