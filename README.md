@@ -42,7 +42,8 @@ irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex
 > ⚠️ Must use **PowerShell** — not Command Prompt or Windows Terminal (unless PowerShell profile)
 
 - Installs scripts to `%LOCALAPPDATA%\OAT\` (safe local path, not OneDrive synced)
-- Registers a Scheduled Task that runs on network change and login
+- Registers a Scheduled Task that triggers on WiFi connect and login (no admin required)
+- Falls back to manual mode silently if task registration isn't available
 
 ---
 
@@ -63,22 +64,13 @@ If WiFi SSID is undetectable (wired ethernet), DNS alone is used as fallback.
 
 ---
 
-## Manual Mode (Windows Without Admin)
+## Manual Mode (Windows)
 
-If the installer fails at **Stage 4** (you don't have admin rights), the app still works 100% in **Manual Mode**:
+If the Scheduled Task can't be registered, the app still works fully in **Manual Mode**:
 
-### What You Can Still Do
-- ✅ Click **"▶ Run WiFi Check Now"** in Settings → copies a command → paste in PowerShell → checks TODAY's WiFi
-- ✅ Click **"📜 Scan WiFi History"** in Settings → copies a command → paste in PowerShell → backfills all past office days from WiFi logs
+- ✅ Click **"▶ Run WiFi Check Now"** in Settings → checks TODAY's WiFi and marks attendance
+- ✅ Click **"📜 Scan WiFi History"** in Settings → backfills all past office days from WiFi logs
 - ✅ Manually check/uncheck days on the calendar anytime
-- ❌ Auto-trigger on WiFi connect (requires admin Scheduled Task)
-
-### Getting Full Auto-Tracking Later
-If you later get admin rights, just re-run the installer and it will complete **Stage 4**:
-```powershell
-# Open PowerShell as Admin: Win+R → powershell → Ctrl+Shift+Enter
-irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex
-```
 
 ---
 
@@ -121,10 +113,11 @@ OAT/
 | Issue | Fix |
 |---|---|
 | `'irm' is not recognized` error on Windows | Use **PowerShell**, not Command Prompt |
-| `running scripts is disabled on this system` | Use the "Run WiFi Check Now" button in Settings — it copies the command with `-ExecutionPolicy Bypass` included |
-| Scheduled Task NOT installed after running installer | Installer needs **admin** to create the task. Close PowerShell, open as Admin (**Win+R → PowerShell → Ctrl+Shift+Enter**), then run the command shown in the installer's final summary |
-| Attendance marked while working from home | Re-run installer to get VPN fix (requires both SSID + DNS) |
+| `running scripts is disabled on this system` | Use the **"Run WiFi Check Now"** button in Settings — copies the command with `-ExecutionPolicy Bypass` pre-applied |
+| Scheduled Task didn't install → manual mode shown | Normal on some corporate machines. App works fully in manual mode — use **"Run WiFi Check Now"** or **"Scan WiFi History"** in Settings |
+| Attendance marked while working from home | Re-run installer — VPN fix requires both SSID `corp` + NetApp DNS to match |
 | LaunchAgent blocked on Mac | Scripts must be in `~/.oat/`, not Desktop (OneDrive/iCloud blocks execution) |
+| OAT site didn't open on WiFi connect (Windows) | Re-run installer — previous versions had a task XML encoding bug (fixed in May 2026) |
 
 ---
 

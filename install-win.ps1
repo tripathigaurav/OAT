@@ -75,26 +75,13 @@ try {
     }
 } catch {}
 
-# Method 2: Register-ScheduledTask (may prompt UAC on some systems)
+# Method 2: Register-ScheduledTask
 if (-not $taskInstalled) {
     try {
-        Register-ScheduledTask -Xml (Get-Content "$OAT_DIR\$TASK_XML" | Out-String) -TaskName "OAT-WiFiAttendance" -Force -ErrorAction Stop | Out-Null
+        Register-ScheduledTask -Xml (Get-Content "$OAT_DIR\$TASK_XML" -Raw -Encoding UTF8) -TaskName "OAT-WiFiAttendance" -Force -ErrorAction Stop | Out-Null
         Write-Host "        Scheduled Task installed!" -ForegroundColor Green
         $taskInstalled = $true
     } catch {}
-}
-
-# Method 3: Elevated PowerShell as last resort
-if (-not $taskInstalled) {
-    Write-Host "        Trying with admin permissions..." -ForegroundColor Yellow
-    try {
-        $regCmd = "schtasks /Create /TN 'OAT-WiFiAttendance' /XML '$OAT_DIR\$TASK_XML' /F"
-        Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -Command $regCmd" -Verb RunAs -Wait -ErrorAction Stop
-        $taskInstalled = $true
-        Write-Host "        Scheduled Task installed!" -ForegroundColor Green
-    } catch {
-        Write-Host "        Admin prompt was dismissed or denied." -ForegroundColor Yellow
-    }
 }
 Write-Host ""
 
@@ -103,10 +90,10 @@ Write-Host "  [5/5] Installation Summary..."
 $task = Get-ScheduledTask -TaskName "OAT-WiFiAttendance" -ErrorAction SilentlyContinue
 
 if ($task) {
-    Write-Host "        ✅ Scheduled Task is registered!" -ForegroundColor Green
+    Write-Host "        Scheduled Task is registered!" -ForegroundColor Green
     $fullySetup = $true
 } else {
-    Write-Host "        ⚠️  Scheduled Task NOT installed (admin permissions required)" -ForegroundColor Yellow
+    Write-Host "        Running in manual mode" -ForegroundColor Yellow
     $fullySetup = $false
 }
 Write-Host ""
@@ -125,22 +112,12 @@ if ($fullySetup) {
     Write-Host "  Your attendance WILL auto-mark when you connect to" -ForegroundColor White
     Write-Host "  office WiFi. No further action needed!" -ForegroundColor White
 } else {
-    Write-Host "  Scheduled Task: ❌ NOT INSTALLED" -ForegroundColor Red
-    Write-Host "  Status: PARTIAL - Manual mode only" -ForegroundColor Yellow
+    Write-Host "  Status: Ready - Manual mode" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  ⚡ TO FIX (REQUIRED for auto-tracking):" -ForegroundColor Yellow
-    Write-Host "     1. Close PowerShell completely" -ForegroundColor White
-    Write-Host "     2. Press Win+R, type 'powershell', and press Ctrl+Shift+Enter" -ForegroundColor White
-    Write-Host "     3. Type (or copy-paste) THIS command:" -ForegroundColor White
-    Write-Host ""
-    Write-Host "        schtasks /Create /TN ""OAT-WiFiAttendance"" /XML ""$OAT_DIR\$TASK_XML"" /F" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "     4. Press Enter and confirm the admin prompt" -ForegroundColor White
-    Write-Host ""
-    Write-Host "  🔄 Alternatively: You can still use the app!  Just visit:" -ForegroundColor Cyan
-    Write-Host "     • Click '▶ Run WiFi Check Now' in Settings to check manually" -ForegroundColor White
-    Write-Host "     • Use '📜 Scan WiFi History' to backfill past office days" -ForegroundColor White
-    Write-Host "     • Still mark days manually on the calendar" -ForegroundColor White
+    Write-Host "  You can still use the full app:" -ForegroundColor White
+    Write-Host "     • Click 'Run WiFi Check Now' in Settings to check manually" -ForegroundColor White
+    Write-Host "     • Use 'Scan WiFi History' to backfill past office days" -ForegroundColor White
+    Write-Host "     • Mark days manually on the calendar" -ForegroundColor White
 }
 
 Write-Host ""
