@@ -1,5 +1,5 @@
 // Configuration
-const REQUIRED_SCRIPT_VERSION = '2.1'; // Bump this to force update prompts
+const REQUIRED_SCRIPT_VERSION = '2.2'; // Bump this to force update prompts
 const TARGET = 39;
 const startDate = new Date(2026, 3, 27);
 const endDate = new Date(2026, 6, 31);
@@ -674,9 +674,13 @@ function isSetupStale() {
     // Windows users with an old script version need to update
     const scriptVer = localStorage.getItem('oatScriptVersion');
     const onWindows = /Win/i.test(navigator.platform) || /Windows/i.test(navigator.userAgent);
+    const onMac = /Mac/i.test(navigator.platform) || /Mac/i.test(navigator.userAgent);
     if (onWindows && scriptVer && scriptVer !== REQUIRED_SCRIPT_VERSION) return true;
     // Windows users who have run the old script (no version stored) also need update
     if (onWindows && scriptActive && !scriptVer) return true;
+    // Mac users who have an old script (no version stored) need update
+    if (onMac && scriptVer && scriptVer !== REQUIRED_SCRIPT_VERSION) return true;
+    if (onMac && scriptActive && !scriptVer) return true;
 
     // If last auto-mark trigger was more than 3 days ago on a workday, setup is likely broken
     if (scriptActive) {
@@ -760,10 +764,10 @@ function reopenUpdatePopup() {
             <h2>Update Available!</h2>
             <p class="update-popup-desc">${scriptActive ? 'A new version of OAT is ready with important improvements:' : 'Your auto-tracking needs a quick update to get working:'}</p>
             <ul class="update-popup-features">
-                <li>🛡️ Fixed execution policy error when running manually</li>
-                <li>🔍 Fixed VPN false-positive (requires both SSID + NetApp DNS)</li>
-                <li>📜 New: Scan WiFi History to backfill past office days</li>
-                <li>⚡ More reliable WiFi detection overall</li>
+                <li>🍎 Mac: Browser now opens automatically on office WiFi connect</li>
+                <li>🔍 Improved SSID detection — 4-method fallback for macOS Ventura+</li>
+                <li>🛡️ Stronger VPN false-positive protection (SSID + DNS both required)</li>
+                <li>⚡ Health check confirms your setup is working correctly</li>
             </ul>
             <p class="update-popup-note">It's a quick one-command update — takes less than 10 seconds.</p>
             <div class="update-popup-actions">
@@ -778,7 +782,7 @@ function updatePopupNow() {
     const os = detectOS();
     const cmd = os === 'windows'
         ? 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex'
-        : 'curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash';
+        : 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash';
 
     navigator.clipboard.writeText(cmd).then(() => {
         showPopupCopiedState(os);
@@ -801,7 +805,7 @@ function showPopupCopiedState(os) {
 
     const isMac = os !== 'windows';
     const cmd = isMac
-        ? 'curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash'
+        ? 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash'
         : 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex';
 
     modal.innerHTML = `
@@ -887,7 +891,7 @@ function triggerAutoPatch() {
     const os = detectOS();
     const cmd = os === 'windows'
         ? 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex'
-        : 'curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash';
+        : 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash';
 
     // Copy command to clipboard
     navigator.clipboard.writeText(cmd).then(() => {
@@ -916,7 +920,7 @@ function showPatchBannerState(state) {
         icon.textContent = '✅';
         title.textContent = 'Command copied to clipboard!';
         detail.innerHTML = `
-            <div class="patch-cmd-box"><code>curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash</code></div>
+            <div class="patch-cmd-box"><code>curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash</code></div>
             <div class="patch-instructions">
                 1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Cmd+Space</span> → type "Terminal"<br>
                 2. Paste &nbsp;<span class="keys">Cmd+V</span> → press <span class="keys">Enter</span>

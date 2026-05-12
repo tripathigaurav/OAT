@@ -31,6 +31,17 @@ curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash
 - Installs scripts to `~/.oat/` (safe local path, not iCloud/OneDrive synced)
 - Registers a LaunchAgent that runs on every network change
 
+**Already installed? Update to the latest version:**
+
+```bash
+curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash
+```
+
+- Re-downloads the latest scripts
+- Restarts the LaunchAgent
+- Runs a health check and shows the result
+- Your attendance data is untouched
+
 ### 🪟 Windows
 
 Open **PowerShell** (`Win+R` → type `powershell` → Enter) and run:

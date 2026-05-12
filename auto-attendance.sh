@@ -14,9 +14,10 @@
 # ============================================================
 
 # --- Configuration ---
+SCRIPT_VERSION="2.2"
 OFFICE_WIFI="corp"
 OFFICE_DNS_DOMAIN="wlan.netapp.com"
-TRACKER_URL="https://tripathigaurav.github.io/OAT/?automark=true"
+TRACKER_URL="https://tripathigaurav.github.io/OAT/?automark=true&scriptver=$SCRIPT_VERSION"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/auto-attendance.log"
 LOCK_FILE="/tmp/oat-automark-$(date +%Y-%m-%d).lock"
