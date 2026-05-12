@@ -559,6 +559,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update setup status indicator
     updateSetupStatus();
 
+    // Show update option quietly inside Settings (user-initiated, no popup/banner)
+    showSettingsUpdateCard();
+
     // Check if existing users need to update their setup
     checkForStaleSetup();
 
@@ -647,7 +650,22 @@ function updateSetupStatus() {
 }
 
 // ---- Stale Setup Detection & Reinstall ----
-function checkForStaleSetup() { return; } // v2.2: update prompts disabled — no action needed
+function checkForStaleSetup() { return; } // v2.2: auto-prompts disabled — update card shown in settings only
+
+// Show update option quietly inside Settings only (user-initiated)
+// Only shown if script is installed but version is old or unknown
+function showSettingsUpdateCard() {
+    const scriptActive = localStorage.getItem('oatScriptActive');
+    const scriptVer = localStorage.getItem('oatScriptVersion');
+    // No script ever ran — nothing to update
+    if (!scriptActive) return;
+    // Script is already on the required version — hide the card
+    if (scriptVer === REQUIRED_SCRIPT_VERSION) return;
+    const card = document.getElementById('settingsUpdateCard');
+    if (card) card.style.display = 'flex';
+    const dot = document.getElementById('settingsUpdateDot');
+    if (dot) dot.style.display = 'block';
+}
 function isSetupStale() {
     // Check if user had setup before but it hasn't triggered recently
     const scriptActive = localStorage.getItem('oatScriptActive');

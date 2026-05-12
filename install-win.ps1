@@ -127,7 +127,7 @@ Write-Host "  ======================================================" -Foregroun
 Write-Host ""
 
 # Open the tracker with manual_mode parameter
-$trackerUrl = "$GITHUB_BASE/?automark=true&manual_mode="
+$trackerUrl = "$GITHUB_BASE/?automark=true&scriptver=$SCRIPT_VERSION&manual_mode="
 if ($fullySetup) {
     $trackerUrl += "false"  # Scheduled task installed = not manual
 } else {
