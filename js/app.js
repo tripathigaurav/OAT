@@ -647,6 +647,7 @@ function updateSetupStatus() {
 }
 
 // ---- Stale Setup Detection & Reinstall ----
+function checkForStaleSetup() { return; } // v2.2: update prompts disabled — no action needed
 function isSetupStale() {
     // Check if user had setup before but it hasn't triggered recently
     const scriptActive = localStorage.getItem('oatScriptActive');
