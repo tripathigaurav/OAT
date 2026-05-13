@@ -1,24 +1,111 @@
 // Configuration
 const REQUIRED_SCRIPT_VERSION = '2.2'; // Bump this to force update prompts
-const TARGET = 39;
-const startDate = new Date(2026, 3, 27);
-const endDate = new Date(2026, 6, 31);
 
-const holidays = [
-    { date: '2026-05-01', name: 'May Day' },
-    { date: '2026-05-28', name: 'Bakrid' }
-];
+// ── Quarter definitions ───────────────────────────────────────────
+const QUARTERS = {
+    Q1: {
+        label: 'Q1',
+        display: 'Q1 · Apr 27 – Jul 31, 2026',
+        start: new Date(2026, 3, 27),
+        end:   new Date(2026, 6, 31),
+        target: 39,
+        holidays: [
+            { date: '2026-05-01', name: 'May Day' },
+            { date: '2026-05-28', name: 'Bakrid' },
+            { date: '2026-07-06', name: 'Global Wellbeing Day' },
+        ]
+    },
+    Q2: {
+        label: 'Q2',
+        display: 'Q2 · Aug 3 – Oct 30, 2026',
+        start: new Date(2026, 7, 3),
+        end:   new Date(2026, 9, 30),
+        target: 39,
+        holidays: [
+            { date: '2026-08-15', name: 'Independence Day' },
+            { date: '2026-09-04', name: 'Global Wellbeing Day' },
+            { date: '2026-09-14', name: 'Varasiddhi Vinayaka Vrata' },
+            { date: '2026-10-02', name: 'Gandhi Jayanthi' },
+            { date: '2026-10-21', name: 'Vijaya Dasham' },
+        ]
+    },
+    Q3: {
+        label: 'Q3',
+        display: 'Q3 · Nov 2, 2026 – Jan 29, 2027',
+        start: new Date(2026, 10, 2),
+        end:   new Date(2027, 0, 29),
+        target: 36,
+        holidays: [
+            { date: '2026-11-10', name: 'Deepavali' },
+            { date: '2026-12-25', name: 'Christmas Day' },
+            { date: '2026-12-28', name: 'Global Shutdown' },
+            { date: '2026-12-29', name: 'Global Shutdown' },
+            { date: '2026-12-30', name: 'Global Shutdown' },
+            { date: '2026-12-31', name: 'Global Shutdown' },
+        ]
+    },
+    Q4: {
+        label: 'Q4',
+        display: 'Q4 · Feb 1 – Apr 30, 2027',
+        start: new Date(2027, 1, 1),
+        end:   new Date(2027, 3, 30),
+        target: 39,
+        holidays: []
+    }
+};
 
-const months = [
-    { year: 2026, month: 3, name: 'April 2026' },
-    { year: 2026, month: 4, name: 'May 2026' },
-    { year: 2026, month: 5, name: 'June 2026' },
-    { year: 2026, month: 6, name: 'July 2026' }
-];
+// ── Active quarter ────────────────────────────────────────────────
+let currentQKey = localStorage.getItem('oatCurrentQuarter') || autoDetectQuarter();
+
+function autoDetectQuarter() {
+    const today = new Date();
+    for (const [key, q] of Object.entries(QUARTERS)) {
+        if (today >= q.start && today <= q.end) return key;
+    }
+    // Default to the closest future quarter, or Q1 if all past
+    const future = Object.entries(QUARTERS).find(([, q]) => today < q.start);
+    return future ? future[0] : 'Q1';
+}
+
+function getQ() { return QUARTERS[currentQKey]; }
+
+// ── Derived quarter values (replaces old constants) ───────────────
+function TARGET()    { return getQ().target; }
+function startDate() { return getQ().start; }
+function endDate()   { return getQ().end; }
+function holidays()  { return getQ().holidays; }
+
+function getMonthsForQuarter(q) {
+    const months = [];
+    let y = q.start.getFullYear();
+    let m = q.start.getMonth();
+    const endY = q.end.getFullYear();
+    const endM = q.end.getMonth();
+    while (y < endY || (y === endY && m <= endM)) {
+        const name = new Date(y, m, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+        months.push({ year: y, month: m, name });
+        m++;
+        if (m > 11) { m = 0; y++; }
+    }
+    return months;
+}
+
+// ── Quarter-namespaced localStorage ──────────────────────────────
+function qKey(base) { return `${base}_${currentQKey}`; }
+
+// ── Migrate legacy data (pre-multi-quarter users) ─────────────────
+(function migrateOldData() {
+    if (!localStorage.getItem('officeDays_Q1') && localStorage.getItem('officeDays')) {
+        localStorage.setItem('officeDays_Q1', localStorage.getItem('officeDays'));
+    }
+    if (!localStorage.getItem('autoMarkedDays_Q1') && localStorage.getItem('autoMarkedDays')) {
+        localStorage.setItem('autoMarkedDays_Q1', localStorage.getItem('autoMarkedDays'));
+    }
+})();
 
 // State
-let checkedDays = JSON.parse(localStorage.getItem('officeDays') || '{}');
-let autoMarkedDays = JSON.parse(localStorage.getItem('autoMarkedDays') || '{}');
+let checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || '{}');
+let autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
 const OFFICE_WIFI_SSID = 'corp'; // Fixed — NetApp office WiFi
 let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"autoMarkEnabled":true}');
 settings.wifiSSID = OFFICE_WIFI_SSID; // Always enforce corp, regardless of saved value
@@ -26,16 +113,16 @@ let autoMarkLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
 
 // Utility functions
 function isHoliday(dateStr) {
-    return holidays.some(h => h.date === dateStr);
+    return holidays().some(h => h.date === dateStr);
 }
 
 function getHolidayName(dateStr) {
-    const h = holidays.find(h => h.date === dateStr);
+    const h = holidays().find(h => h.date === dateStr);
     return h ? h.name : '';
 }
 
 function isInRange(date) {
-    return date >= startDate && date <= endDate;
+    return date >= startDate() && date <= endDate();
 }
 
 function formatDate(year, month, day) {
@@ -54,6 +141,47 @@ function isTodayWorkday() {
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     return isInRange(today) && !isWeekend && !isHoliday(todayStr);
 }
+
+// ---- Quarter Switcher ────────────────────────────────────────────
+function switchQuarter(key) {
+    if (!QUARTERS[key]) return;
+    currentQKey = key;
+    localStorage.setItem('oatCurrentQuarter', key);
+    checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || '{}');
+    autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
+    updateQuarterBadge();
+    closeQuarterDropdown();
+    renderCalendars();
+}
+
+function updateQuarterBadge() {
+    const badge = document.getElementById('quarterBadge');
+    if (badge) badge.textContent = currentQKey + ' ▾';
+}
+
+function toggleQuarterDropdown() {
+    const dd = document.getElementById('quarterDropdown');
+    if (!dd) return;
+    const open = dd.classList.toggle('open');
+    if (open) {
+        dd.innerHTML = Object.values(QUARTERS).map(q =>
+            `<button class="q-option${q.label === currentQKey ? ' active' : ''}"
+                     onclick="switchQuarter('${q.label}')">${q.label}<span class="q-display">${q.display.replace(/^Q\d · /, '')}</span></button>`
+        ).join('');
+    }
+}
+
+function closeQuarterDropdown() {
+    const dd = document.getElementById('quarterDropdown');
+    if (dd) dd.classList.remove('open');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#quarterBadge') && !e.target.closest('#quarterDropdown')) {
+        closeQuarterDropdown();
+    }
+});
 
 // ---- Auto-Mark Logic ----
 function autoMarkToday() {
@@ -76,8 +204,8 @@ function autoMarkToday() {
     // Mark today
     checkedDays[todayStr] = true;
     autoMarkedDays[todayStr] = true;
-    localStorage.setItem('officeDays', JSON.stringify(checkedDays));
-    localStorage.setItem('autoMarkedDays', JSON.stringify(autoMarkedDays));
+    localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
+    localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
 
     // Log it
     const logEntry = `${new Date().toLocaleString()} — Auto-marked ${todayStr} (WiFi: ${settings.wifiSSID})`;
@@ -129,8 +257,8 @@ function rescanToday() {
     // Mark today
     checkedDays[todayStr] = true;
     autoMarkedDays[todayStr] = wifiConfirmedToday;
-    localStorage.setItem('officeDays', JSON.stringify(checkedDays));
-    localStorage.setItem('autoMarkedDays', JSON.stringify(autoMarkedDays));
+    localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
+    localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
     const source = wifiConfirmedToday ? 'WiFi confirmed' : 'Manual override (no WiFi)';
     const logEntry = `${new Date().toLocaleString()} — Mark Today: ${todayStr} (${source})`;
     autoMarkLog.unshift(logEntry);
@@ -317,8 +445,8 @@ function toggleDay(dateStr) {
         // Mark directly — no confirm needed
         checkedDays[dateStr] = true;
     }
-    localStorage.setItem('officeDays', JSON.stringify(checkedDays));
-    localStorage.setItem('autoMarkedDays', JSON.stringify(autoMarkedDays));
+    localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
+    localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
     renderCalendars();
 }
 
@@ -337,7 +465,7 @@ function resetAll() {
             preserved[dateStr] = true;
         }
         checkedDays = preserved;
-        localStorage.setItem('officeDays', JSON.stringify(checkedDays));
+        localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
         renderCalendars();
         showNotification(`🔄 Reset ${manualCount} manual mark(s). ${autoCount} auto-mark(s) preserved.`, 'success');
     }
@@ -348,12 +476,14 @@ function renderCalendars() {
     const container = document.getElementById('calendars');
     container.innerHTML = '';
 
+    const months = getMonthsForQuarter(getQ());
     let totalWorkDays = 0;
     let totalOfficeDays = 0;
 
     months.forEach(m => {
         const card = document.createElement('div');
         card.className = 'month-card';
+        card.dataset.month = m.month;
 
         const daysInMonth = new Date(m.year, m.month + 1, 0).getDate();
         const firstDay = new Date(m.year, m.month, 1).getDay();
@@ -398,6 +528,8 @@ function renderCalendars() {
                 today.setHours(0, 0, 0, 0);
                 if (date > today) {
                     cellClass += ' future';
+                } else if (date.getTime() === today.getTime()) {
+                    cellClass += ' today-cell';
                 }
                 monthWorkDays++;
                 totalWorkDays++;
@@ -436,6 +568,9 @@ function renderCalendars() {
             daysHTML += `<div class="${cellClass}" ${clickHandler} ${tipAttr}>${day}</div>`;
         }
 
+        const slotColors = ['#a5b4fc', '#c084fc', '#2dd4bf', '#fcd34d'];
+        const mColor = slotColors[months.indexOf(m)] || '#a5b4fc';
+        card.dataset.monthSlot = months.indexOf(m); // for CSS accent colours
         card.innerHTML = `
             <div class="month-title">${m.name}</div>
             <div class="day-headers">
@@ -447,9 +582,9 @@ function renderCalendars() {
                 ${daysHTML}
             </div>
             <div class="month-summary">
-                <div>📊 Working Days: <strong>${monthWorkDays}</strong></div>
-                <div style="color:#00b894">✅ Office: <strong>${monthOfficeDays}</strong></div>
-                ${monthHolidays > 0 ? `<div style="color:#e17055">🎉 Holidays: <strong>${monthHolidays}</strong></div>` : ''}
+                <div>📊 Working Days: <strong style="font-family:'JetBrains Mono',monospace;color:${mColor}">${monthWorkDays}</strong></div>
+                <div style="color:#00b894">✅ Office: <strong style="font-family:'JetBrains Mono',monospace">${monthOfficeDays}</strong></div>
+                ${monthHolidays > 0 ? `<div style="color:#e17055">🎉 Holidays: <strong style="font-family:'JetBrains Mono',monospace">${monthHolidays}</strong></div>` : ''}
             </div>
         `;
 
@@ -457,26 +592,32 @@ function renderCalendars() {
     });
 
     // Update summary
-    const remaining = Math.max(0, TARGET - totalOfficeDays);
-    const percentage = Math.min(100, Math.round((totalOfficeDays / TARGET) * 100));
+    const remaining = Math.max(0, TARGET() - totalOfficeDays);
+    const percentage = Math.min(100, Math.round((totalOfficeDays / TARGET()) * 100));
 
-    document.getElementById('totalWorkDays').textContent = totalWorkDays;
-    document.getElementById('totalOfficeDays').textContent = totalOfficeDays;
-    document.getElementById('remainingDays').textContent = remaining;
+    // Update both pill IDs and any legacy IDs
+    ['totalWorkDays', 'totalWorkDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = totalWorkDays; });
+    ['totalOfficeDays', 'totalOfficeDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = totalOfficeDays; });
+    ['remainingDays', 'remainingDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = remaining; });
+    // Update target pill
+    const pillTarget = document.getElementById('pillTarget');
+    if (pillTarget) { const sv = pillTarget.querySelector('.stat-value'); if (sv) sv.textContent = TARGET(); }
 
     const progressBar = document.getElementById('progressBar');
     progressBar.style.width = percentage + '%';
-    progressBar.textContent = percentage + '%';
+    const progressLabel = document.getElementById('progressLabel');
+    if (progressLabel) progressLabel.textContent = percentage + '%';
 
     const confetti = document.getElementById('confetti');
     const status = document.getElementById('targetStatus');
 
-    if (totalOfficeDays >= TARGET) {
+    if (totalOfficeDays >= TARGET()) {
         progressBar.className = 'progress-bar complete';
         confetti.style.display = 'block';
         status.innerHTML = '🏆 <strong>Target Achieved!</strong> You are a rockstar! 🌟';
         status.style.color = '#00b894';
-    } else if (totalOfficeDays >= TARGET * 0.75) {
+        launchConfettiCanvas();
+    } else if (totalOfficeDays >= TARGET() * 0.75) {
         progressBar.className = 'progress-bar';
         confetti.style.display = 'none';
         renderFlipCounter(status, remaining, '🔥 Almost there!', 'Keep pushing — you\'re so close!', '#fdcb6e');
@@ -507,6 +648,7 @@ function renderFlipCounter(el, newVal, label, subtext, color) {
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    updateQuarterBadge();
     renderCalendars();
 
     // Check for auto-mark trigger via URL parameter
@@ -1326,8 +1468,8 @@ function handleBackfill(dateString) {
         newCount++;
     });
 
-    localStorage.setItem('officeDays', JSON.stringify(checkedDays));
-    localStorage.setItem('autoMarkedDays', JSON.stringify(autoMarkedDays));
+    localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
+    localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
 
     // Log the backfill
     const logEntry = `${new Date().toLocaleString()} \u2014 Backfilled ${newCount} days from WiFi logs (${skipCount} already marked)`;
@@ -1344,4 +1486,100 @@ function handleBackfill(dateString) {
     }
 
     renderCalendars();
+}
+
+/* ── Typewriter subtitle ──────────────────────────────── */
+(function initTypewriter() {
+    const el = document.getElementById('twText');
+    if (!el) return;
+
+    function getLines() {
+        const days = parseInt((document.getElementById('totalOfficeDays') || {}).textContent || '0', 10);
+        const rem  = parseInt((document.getElementById('remainingDays')   || {}).textContent || '39', 10);
+        const pct  = Math.min(100, Math.round((days / 39) * 100));
+        return [
+            { text: 'Auto-tracking active...', active: true },
+            { text: `${days} / 39 days done`,  active: false },
+            { text: `${rem} days to go`,        active: false },
+            { text: `${pct}% of target reached`, active: false },
+            { text: 'NetApp corp WiFi · Apr\u2013Jul 2026', active: false },
+        ];
+    }
+
+    let lineIdx = 0, charIdx = 0, deleting = false;
+
+    function tick() {
+        const lines = getLines();
+        const line  = lines[lineIdx % lines.length];
+
+        el.classList.toggle('tw-active', line.active);
+
+        if (!deleting) {
+            charIdx++;
+            el.textContent = line.text.slice(0, charIdx);
+            if (charIdx === line.text.length) {
+                deleting = true;
+                setTimeout(tick, 2200);
+                return;
+            }
+        } else {
+            charIdx--;
+            el.textContent = line.text.slice(0, charIdx);
+            if (charIdx === 0) {
+                deleting = false;
+                lineIdx++;
+                setTimeout(tick, 400);
+                return;
+            }
+        }
+        setTimeout(tick, deleting ? 28 : 52);
+    }
+    setTimeout(tick, 800);
+})();
+
+/* ── Canvas confetti burst ────────────────────────────── */
+function launchConfettiCanvas() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.display = 'block';
+    const ctx = canvas.getContext('2d');
+    const colors = ['#f0abfc','#818cf8','#38bdf8','#34d399','#fcd34d','#fb7185'];
+    const pieces = Array.from({ length: 140 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * -canvas.height,
+        w: Math.random() * 10 + 4,
+        h: Math.random() * 6 + 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * Math.PI * 2,
+        vy: Math.random() * 3 + 2,
+        vx: (Math.random() - 0.5) * 2,
+        vr: (Math.random() - 0.5) * 0.15,
+    }));
+    let frame;
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        pieces.forEach(p => {
+            p.y  += p.vy;
+            p.x  += p.vx;
+            p.rot += p.vr;
+            if (p.y < canvas.height + 20) alive = true;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+        });
+        if (alive) {
+            frame = requestAnimationFrame(draw);
+        } else {
+            canvas.style.display = 'none';
+            cancelAnimationFrame(frame);
+        }
+    }
+    draw();
+    setTimeout(() => { canvas.style.display = 'none'; cancelAnimationFrame(frame); }, 4000);
 }
