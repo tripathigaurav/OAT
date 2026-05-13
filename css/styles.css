@@ -50,21 +50,21 @@
 }
 /* spacer no longer needed */
 .oat-header-left-spacer {
-    display: none;
+    min-width: 160px;
 }
 .oat-header-right {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 160px;
 }
 .oat-brand-text .user-greeting {
     justify-content: center;
     margin-top: 4px;
     font-size: 0.95rem;
 }
-.oat-brand-text .setup-status-badge {
-    display: block;
-    text-align: center;
-    margin: 4px auto 0;
-}
+/* badge now lives in header-right — remove old centred override */
+.oat-brand-text .setup-status-badge { display: none !important; }
 .hero-typewriter { display: none; }
 .typewriter-row  { display: none; }
 .tw-cursor {
@@ -1033,6 +1033,15 @@ h1 + .setup-status-badge {
     gap: 6px;
     text-align: center;
 }
+
+.user-icon {
+    width: 18px;
+    height: 18px;
+    fill: #a5b4fc;
+    flex-shrink: 0;
+}
+
+body.light-mode .user-icon { fill: #0369a1; }
 
 .user-greeting strong {
     color: #a5b4fc;
