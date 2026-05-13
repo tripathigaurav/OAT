@@ -126,16 +126,6 @@ function rescanToday() {
         wifiConfirmedToday = activeDate.toDateString() === today.toDateString();
     }
 
-    if (!wifiConfirmedToday) {
-        // Not on office WiFi (or script hasn't run today) — warn user
-        const override = confirm(
-            '⚠️ Office WiFi not detected!\n\n' +
-            'The auto-tracking script hasn\'t confirmed an office WiFi connection today.\n\n' +
-            'Are you sure you\'re at the office? Click OK to mark anyway, or Cancel to skip.'
-        );
-        if (!override) return;
-    }
-
     // Mark today
     checkedDays[todayStr] = true;
     autoMarkedDays[todayStr] = wifiConfirmedToday;
@@ -556,8 +546,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Show onboarding for first-time visitors (or ?newuser=true for demo)
-    const urlParams2 = new URLSearchParams(window.location.search);
-    if (!localStorage.getItem('oatOnboarded') || urlParams2.get('newuser') === 'true') {
+    // Use original urlParams (before replaceState cleaned the URL)
+    if (!localStorage.getItem('oatOnboarded') || urlParams.get('newuser') === 'true') {
         showOnboarding();
     }
 
@@ -1039,6 +1029,7 @@ function onboardDoneActive() {
 
     localStorage.setItem('oatOnboarded', 'completed');
     document.getElementById('onboardOverlay').style.display = 'none';
+    updateSetupStatus();
     const greeting = name ? `${name}, ` : '';
     showNotification(`\u2705 ${greeting}your auto-tracking is active and working!`, 'success');
 }
