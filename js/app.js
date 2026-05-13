@@ -584,7 +584,7 @@ function renderCalendars() {
             <div class="month-summary">
                 <div>📊 Working Days: <strong style="font-family:'JetBrains Mono',monospace;color:${mColor}">${monthWorkDays}</strong></div>
                 <div style="color:#00b894">✅ Office: <strong style="font-family:'JetBrains Mono',monospace">${monthOfficeDays}</strong></div>
-                ${monthHolidays > 0 ? `<div style="color:#e17055">🎉 Holidays: <strong style="font-family:'JetBrains Mono',monospace">${monthHolidays}</strong></div>` : ''}
+                <div class="${monthHolidays > 0 ? 'summary-holidays' : 'summary-holidays summary-holidays--none'}">🎉 Holidays: <strong style="font-family:'JetBrains Mono',monospace">${monthHolidays > 0 ? monthHolidays : '—'}</strong></div>
             </div>
         `;
 

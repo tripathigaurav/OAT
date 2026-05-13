@@ -93,17 +93,17 @@
 .stats-ribbon {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin: 14px 0 0;
+    gap: 8px;
+    margin: 10px 0 0;
 }
 
 .stat-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
-    padding: 12px 8px 10px;
-    border-radius: 14px;
+    gap: 2px;
+    padding: 8px 8px 7px;
+    border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.07);
     background: rgba(255,255,255,0.03);
     backdrop-filter: blur(12px);
@@ -116,14 +116,14 @@
 
 .stat-value {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 1.9rem;
+    font-size: 1.4rem;
     font-weight: 800;
     line-height: 1;
     color: #74b9ff;
     letter-spacing: -0.02em;
 }
 .stat-label {
-    font-size: 0.65rem;
+    font-size: 0.60rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -1116,10 +1116,10 @@ h1 {
 .progress-container {
     width: 80%;
     max-width: 500px;
-    margin: 10px auto 0;
+    margin: 12px auto 0;
     background: rgba(255,255,255,0.1);
     border-radius: 20px;
-    height: 25px;
+    height: 28px;
     overflow: hidden;
     position: relative;
 }
@@ -1173,7 +1173,7 @@ h1 {
 
 .target-status {
     text-align: center;
-    margin-top: 14px;
+    margin-top: 8px;
     font-size: 1rem;
 }
 
@@ -1182,13 +1182,13 @@ h1 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    margin: 8px auto 0;
+    gap: 2px;
+    margin: 4px auto 0;
 }
 
 .flip-number {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     justify-content: center;
     align-items: center;
 }
@@ -1197,20 +1197,20 @@ h1 {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 2px;
+    gap: 1px;
     margin-left: 6px;
 }
 
 .flip-digit {
-    width: 48px;
-    height: 64px;
+    width: 36px;
+    height: 48px;
     background: linear-gradient(180deg, #12122a 0%, #0d1f3c 100%);
     border: 1.5px solid rgba(99, 102, 241, 0.4);
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.2rem;
+    font-size: 1.6rem;
     font-weight: 800;
     font-family: 'JetBrains Mono', monospace;
     color: #a5b4fc;
@@ -1240,7 +1240,7 @@ h1 {
 }
 
 .flip-label {
-    font-size: 0.78rem;
+    font-size: 0.70rem;
     color: #818cf8;
     opacity: 0.8;
     letter-spacing: 0.12em;
@@ -1249,9 +1249,9 @@ h1 {
 }
 
 .flip-subtext {
-    font-size: 0.88rem;
+    font-size: 0.78rem;
     color: #b2bec3;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 .flip-subtext strong { color: #74b9ff; }
@@ -1268,16 +1268,20 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
 
 .calendars {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
+    align-items: stretch;
     gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 8px;
 }
 
 .month-card {
     background: rgba(255, 255, 255, 0.04);
     border-radius: 18px;
-    padding: 20px;
-    width: 350px;
+    padding: 16px;
+    width: 330px;
+    flex-shrink: 0;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255,255,255,0.08);
@@ -1286,6 +1290,8 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     overflow: hidden;
     opacity: 0;
     animation: fadeUp 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Shimmer sweep on hover */
@@ -1331,8 +1337,8 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
 
 .month-title {
     text-align: center;
-    font-size: 1.4rem;
-    margin-bottom: 15px;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
     color: #a5b4fc;
     font-weight: 700;
     letter-spacing: -0.01em;
@@ -1360,15 +1366,18 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
+    flex: 1;
+    align-content: start;
+    min-height: 218px; /* 6 rows × 33px cell + 5 gaps × 4px = 218 */
 }
 
 .day-cell {
     text-align: center;
-    padding: 8px 4px;
-    border-radius: 8px;
-    font-size: 0.85rem;
+    padding: 4px 2px;
+    border-radius: 6px;
+    font-size: 0.82rem;
     position: relative;
-    min-height: 40px;
+    min-height: 33px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1503,17 +1512,21 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
 }
 
 .month-summary {
-    margin-top: 15px;
-    padding: 10px;
+    margin-top: 10px;
+    padding: 8px 10px;
     background: rgba(255,255,255,0.05);
-    border-radius: 10px;
+    border-radius: 8px;
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
 }
 
 .month-summary div {
     margin: 3px 0;
 }
+
+.summary-holidays { color: #e17055; }
+.summary-holidays--none { color: rgba(255,255,255,0.25); }
+body.light-mode .summary-holidays--none { color: rgba(0,0,0,0.25); }
 
 .legend {
     display: flex;
@@ -2228,6 +2241,9 @@ body.light-mode .theme-btn:hover { background: rgba(0,0,0,0.12); }
     border: none;
     background: transparent;
     color: #c7d2fe;
+    -webkit-text-fill-color: #c7d2fe;
+    background-clip: initial;
+    -webkit-background-clip: initial;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.82em;
     font-weight: 600;
@@ -2239,7 +2255,7 @@ body.light-mode .theme-btn:hover { background: rgba(0,0,0,0.12); }
 }
 
 .q-option:hover { background: rgba(99,102,241,0.22); }
-.q-option.active { background: rgba(99,102,241,0.30); color: #a5b4fc; }
+.q-option.active { background: rgba(99,102,241,0.30); color: #a5b4fc; -webkit-text-fill-color: #a5b4fc; }
 
 .q-display {
     font-weight: 400;
@@ -2256,89 +2272,89 @@ body.light-mode .quarter-dropdown {
     box-shadow: 0 8px 32px rgba(67,56,202,0.15);
 }
 
-body.light-mode .q-option { color: #3730a3; }
+body.light-mode .q-option { color: #3730a3; -webkit-text-fill-color: #3730a3; }
 body.light-mode .q-option:hover { background: rgba(99,102,241,0.1); }
-body.light-mode .q-option.active { background: rgba(99,102,241,0.18); color: #4338ca; }
+body.light-mode .q-option.active { background: rgba(99,102,241,0.18); color: #4338ca; -webkit-text-fill-color: #4338ca; }
 
 /* ============================================================
-   LIGHT MODE — DINO Daylight
-   Soft indigo-white, keeps the same accent palette as dark
+   LIGHT MODE — Sky Blue
+   Soft sky-cyan gradient, deep slate text, sky accent palette
    ============================================================ */
 
 body.light-mode {
-    background: linear-gradient(135deg, #eef0ff 0%, #f0f1ff 50%, #e8eaf6 100%);
-    color: #1e1b4b;
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 40%, #e0f7fa 100%);
+    color: #0c2a4a;
 }
 
 body.light-mode h1 {
-    background: linear-gradient(to right, #4338ca 0%, #6366f1 50%, #818cf8 100%);
+    background: linear-gradient(to right, #0369a1 0%, #0ea5e9 50%, #38bdf8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
 body.light-mode .quarter-badge {
-    background: rgba(99,102,241,0.12);
-    border-color: rgba(99,102,241,0.3);
-    color: #4338ca;
-    -webkit-text-fill-color: #4338ca;
+    background: rgba(14,165,233,0.15);
+    border-color: rgba(14,165,233,0.4);
+    color: #0369a1;
+    -webkit-text-fill-color: #0369a1;
 }
 
 body.light-mode .quarter-badge:hover {
-    background: rgba(99,102,241,0.22);
+    background: rgba(14,165,233,0.28);
 }
 
 body.light-mode .h1-emoji { -webkit-text-fill-color: initial; }
 
-body.light-mode .user-greeting { color: #4338ca; }
-body.light-mode .user-greeting strong { color: #4338ca; }
-body.light-mode p { color: #3730a3; }
+body.light-mode .user-greeting { color: #0369a1; }
+body.light-mode .user-greeting strong { color: #0369a1; }
+body.light-mode p { color: #075985; }
 
-/* Glow orbs — lighter tint */
-body.light-mode .ambient-glow { opacity: 0.06; }
+/* Glow orbs */
+body.light-mode .ambient-glow { opacity: 0.05; }
 
 /* Summary bar */
 body.light-mode .summary-bar {
-    background: rgba(255,255,255,0.7);
-    border: 1px solid rgba(99,102,241,0.15);
-    box-shadow: 0 2px 20px rgba(99,102,241,0.08);
+    background: rgba(255,255,255,0.65);
+    border: 1px solid rgba(14,165,233,0.18);
+    box-shadow: 0 2px 20px rgba(14,165,233,0.1);
     backdrop-filter: blur(12px);
 }
-body.light-mode .progress-container { background: rgba(99,102,241,0.08); }
-body.light-mode .target-status { color: #3730a3; }
+body.light-mode .progress-container { background: rgba(14,165,233,0.12); }
+body.light-mode .target-status { color: #0369a1; }
 
 /* Stat cards */
 body.light-mode .stat-card {
-    background: rgba(255,255,255,0.75);
-    border-color: rgba(99,102,241,0.12);
+    background: rgba(255,255,255,0.70);
+    border-color: rgba(14,165,233,0.15);
 }
-body.light-mode .stat-card .stat-value { color: #4338ca; }
+body.light-mode .stat-card .stat-value { color: #0369a1; }
 body.light-mode .stat-card--green .stat-value { color: #059669; }
 body.light-mode .stat-card--amber .stat-value { color: #d97706; }
 body.light-mode .stat-card--rose  .stat-value  { color: #e11d48; }
-body.light-mode .stat-label { color: #6366f1; }
+body.light-mode .stat-label { color: #0ea5e9; }
 
 /* Calendar cards */
 body.light-mode .month-card {
-    background: rgba(255,255,255,0.72);
-    border: 1px solid rgba(99,102,241,0.14);
-    box-shadow: 0 3px 20px rgba(99,102,241,0.08);
+    background: rgba(255,255,255,0.65);
+    border: 1px solid rgba(14,165,233,0.18);
+    box-shadow: 0 3px 20px rgba(14,165,233,0.1);
 }
-body.light-mode .month-card[data-month-slot="0"] .month-title { color: #4338ca; }
+body.light-mode .month-card[data-month-slot="0"] .month-title { color: #0369a1; }
 body.light-mode .month-card[data-month-slot="1"] .month-title { color: #7c3aed; }
 body.light-mode .month-card[data-month-slot="2"] .month-title { color: #0d9488; }
 body.light-mode .month-card[data-month-slot="3"] .month-title { color: #b45309; }
-body.light-mode .day-headers span { color: #6366f1; }
+body.light-mode .day-headers span { color: #0ea5e9; }
 body.light-mode .day-headers span.weekend-header { color: #e11d48; }
 body.light-mode .day-cell.weekday {
-    background: rgba(99,102,241,0.05);
-    color: #1e1b4b;
+    background: rgba(14,165,233,0.07);
+    color: #0c2a4a;
 }
-body.light-mode .day-cell.weekday:hover { background: rgba(99,102,241,0.15); }
+body.light-mode .day-cell.weekday:hover { background: rgba(14,165,233,0.18); }
 body.light-mode .day-cell.saturday {
-    background: rgba(99,102,241,0.1);
-    color: #4338ca;
-    border-color: rgba(99,102,241,0.2);
+    background: rgba(14,165,233,0.13);
+    color: #0369a1;
+    border-color: rgba(14,165,233,0.25);
 }
 body.light-mode .day-cell.sunday {
     background: rgba(225,29,72,0.08);
@@ -2346,52 +2362,63 @@ body.light-mode .day-cell.sunday {
     border-color: rgba(225,29,72,0.15);
 }
 body.light-mode .day-cell[data-tip]:hover::before {
-    background: rgba(238,240,255,0.98);
-    color: #1e1b4b;
-    border-color: rgba(99,102,241,0.3);
-    box-shadow: 0 4px 12px rgba(99,102,241,0.12);
+    background: rgba(224,242,254,0.98);
+    color: #0c2a4a;
+    border-color: rgba(14,165,233,0.35);
+    box-shadow: 0 4px 12px rgba(14,165,233,0.15);
 }
-body.light-mode .month-summary { background: rgba(99,102,241,0.05); }
+body.light-mode .month-summary { background: rgba(14,165,233,0.07); }
+body.light-mode .summary-holidays--none { color: rgba(0,0,0,0.25); }
 
 /* Legend */
-body.light-mode .legend { color: #3730a3; }
-body.light-mode .legend-box.workday { background: rgba(99,102,241,0.08); }
+body.light-mode .legend { color: #075985; }
+body.light-mode .legend-box.workday { background: rgba(14,165,233,0.1); }
 
 /* Flip counter */
 body.light-mode .flip-digit {
-    background: linear-gradient(180deg, #fff 0%, #eef0ff 100%);
-    border-color: rgba(99,102,241,0.25);
-    color: #4338ca;
-    box-shadow: 0 4px 16px rgba(99,102,241,0.1);
+    background: linear-gradient(180deg, #fff 0%, #e0f2fe 100%);
+    border-color: rgba(14,165,233,0.3);
+    color: #0369a1;
+    box-shadow: 0 4px 16px rgba(14,165,233,0.12);
 }
-body.light-mode .flip-label { color: #6366f1; }
-body.light-mode .flip-subtext { color: #4338ca; }
-body.light-mode .flip-subtext strong { color: #4338ca; }
+body.light-mode .flip-label { color: #0ea5e9; }
+body.light-mode .flip-subtext { color: #0369a1; }
+body.light-mode .flip-subtext strong { color: #0369a1; }
+
+/* Quarter dropdown */
+body.light-mode .quarter-dropdown {
+    background: rgba(224,242,254,0.97);
+    border-color: rgba(14,165,233,0.3);
+    box-shadow: 0 8px 32px rgba(14,165,233,0.18);
+}
+body.light-mode .q-option { color: #075985; -webkit-text-fill-color: #075985; }
+body.light-mode .q-option:hover { background: rgba(14,165,233,0.12); }
+body.light-mode .q-option.active { background: rgba(14,165,233,0.22); color: #0369a1; -webkit-text-fill-color: #0369a1; }
 
 /* Settings panel */
 body.light-mode .settings-panel {
-    background: rgba(238,240,255,0.97);
-    border-color: rgba(99,102,241,0.25);
-    color: #1e1b4b;
-    box-shadow: 0 8px 32px rgba(99,102,241,0.12);
+    background: rgba(224,242,254,0.97);
+    border-color: rgba(14,165,233,0.28);
+    color: #0c2a4a;
+    box-shadow: 0 8px 32px rgba(14,165,233,0.14);
 }
-body.light-mode .settings-panel h3 { color: #4338ca; }
-body.light-mode .settings-group label { color: #3730a3; }
+body.light-mode .settings-panel h3 { color: #0369a1; }
+body.light-mode .settings-group label { color: #075985; }
 body.light-mode .settings-group input[type="text"] {
-    background: rgba(255,255,255,0.6);
-    border-color: rgba(99,102,241,0.2);
-    color: #1e1b4b;
+    background: rgba(255,255,255,0.65);
+    border-color: rgba(14,165,233,0.25);
+    color: #0c2a4a;
 }
-body.light-mode .settings-group input[type="text"]::placeholder { color: rgba(30,27,75,0.3); }
-body.light-mode .auto-mark-log { background: rgba(255,255,255,0.5); color: #3730a3; }
-body.light-mode .setup-instructions { border-color: rgba(99,102,241,0.2); background: rgba(255,255,255,0.45); }
-body.light-mode .setup-instructions h4 { color: #4338ca; }
+body.light-mode .settings-group input[type="text"]::placeholder { color: rgba(12,42,74,0.35); }
+body.light-mode .auto-mark-log { background: rgba(255,255,255,0.5); color: #075985; }
+body.light-mode .setup-instructions { border-color: rgba(14,165,233,0.2); background: rgba(255,255,255,0.45); }
+body.light-mode .setup-instructions h4 { color: #0369a1; }
 body.light-mode .setup-instructions p,
-body.light-mode .setup-instructions ol li { color: #3730a3; }
-body.light-mode .setup-instructions code { background: rgba(99,102,241,0.08); color: #4338ca; }
-body.light-mode .os-tab { background: rgba(255,255,255,0.5); border-color: rgba(99,102,241,0.15); color: #3730a3; }
-body.light-mode .os-tab.active { background: rgba(99,102,241,0.12); border-color: #6366f1; color: #4338ca; }
-body.light-mode .setup-dropdown { border-color: rgba(99,102,241,0.18); background: rgba(255,255,255,0.3); }
+body.light-mode .setup-instructions ol li { color: #075985; }
+body.light-mode .setup-instructions code { background: rgba(14,165,233,0.1); color: #0369a1; }
+body.light-mode .os-tab { background: rgba(255,255,255,0.55); border-color: rgba(14,165,233,0.18); color: #075985; }
+body.light-mode .os-tab.active { background: rgba(14,165,233,0.15); border-color: #0ea5e9; color: #0369a1; }
+body.light-mode .setup-dropdown { border-color: rgba(14,165,233,0.2); background: rgba(255,255,255,0.35); }
 body.light-mode .setup-dropdown summary { color: #3730a3; }
 body.light-mode .uninstall-dropdown { border-color: rgba(225,29,72,0.22); background: rgba(225,29,72,0.04); }
 body.light-mode .uninstall-step { border-color: rgba(225,29,72,0.15); background: rgba(255,255,255,0.5); }
@@ -2445,200 +2472,8 @@ body.light-mode .patch-instructions .keys { background: rgba(99,102,241,0.08); b
 
 /* WiFi notification */
 body.light-mode .wifi-notification.success { background: rgba(52,211,153,0.2); border-color: rgba(52,211,153,0.5); color: #065f46; }
-body.light-mode .wifi-notification.info    { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); color: #3730a3; }
+body.light-mode .wifi-notification.info    { background: rgba(14,165,233,0.15); border-color: rgba(14,165,233,0.4); color: #075985; }
 body.light-mode .wifi-notification.already { background: rgba(217,119,6,0.15); border-color: rgba(217,119,6,0.4); color: #92400e; }
-
-body.light-mode h1 {
-    background: none;
-    -webkit-background-clip: unset;
-    -webkit-text-fill-color: #3a3530;
-    background-clip: unset;
-    color: #3a3530;
-}
-body.light-mode .user-greeting { color: #6c5ce7; }
-body.light-mode .user-greeting strong { color: #6c5ce7; }
-body.light-mode .header-date { color: #7a7268; }
-body.light-mode .header-sep { color: #aaa49e; }
-body.light-mode p { color: #5a5550; }
-
-/* Summary bar */
-body.light-mode .summary-bar {
-    background: rgba(255,252,245,0.85);
-    border: 1px solid rgba(180,160,130,0.2);
-    box-shadow: 0 2px 16px rgba(100,80,50,0.08);
-}
-body.light-mode .progress-container { background: rgba(0,0,0,0.08); }
-body.light-mode .target-status { color: #5a5550; }
-
-/* Calendar cards */
-body.light-mode .month-card {
-    background: rgba(255,252,245,0.9);
-    border: 1px solid rgba(180,160,130,0.2);
-    box-shadow: 0 3px 16px rgba(100,80,50,0.09);
-}
-body.light-mode .month-title { color: #7c6fcd; }
-body.light-mode .day-headers span { color: #7a7268; }
-body.light-mode .day-headers span.weekend-header { color: #c0392b; }
-body.light-mode .day-cell.weekday {
-    background: rgba(0,0,0,0.04);
-    color: #2d2a24;
-}
-body.light-mode .day-cell.weekday:hover { background: rgba(116,185,255,0.2); }
-body.light-mode .day-cell.saturday {
-    background: rgba(108,92,231,0.1);
-    color: #7c6fcd;
-}
-body.light-mode .day-cell.sunday {
-    background: rgba(192,57,43,0.1);
-    color: #c0392b;
-}
-body.light-mode .day-cell[data-tip]:hover::before {
-    background: #faf7f2;
-    color: #2d2a24;
-    border-color: rgba(108,92,231,0.25);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-
-/* Legend */
-body.light-mode .legend { color: #5a5550; }
-
-/* Settings panel */
-body.light-mode .settings-panel {
-    background: rgba(250,247,241,0.98);
-    border-color: rgba(180,160,130,0.3);
-    color: #2d2a24;
-    box-shadow: 0 8px 32px rgba(100,80,50,0.12);
-}
-body.light-mode .settings-panel h3 { color: #7c6fcd; }
-body.light-mode .settings-group label { color: #3a3530; }
-body.light-mode .settings-group input[type="text"] {
-    background: rgba(0,0,0,0.04);
-    border-color: rgba(0,0,0,0.12);
-    color: #2d2a24;
-}
-body.light-mode .settings-group input[type="text"]::placeholder { color: rgba(0,0,0,0.28); }
-body.light-mode .auto-mark-log {
-    background: rgba(0,0,0,0.04);
-    color: #5a5550;
-    border-color: rgba(0,0,0,0.06);
-}
-body.light-mode .setup-instructions { border-top-color: rgba(0,0,0,0.08); }
-body.light-mode .setup-instructions h4 { color: #7c6fcd; }
-body.light-mode .setup-instructions p,
-body.light-mode .setup-instructions ol li { color: #4a4540; }
-body.light-mode .setup-instructions code {
-    background: rgba(0,0,0,0.05);
-    color: #1a7a6e;
-    border-color: rgba(0,0,0,0.08);
-}
-body.light-mode .os-tab {
-    background: rgba(0,0,0,0.04);
-    border-color: rgba(0,0,0,0.1);
-    color: #5a5550;
-}
-body.light-mode .os-tab.active {
-    background: rgba(108,92,231,0.1);
-    border-color: #7c6fcd;
-    color: #7c6fcd;
-}
-body.light-mode .setup-dropdown {
-    border-color: rgba(108,92,231,0.2);
-    background: rgba(0,0,0,0.02);
-}
-body.light-mode .setup-dropdown summary { color: #4a4540; }
-body.light-mode .uninstall-dropdown {
-    border-color: rgba(214, 48, 49, 0.28);
-    background: rgba(214, 48, 49, 0.06);
-}
-body.light-mode .uninstall-step {
-    border-color: rgba(214, 48, 49, 0.2);
-    background: rgba(255, 255, 255, 0.55);
-}
-body.light-mode .danger-action-btn {
-    background: rgba(214, 48, 49, 0.12);
-    border-color: rgba(214, 48, 49, 0.34);
-    color: #a82627;
-}
-body.light-mode .settings-update-card {
-    background: linear-gradient(135deg, rgba(225,112,85,0.1), rgba(253,203,110,0.08));
-}
-body.light-mode .manual-run-box {
-    background: rgba(116,185,255,0.08);
-    border-color: rgba(116,185,255,0.25);
-}
-body.light-mode .manual-run-box p { color: #5a5550; }
-
-/* Onboarding modal */
-body.light-mode .onboard-overlay { background: rgba(0,0,0,0.55); }
-body.light-mode .onboard-modal {
-    background: linear-gradient(135deg, #faf7f2, #f5f0e8);
-    border-color: rgba(180,160,130,0.3);
-}
-body.light-mode .onboard-modal h2 { color: #7c6fcd; }
-body.light-mode .onboard-modal p { color: #5a5550; }
-body.light-mode .onboard-name-group label { color: #7c6fcd; }
-body.light-mode .onboard-name-group input {
-    background: rgba(0,0,0,0.04);
-    border-color: rgba(108,92,231,0.25);
-    color: #2d2a24;
-}
-body.light-mode .onboard-download-box,
-body.light-mode .onboard-cmd-box { background: rgba(0,0,0,0.04); }
-body.light-mode .onboard-cmds code { background: rgba(0,0,0,0.06); color: #1a7a6e; }
-body.light-mode .setup-detected-box {
-    background: rgba(0,184,148,0.07);
-    border-color: rgba(0,184,148,0.2);
-}
-body.light-mode .terminal-cmd-box {
-    background: #f0ede6;
-    border-color: rgba(0,184,148,0.3);
-}
-body.light-mode .terminal-cmd-box code { color: #1a7a6e; }
-body.light-mode .oneclick-box {
-    background: rgba(0,184,148,0.05);
-    border-color: rgba(0,184,148,0.18);
-}
-body.light-mode .oneclick-step { color: #5a5550; }
-
-/* Update popup modal */
-body.light-mode .update-popup-overlay { background: rgba(0,0,0,0.55); }
-body.light-mode .update-popup-modal {
-    background: linear-gradient(135deg, #faf7f2, #fdf5f0);
-    border-color: rgba(225,112,85,0.25);
-}
-body.light-mode .update-popup-modal h2 { color: #c0392b; }
-body.light-mode .update-popup-desc { color: #5a5550; }
-body.light-mode .update-popup-features li { color: #3a3530; border-bottom-color: rgba(0,0,0,0.05); }
-body.light-mode .update-popup-note { color: #1a7a6e; }
-body.light-mode .update-popup-btn.secondary {
-    background: rgba(0,0,0,0.06);
-    color: #5a5550;
-}
-body.light-mode .patch-cmd-box {
-    background: #f0ede6;
-    border-color: rgba(0,130,110,0.2);
-}
-body.light-mode .patch-cmd-box code { color: #00897b; }
-body.light-mode .patch-instructions { color: #2d3436; }
-body.light-mode .patch-instructions strong { color: #0984e3; }
-body.light-mode .patch-instructions .keys {
-    background: rgba(0,0,0,0.06);
-    border-color: rgba(0,0,0,0.12);
-    color: #2d3436;
-}
-
-/* Update banner */
-body.light-mode .update-banner {
-    background: linear-gradient(135deg, rgba(225,112,85,0.1), rgba(253,203,110,0.07));
-}
-body.light-mode .update-banner-text strong { color: #d63031; }
-body.light-mode .update-banner-text span { color: #636e72; }
-
-/* WiFi notification */
-body.light-mode .wifi-notification {
-    background: linear-gradient(135deg, rgba(0,184,148,0.85), rgba(0,206,201,0.85));
-    color: white;
-}
 
 body.light-mode .settings-toggle {
     background: rgba(108,92,231,0.12);
