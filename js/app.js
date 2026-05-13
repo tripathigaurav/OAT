@@ -172,12 +172,12 @@ function toggleInfoMini() {
 
 function loadSettingsUI() {
     document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
-    
+
     // Show "Run WiFi Check Now" only for Windows users
     const os = detectOS();
     const runBox = document.getElementById('winManualRunBox');
     if (runBox) runBox.style.display = os === 'windows' ? 'block' : 'none';
-    
+
     // ---- Auto-tracking status for Windows ----
     if (os === 'windows') {
         const hasScheduledTask = localStorage.getItem('oatScheduledTaskInstalled') === 'true';
@@ -186,7 +186,7 @@ function loadSettingsUI() {
         const manualModeNote = document.getElementById('manualModeNote');
         const manualModeGuide = document.getElementById('manualModeGuide');
         const autoMarkModeHint = document.getElementById('autoMarkModeHint');
-        
+
         if (hasScheduledTask) {
             // Automatic mode
             if (statusBox) statusBox.style.display = 'block';
@@ -210,7 +210,7 @@ function loadSettingsUI() {
     const logBtn = document.getElementById('checkAutoLogBtn');
     if (logEl) logEl.style.display = 'none';
     if (logBtn) logBtn.textContent = '📋 Check Log';
-    
+
     renderAutoMarkLog();
 }
 
@@ -321,12 +321,10 @@ function toggleDay(dateStr) {
             showNotification('🔒 This day was auto-marked via office WiFi and cannot be removed.', 'info');
             return;
         }
-        // Unchecking manual mark — confirm before removing
-        if (!confirm(`Remove attendance for ${dateStr}? Are you sure?`)) return;
+        // Unchecking manual mark — remove directly, show undo notification
         delete checkedDays[dateStr];
     } else {
-        // Checking — confirm before marking
-        if (!confirm(`Mark ${dateStr} as office day? Are you sure?`)) return;
+        // Mark directly — no confirm needed
         checkedDays[dateStr] = true;
     }
     localStorage.setItem('officeDays', JSON.stringify(checkedDays));
@@ -526,9 +524,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (urlParams.get('automark') === 'true') {
         // Record that the background script is working
         localStorage.setItem('oatScriptActive', new Date().toISOString());
+        // Save script version so update card doesn't show after a successful run
+        const sv = urlParams.get('scriptver');
+        if (sv) localStorage.setItem('oatScriptVersion', sv);
+        // Hide setup-reminder card since script is now confirmed working
+        const reminderCard = document.getElementById('settingsSetupReminder');
+        if (reminderCard) reminderCard.style.display = 'none';
         if (settings.autoMarkEnabled !== false) {
             autoMarkToday();
         }
+        // If auto-mark is disabled, page still opens (by design) — just don't mark
         // Clean up URL (remove ?automark=true) without reload
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
@@ -562,6 +567,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show update option quietly inside Settings (user-initiated, no popup/banner)
     showSettingsUpdateCard();
 
+    // Show setup reminder if onboarded but script never ran
+    showSettingsSetupReminder();
+
     // Check if existing users need to update their setup
     checkForStaleSetup();
 
@@ -570,11 +578,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // OS tab switching in settings
-function showOS(os) {
+function showOS(os, btn) {
     document.querySelectorAll('.os-content').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.os-tab').forEach(el => el.classList.remove('active'));
     document.getElementById('os-' + os).style.display = 'block';
-    event.target.classList.add('active');
+    if (btn) btn.classList.add('active');
 }
 
 // ---- Feedback ----
@@ -639,13 +647,26 @@ function updateSetupStatus() {
     const badge = document.getElementById('setupStatusBadge');
     if (!badge) return;
 
+    const onboarded = localStorage.getItem('oatOnboarded');
+    const scriptActive = localStorage.getItem('oatScriptActive');
+
     if (isSetupAlreadyDone()) {
         badge.className = 'setup-status-badge active';
         badge.innerHTML = '🤖 Auto-tracking active';
         badge.title = getSetupStatusText();
         badge.style.display = 'inline-flex';
+        badge.onclick = null;
+    } else if (onboarded === 'completed' && !scriptActive) {
+        // User finished onboarding but script has never fired — silent failure
+        badge.className = 'setup-status-badge stale';
+        badge.innerHTML = '⚠️ Setup not confirmed';
+        badge.title = 'The auto-tracking script has not run yet. Open ⚙️ Settings to verify.';
+        badge.style.display = 'inline-flex';
+        badge.style.cursor = 'pointer';
+        badge.onclick = () => toggleSettings();
     } else {
         badge.style.display = 'none';
+        badge.onclick = null;
     }
 }
 
@@ -665,6 +686,18 @@ function showSettingsUpdateCard() {
     if (card) card.style.display = 'flex';
     const dot = document.getElementById('settingsUpdateDot');
     if (dot) dot.style.display = 'block';
+}
+
+// Show a reminder card in Settings when user onboarded but script never ran
+function showSettingsSetupReminder() {
+    const onboarded = localStorage.getItem('oatOnboarded');
+    const scriptActive = localStorage.getItem('oatScriptActive');
+    if (onboarded === 'completed' && !scriptActive) {
+        const card = document.getElementById('settingsSetupReminder');
+        if (card) card.style.display = 'flex';
+        const dot = document.getElementById('settingsUpdateDot');
+        if (dot) dot.style.display = 'block';
+    }
 }
 function isSetupStale() {
     // Check if user had setup before but it hasn't triggered recently
@@ -716,30 +749,7 @@ function isSetupStale() {
     return false;
 }
 
-function checkForStaleSetup() {
-    if (!isSetupStale()) return;
-
-    // Check if user already dismissed the popup this session
-    const dismissed = sessionStorage.getItem('oatPopupDismissed');
-
-    if (!dismissed) {
-        // Show the popup modal first
-        const popup = document.getElementById('updatePopupOverlay');
-        if (popup) {
-            const scriptActive = localStorage.getItem('oatScriptActive');
-            const desc = popup.querySelector('.update-popup-desc');
-            if (desc) {
-                desc.textContent = scriptActive
-                    ? 'A new version of OAT is ready with important improvements:'
-                    : 'Your auto-tracking needs a quick update to get working:';
-            }
-            popup.style.display = 'flex';
-        }
-    } else {
-        // Popup was dismissed — show the smaller banner as fallback
-        showUpdateBanner();
-    }
-}
+// checkForStaleSetup() is defined above (stub) — auto-prompts disabled in v2.2
 
 function showUpdateBanner() {
     const banner = document.getElementById('updateBanner');
@@ -981,7 +991,8 @@ function startPatchVerification() {
         if (scriptActive) {
             const lastRun = new Date(scriptActive);
             const now = new Date();
-            if (lastRun.toDateString() === now.toDateString()) {
+            // Use a 10-minute window instead of same-day check — avoids midnight rollover failure
+            if ((now - lastRun) < 10 * 60 * 1000) {
                 clearInterval(checkInterval);
                 showPatchBannerState('verified');
             }
@@ -1279,6 +1290,7 @@ function onboardDone() {
     saveUserName();
     localStorage.setItem('oatOnboarded', 'completed');
     document.getElementById('onboardOverlay').style.display = 'none';
+    showUserGreeting();
     const name = localStorage.getItem('oatUserName');
     const greeting = name ? `Welcome ${name}! ` : '';
     showNotification(`\uD83C\uDF89 ${greeting}Setup complete! Your attendance will auto-track when you connect to office WiFi.`, 'success');

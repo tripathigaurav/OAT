@@ -1494,6 +1494,40 @@ body.light-mode .theme-btn:hover { background: rgba(0,0,0,0.12); }
     box-shadow: 0 2px 10px rgba(225,112,85,0.4);
 }
 
+.settings-setup-reminder {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: linear-gradient(135deg, rgba(253,203,110,0.18), rgba(253,203,110,0.06));
+    border: 1px solid rgba(253,203,110,0.45);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 0.82rem;
+    color: #fdcb6e;
+    font-weight: 600;
+}
+
+.settings-setup-reminder-btn {
+    background: linear-gradient(135deg, #fdcb6e, #e17055);
+    border: none;
+    border-radius: 7px;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.settings-setup-reminder-btn:hover {
+    transform: scale(1.04);
+    box-shadow: 0 2px 10px rgba(253,203,110,0.35);
+}
+
 .settings-panel {
     position: fixed;
     bottom: 80px;
