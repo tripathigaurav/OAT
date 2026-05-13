@@ -33,15 +33,17 @@
     z-index: 200;
 }
 .oat-header-inner {
-    max-width: 1200px;
+    max-width: 1400px;
+    width: 100%;
     margin: 0 auto;
-    padding: 12px 20px;
+    padding: 12px 24px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
 }
 .oat-brand {
     text-align: center;
+    flex: 1;
 }
 .oat-brand-text h1 {
     font-size: 1.45rem;
@@ -528,8 +530,15 @@
 
 .setup-status-badge.active {
     background: rgba(0, 184, 148, 0.15);
-    border: 1px solid rgba(0, 184, 148, 0.3);
-    color: #55efc4;
+    border: 1px solid rgba(0, 184, 148, 0.4);
+    color: #00e6b3;
+}
+
+.setup-status-badge.paused {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    cursor: pointer;
 }
 
 /* Center the badge below h1 */
@@ -1037,14 +1046,14 @@ h1 + .setup-status-badge {
 .user-icon {
     width: 18px;
     height: 18px;
-    fill: #a5b4fc;
+    fill: #fbbf24;
     flex-shrink: 0;
 }
 
-body.light-mode .user-icon { fill: #0369a1; }
+body.light-mode .user-icon { fill: #d97706; }
 
 .user-greeting strong {
-    color: #a5b4fc;
+    color: #fbbf24;
     font-size: 1.25rem;
     font-weight: 700;
 }
@@ -2316,7 +2325,7 @@ body.light-mode .quarter-badge:hover {
 body.light-mode .h1-emoji { -webkit-text-fill-color: initial; }
 
 body.light-mode .user-greeting { color: #0369a1; }
-body.light-mode .user-greeting strong { color: #0369a1; }
+body.light-mode .user-greeting strong { color: #d97706; }
 body.light-mode p { color: #075985; }
 
 /* Glow orbs */
@@ -2516,8 +2525,14 @@ body.light-mode .settings-credit { color: rgba(74, 69, 64, 0.72); }
 
 /* Status badge */
 body.light-mode .setup-status-badge.active {
-    background: rgba(0,184,148,0.1);
-    color: #1a7a6e;
+    background: rgba(0,184,148,0.12);
+    color: #047857;
+    border-color: rgba(0,184,148,0.35);
+}
+body.light-mode .setup-status-badge.paused {
+    background: rgba(239,68,68,0.1);
+    color: #b91c1c;
+    border-color: rgba(239,68,68,0.3);
 }
 body.light-mode .setup-status-badge.stale {
     background: rgba(225,112,85,0.1);

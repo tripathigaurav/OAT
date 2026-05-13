@@ -783,11 +783,20 @@ function updateSetupStatus() {
     const scriptActive = localStorage.getItem('oatScriptActive');
 
     if (isSetupAlreadyDone()) {
-        badge.className = 'setup-status-badge active';
-        badge.innerHTML = '🤖 Auto-tracking active';
-        badge.title = getSetupStatusText();
-        badge.style.display = 'inline-flex';
-        badge.onclick = null;
+        if (settings.autoMarkEnabled === false) {
+            badge.className = 'setup-status-badge paused';
+            badge.innerHTML = '⏸️ Auto-tracking paused';
+            badge.title = 'Auto-marking is disabled. Enable it in ⚙️ Settings.';
+            badge.style.display = 'inline-flex';
+            badge.style.cursor = 'pointer';
+            badge.onclick = () => toggleSettings();
+        } else {
+            badge.className = 'setup-status-badge active';
+            badge.innerHTML = '🤖 Auto-tracking active';
+            badge.title = getSetupStatusText();
+            badge.style.display = 'inline-flex';
+            badge.onclick = null;
+        }
     } else if (onboarded === 'completed' && !scriptActive) {
         // User finished onboarding but script has never fired — silent failure
         badge.className = 'setup-status-badge stale';
