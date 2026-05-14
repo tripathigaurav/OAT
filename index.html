@@ -228,6 +228,10 @@
                 <span class="stat-value" id="remainingDays">39</span>
                 <span class="stat-label">days left</span>
             </div>
+            <div class="stat-card stat-card--blue" id="pillWorkingLeft">
+                <span class="stat-value" id="workingDaysLeft">—</span>
+                <span class="stat-label">work days left</span>
+            </div>
         </div>
         <div class="progress-container">
             <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
@@ -256,6 +260,25 @@
         <button class="reset-btn" onclick="resetAll()">🔄 Reset All</button>
     </div>
 
+    <!-- Credit card — home page -->
+    <div class="home-credit">
+        <div class="credit-card" id="creditCard">
+            <div class="credit-card-inner">
+                <div class="credit-glow"></div>
+                <div class="credit-scanline"></div>
+                <div class="credit-avatar">GT</div>
+                <div class="credit-text">
+                    <span class="credit-label">crafted by</span>
+                    <span class="credit-name">Gaurav Tripathi</span>
+                </div>
+                <div class="credit-badges">
+                    <span class="credit-badge">&#9679; v2.2</span>
+                    <span class="credit-badge">&#128187; NetApp</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Top-right action strip (legacy, now in header) -->
     <div class="topright-actions" style="display:none;">
         <span class="setup-status-badge" id="setupStatusBadge" style="display:none;"></span>
@@ -279,7 +302,7 @@
             <li>Backfill past office days from WiFi history (Windows)</li>
             <li>Work fully in manual mode if no admin rights</li>
         </ul>
-        <div class="developer-credit">Developed by <strong>Gaurav Tripathi</strong></div>
+        <div class="developer-credit" style="display:none;"></div>
     </div>
     <div class="settings-panel" id="settingsPanel" style="display:none;">
         <!-- Update Available card (shown when setup is stale) -->
@@ -338,6 +361,23 @@
         </div>
         <div class="setup-instructions">
             <h4>📋 Auto-Mark Setup</h4>
+
+            <!-- ── Diagnostic Panel ─────────────────────────── -->
+            <div class="diag-section">
+                <button class="diag-toggle-btn" onclick="toggleDiagnostic()">🔧 Diagnose Auto-Tracking</button>
+                <div class="diag-panel" id="diagPanel" style="display:none;">
+                    <div class="diag-status" id="diagStatus"></div>
+                    <div class="diag-reinstall">
+                        <p class="diag-label">⚡ One-line reinstall command — copy &amp; run in terminal:</p>
+                        <div class="diag-cmd-row" id="diagCmdRow">
+                            <code class="diag-cmd" id="diagCmd"></code>
+                            <button class="diag-copy-btn" onclick="copyDiagCmd()" id="diagCopyBtn">Copy</button>
+                        </div>
+                        <p class="diag-hint" id="diagHint"></p>
+                    </div>
+                </div>
+            </div>
+
             <p>To enable <strong>automatic attendance</strong> when you connect to office WiFi, pick your OS:</p>
 
             <div class="os-tabs">
@@ -346,7 +386,7 @@
             </div>
 
             <div class="os-content" id="os-mac">
-                <details class="setup-dropdown" open>
+                <details class="setup-dropdown">
                     <summary>Manual setup steps (Mac)</summary>
                     <ol>
                         <li>Download <a href="auto-attendance.sh" download>auto-attendance.sh</a> &amp; <a href="com.oat.wifiattendance.plist" download>LaunchAgent plist</a></li>
@@ -369,7 +409,7 @@
             </div>
 
             <div class="os-content" id="os-win" style="display:none;">
-                <details class="setup-dropdown" open>
+                <details class="setup-dropdown">
                     <summary>Manual setup steps (Windows)</summary>
                     <ol>
                         <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
@@ -400,7 +440,7 @@
                 </div>
             </details>
         </div>
-        <div class="settings-credit">Developed by <strong>Gaurav Tripathi</strong></div>
+
     </div>
 
     <script src="js/app.js"></script>

@@ -75,7 +75,8 @@ echo ""
 echo "  [4/5] Installing LaunchAgent..."
 mkdir -p "$LAUNCH_AGENTS"
 
-# Unload old one if exists
+# Unload old one if exists (both old and new API)
+launchctl bootout gui/$(id -u) "$LAUNCH_AGENTS/$PLIST_NAME" 2>/dev/null
 launchctl unload "$LAUNCH_AGENTS/$PLIST_NAME" 2>/dev/null
 
 # Update plist with correct path
@@ -83,9 +84,15 @@ launchctl unload "$LAUNCH_AGENTS/$PLIST_NAME" 2>/dev/null
 sed -i '' "s|<string>/.*auto-attendance.sh</string>|<string>$OAT_DIR/$SCRIPT_NAME</string>|g" "$OAT_DIR/$PLIST_NAME"
 
 cp "$OAT_DIR/$PLIST_NAME" "$LAUNCH_AGENTS/"
-launchctl load "$LAUNCH_AGENTS/$PLIST_NAME"
 
-if [ $? -eq 0 ]; then
+# macOS 13+ (Ventura/Sonoma/Sequoia): use bootstrap; fallback to load for older macOS
+LOAD_OK=false
+launchctl bootstrap gui/$(id -u) "$LAUNCH_AGENTS/$PLIST_NAME" 2>/dev/null && LOAD_OK=true
+if [ "$LOAD_OK" = false ]; then
+    launchctl load "$LAUNCH_AGENTS/$PLIST_NAME" 2>/dev/null && LOAD_OK=true
+fi
+
+if [ "$LOAD_OK" = true ]; then
     echo "        ✅ LaunchAgent installed and loaded"
 else
     echo "        ⚠️  LaunchAgent may need manual loading"
@@ -113,6 +120,10 @@ echo "  📡 WiFi trigger: 'corp' network (NetApp)"
 echo ""
 echo "  ✅ Your attendance will auto-mark every time"
 echo "     you connect to office WiFi. No action needed!"
+echo ""
+echo "  ⚠️  macOS 14/15 (Sonoma/Sequoia): If you see a"
+echo "     'Background Item Added' notification, click it"
+echo "     and Allow in System Settings → Login Items."
 echo ""
 echo "  🌐 Tracker: $GITHUB_BASE"
 echo "  ======================================================"

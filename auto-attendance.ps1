@@ -27,9 +27,20 @@ $TRACKER_BACKFILL_URL = "https://tripathigaurav.github.io/OAT/?backfill="
 $LOG_FILE = "$PSScriptRoot\auto-attendance.log"
 $LOCK_FILE = "$env:TEMP\oat-automark-$(Get-Date -Format 'yyyy-MM-dd').lock"
 
-# OAT Quarter Range
-$QUARTER_START = [DateTime]"2026-04-27"
-$QUARTER_END = [DateTime]"2026-07-31"
+# OAT Quarter Range — auto-calculated based on current date
+# NetApp quarters: Q1=Aug-Oct, Q2=Nov-Jan, Q3=Feb-Apr, Q4=May-Jul
+function Get-OATQuarter {
+    param([DateTime]$Date = (Get-Date))
+    $m = $Date.Month
+    if     ($m -ge 8  -and $m -le 10) { return @{ Start = [DateTime]"$($Date.Year)-08-01";  End = [DateTime]"$($Date.Year)-10-31" } }
+    elseif ($m -ge 11)                { return @{ Start = [DateTime]"$($Date.Year)-11-01";  End = [DateTime]"$($Date.Year + 1)-01-31" } }
+    elseif ($m -le 1)                 { return @{ Start = [DateTime]"$($Date.Year - 1)-11-01"; End = [DateTime]"$($Date.Year)-01-31" } }
+    elseif ($m -ge 2 -and $m -le 4)  { return @{ Start = [DateTime]"$($Date.Year)-02-01";  End = [DateTime]"$($Date.Year)-04-30" } }
+    else                              { return @{ Start = [DateTime]"$($Date.Year)-05-01";  End = [DateTime]"$($Date.Year)-07-31" } }
+}
+$quarter       = Get-OATQuarter
+$QUARTER_START = $quarter.Start
+$QUARTER_END   = $quarter.End
 
 # Holidays (won't be marked)
 $HOLIDAYS = @("2026-05-01", "2026-05-28")

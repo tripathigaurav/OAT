@@ -46,9 +46,8 @@
     justify-content: flex-end;
     min-width: 160px;
     position: fixed;
-    right: 24px;
-    top: 50%;
-    transform: translateY(-50%);
+    right: 20px;
+    top: 16px;
     z-index: 201;
 }
 .oat-brand-text .user-greeting {
@@ -85,7 +84,7 @@
 /* ── Stats pill ribbon ───────────────────────────────── */
 .stats-ribbon {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 8px;
     margin: 10px 0 0;
 }
@@ -137,11 +136,15 @@
 .stat-card--rose { border-color: rgba(255,99,99,0.15); }
 .stat-card--rose:hover { border-color: rgba(255,99,99,0.4); box-shadow: 0 0 20px rgba(255,99,99,0.1); }
 
+.stat-card--blue .stat-value { color: #82AAFF; }
+.stat-card--blue { border-color: rgba(130,170,255,0.15); }
+.stat-card--blue:hover { border-color: rgba(130,170,255,0.4); box-shadow: 0 0 20px rgba(130,170,255,0.1); }
+
 /* default (blue) hover */
 .stat-card:not([class*='--']):hover { border-color: rgba(130,170,255,0.4); box-shadow: 0 0 20px rgba(130,170,255,0.1); }
 
 @media (max-width: 480px) {
-    .stats-ribbon { grid-template-columns: repeat(2, 1fr); }
+    .stats-ribbon { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* ── Reset & base ─────────────────────────────────── */
@@ -1894,11 +1897,259 @@ body.light-mode .theme-btn:hover { background: rgba(0,0,0,0.12); }
     color: rgba(223, 230, 233, 0.78);
 }
 
-.settings-credit {
-    margin-top: 14px;
-    text-align: center;
-    font-size: 0.74rem;
-    color: rgba(223, 230, 233, 0.62);
+.home-credit {
+    margin: 24px auto 12px;
+    max-width: 380px;
+    perspective: 600px;
+}
+
+.credit-card {
+    position: relative;
+    border-radius: 14px;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.15s ease;
+}
+.credit-card:hover { transform: rotateY(4deg) rotateX(-3deg) scale(1.02); }
+.credit-card:active { transform: rotateY(8deg) rotateX(-5deg) scale(0.98); }
+
+.credit-card-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: linear-gradient(135deg,
+        rgba(199,146,234,0.12) 0%,
+        rgba(130,170,255,0.08) 40%,
+        rgba(127,219,202,0.12) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.07),
+        0 4px 24px rgba(130,170,255,0.1),
+        0 0 0 1px rgba(130,170,255,0.18);
+    overflow: hidden;
+}
+
+/* Animated rainbow border on hover */
+.credit-card-inner::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 16px;
+    background: linear-gradient(270deg, #c792ea, #82aaff, #7fdbca, #addb67, #ecc48d, #c792ea);
+    background-size: 300% 300%;
+    animation: creditBorderSpin 4s linear infinite;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.credit-card-inner::after {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, rgba(1,22,39,0.97) 0%, rgba(13,33,55,0.97) 100%);
+    z-index: 0;
+}
+.credit-card:hover .credit-card-inner::before { opacity: 1; }
+
+/* Holographic shimmer sweep */
+.credit-glow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg,
+        transparent 40%,
+        rgba(255,255,255,0.08) 50%,
+        transparent 60%);
+    background-size: 200% 100%;
+    animation: creditShimmer 3s ease-in-out infinite;
+    border-radius: 14px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* CRT scanline effect */
+.credit-scanline {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.06) 3px,
+        rgba(0,0,0,0.06) 4px
+    );
+    border-radius: 14px;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.credit-avatar {
+    position: relative;
+    z-index: 3;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #c792ea 0%, #82aaff 60%, #7fdbca 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #011627;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    box-shadow: 0 0 12px rgba(130,170,255,0.5), 0 0 24px rgba(199,146,234,0.3);
+    animation: creditAvatarPulse 3s ease-in-out infinite;
+}
+
+.credit-text {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 1px;
+}
+.credit-label {
+    font-size: 0.63rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #637777;
+}
+.credit-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #c792ea 0%, #82aaff 50%, #7fdbca 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: creditNameShift 5s ease-in-out infinite;
+}
+
+.credit-badges {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-end;
+}
+.credit-badge {
+    font-size: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(127,219,202,0.7);
+    background: rgba(127,219,202,0.08);
+    border: 1px solid rgba(127,219,202,0.2);
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+}
+
+@keyframes creditBorderSpin {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+}
+@keyframes creditShimmer {
+    0%   { background-position: -100% 0; }
+    60%  { background-position: 200% 0; }
+    100% { background-position: 200% 0; }
+}
+@keyframes creditAvatarPulse {
+    0%, 100% { box-shadow: 0 0 12px rgba(130,170,255,0.5), 0 0 24px rgba(199,146,234,0.3); }
+    50%       { box-shadow: 0 0 18px rgba(127,219,202,0.7), 0 0 32px rgba(130,170,255,0.4); }
+}
+@keyframes creditNameShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ── Diagnostic Panel ───────────────────────────────── */
+.diag-section {
+    margin-bottom: 14px;
+    border-bottom: 1px solid rgba(127,219,202,0.15);
+    padding-bottom: 12px;
+}
+.diag-toggle-btn {
+    width: 100%;
+    padding: 8px 14px;
+    background: rgba(127,219,202,0.1);
+    border: 1px solid rgba(127,219,202,0.3);
+    border-radius: 8px;
+    color: #7fdbca;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.diag-toggle-btn:hover { background: rgba(127,219,202,0.2); }
+.diag-panel {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.diag-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.diag-row {
+    display: grid;
+    grid-template-columns: 20px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.79rem;
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.03);
+}
+.diag-icon { text-align: center; }
+.diag-key  { color: #d6deeb; opacity: 0.75; }
+.diag-val  { font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; text-align: right; }
+.diag-reinstall { display: flex; flex-direction: column; gap: 5px; }
+.diag-label { font-size: 0.78rem; color: #d6deeb; opacity: 0.7; margin: 0; }
+.diag-cmd-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(127,219,202,0.25);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+.diag-cmd {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: #7fdbca;
+    word-break: break-all;
+    background: none;
+    border: none;
+    outline: none;
+    user-select: all;
+}
+.diag-copy-btn {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    background: rgba(127,219,202,0.15);
+    border: 1px solid rgba(127,219,202,0.4);
+    border-radius: 6px;
+    color: #7fdbca;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.diag-copy-btn:hover { background: rgba(127,219,202,0.28); }
+.diag-hint {
+    font-size: 0.73rem;
+    color: #637777;
+    margin: 0;
 }
 
 @keyframes slideUp {

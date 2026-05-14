@@ -408,6 +408,110 @@ function wipeOATBrowserData() {
     window.location.href = window.location.pathname + '?newuser=true';
 }
 
+// ── Diagnostic Panel ─────────────────────────────────────
+function toggleDiagnostic() {
+    const panel = document.getElementById('diagPanel');
+    if (!panel) return;
+    const open = panel.style.display === 'none';
+    panel.style.display = open ? 'block' : 'none';
+    if (open) renderDiagnostic();
+}
+
+function renderDiagnostic() {
+    const os = detectOS();
+    const scriptActive   = localStorage.getItem('oatScriptActive');
+    const scriptVer      = localStorage.getItem('oatScriptVersion');
+    const lastRun        = scriptActive ? new Date(scriptActive) : null;
+    const now            = new Date();
+    const daysSinceRun   = lastRun ? Math.floor((now - lastRun) / 86400000) : null;
+    const autoEnabled    = settings.autoMarkEnabled !== false;
+    const totalAutoMarks = Object.keys(autoMarkedDays).length;
+    const recentLog      = autoMarkLog.slice(0, 3);
+
+    // ── Status rows ──
+    const rows = [];
+
+    // OS
+    rows.push(diagRow(os === 'mac' ? '🍎' : os === 'windows' ? '🪟' : '💻',
+        'OS detected', os === 'mac' ? 'macOS' : os === 'windows' ? 'Windows' : os, 'ok'));
+
+    // Script ever ran
+    if (lastRun) {
+        const status = daysSinceRun === 0 ? 'ok' : daysSinceRun <= 3 ? 'warn' : 'err';
+        rows.push(diagRow('📡', 'Last script run',
+            daysSinceRun === 0 ? 'Today ✓' : `${daysSinceRun} day${daysSinceRun > 1 ? 's' : ''} ago`, status));
+    } else {
+        rows.push(diagRow('📡', 'Last script run', 'Never — script may not be installed', 'err'));
+    }
+
+    // Script version
+    if (scriptVer) {
+        const ok = scriptVer === REQUIRED_SCRIPT_VERSION;
+        rows.push(diagRow('🔢', 'Script version',
+            `v${scriptVer}${ok ? ' ✓ (current)' : ` ⚠ (need v${REQUIRED_SCRIPT_VERSION})`}`,
+            ok ? 'ok' : 'warn'));
+    } else {
+        rows.push(diagRow('🔢', 'Script version', 'Unknown — not recorded yet', 'warn'));
+    }
+
+    // Auto-mark enabled
+    rows.push(diagRow(autoEnabled ? '✅' : '⏸️', 'Auto-mark setting',
+        autoEnabled ? 'Enabled' : 'Paused (disabled in settings)', autoEnabled ? 'ok' : 'warn'));
+
+    // Total auto-marks this quarter
+    rows.push(diagRow('📅', 'Auto-marks this quarter', `${totalAutoMarks} day${totalAutoMarks !== 1 ? 's' : ''}`,
+        totalAutoMarks > 0 ? 'ok' : 'warn'));
+
+    // Recent log
+    if (recentLog.length > 0) {
+        rows.push(diagRow('📋', 'Recent activity', recentLog[0], 'ok'));
+    }
+
+    document.getElementById('diagStatus').innerHTML =
+        `<div class="diag-rows">${rows.join('')}</div>`;
+
+    // ── Reinstall command ──
+    const RAW = 'https://raw.githubusercontent.com/tripathigaurav/OAT/main';
+    let cmd = '', hint = '', openLabel = '';
+    if (os === 'mac') {
+        cmd = `bash <(curl -fsSL ${RAW}/install-mac.command)`;
+        hint = 'Run in Terminal (Spotlight → Terminal)';
+        openLabel = 'Open Terminal';
+    } else if (os === 'windows') {
+        cmd = `powershell -ExecutionPolicy Bypass -Command "irm ${RAW}/install-win.ps1 | iex"`;
+        hint = 'Run via Win+R → paste → Enter  (bypasses execution policy)';
+        openLabel = 'Open PowerShell';
+    } else {
+        cmd = `# Download install-mac.command or install-win.ps1 from the repo`;
+        hint = 'OS not detected — download the installer manually';
+    }
+
+    const cmdEl  = document.getElementById('diagCmd');
+    const hintEl = document.getElementById('diagHint');
+    if (cmdEl)  cmdEl.textContent  = cmd;
+    if (hintEl) hintEl.textContent = hint;
+
+    // Store for copy
+    window._diagCmd = cmd;
+}
+
+function diagRow(icon, label, value, status) {
+    const color = status === 'ok' ? '#ADDB67' : status === 'warn' ? '#ECC48D' : '#FF6363';
+    return `<div class="diag-row">
+        <span class="diag-icon">${icon}</span>
+        <span class="diag-key">${label}</span>
+        <span class="diag-val" style="color:${color}">${value}</span>
+    </div>`;
+}
+
+function copyDiagCmd() {
+    const cmd = window._diagCmd || document.getElementById('diagCmd').textContent;
+    navigator.clipboard.writeText(cmd).then(() => {
+        const btn = document.getElementById('diagCopyBtn');
+        if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 2000); }
+    });
+}
+
 function renderAutoMarkLog() {
     const logEl = document.getElementById('autoMarkLog');
     if (autoMarkLog.length === 0) {
@@ -603,6 +707,31 @@ function renderCalendars() {
     const pillTarget = document.getElementById('pillTarget');
     if (pillTarget) { const sv = pillTarget.querySelector('.stat-value'); if (sv) sv.textContent = TARGET(); }
 
+    // Working days left in quarter (today+1 → end, excluding weekends & holidays)
+    const wdLeftEl = document.getElementById('workingDaysLeft');
+    if (wdLeftEl) {
+        const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
+        const qStart = startDate();
+        const qEnd   = endDate();
+        // For future quarters start from quarter start; for current/past use today
+        const loopStart = todayMidnight < qStart ? new Date(qStart) : new Date(todayMidnight);
+        let wdLeft = 0;
+        if (todayMidnight <= qEnd) {
+            for (let d = new Date(loopStart); d <= qEnd; d.setDate(d.getDate() + 1)) {
+                const dow = d.getDay();
+                const ds  = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+                if (dow !== 0 && dow !== 6 && !isHoliday(ds)) wdLeft++;
+            }
+        }
+        wdLeftEl.textContent = wdLeft;
+        // Colour: red if ≤10, amber if ≤20, blue otherwise
+        const card = document.getElementById('pillWorkingLeft');
+        if (card) {
+            card.classList.remove('stat-card--rose', 'stat-card--amber', 'stat-card--blue');
+            card.classList.add(wdLeft <= 10 ? 'stat-card--rose' : wdLeft <= 20 ? 'stat-card--amber' : 'stat-card--blue');
+        }
+    }
+
     const progressBar = document.getElementById('progressBar');
     progressBar.style.width = percentage + '%';
     const progressLabel = document.getElementById('progressLabel');
@@ -752,6 +881,25 @@ function detectOS() {
     if (ua.includes('linux')) return 'linux';
     return 'unknown';
 }
+
+// ── Credit card 3D mouse tilt ────────────────────────────
+(function initCreditCard() {
+    function setup() {
+        const card = document.getElementById('creditCard');
+        if (!card) return;
+        card.addEventListener('mousemove', e => {
+            const r = card.getBoundingClientRect();
+            const x = (e.clientX - r.left) / r.width  - 0.5;  // -0.5 to 0.5
+            const y = (e.clientY - r.top)  / r.height - 0.5;
+            card.style.transform = `rotateY(${x * 18}deg) rotateX(${-y * 14}deg) scale(1.04)`;
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = '';
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+    else setup();
+})();
 
 function isSetupAlreadyDone() {
     // Check multiple signals that suggest the script is already installed
@@ -951,7 +1099,7 @@ function reopenUpdatePopup() {
 function updatePopupNow() {
     const os = detectOS();
     const cmd = os === 'windows'
-        ? 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex'
+        ? 'powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"'
         : 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash';
 
     navigator.clipboard.writeText(cmd).then(() => {
@@ -976,7 +1124,7 @@ function showPopupCopiedState(os) {
     const isMac = os !== 'windows';
     const cmd = isMac
         ? 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash'
-        : 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex';
+        : 'powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"';
 
     modal.innerHTML = `
         <div class="update-popup-icon">✅</div>
@@ -1060,7 +1208,7 @@ function dismissUpdateBanner() {
 function triggerAutoPatch() {
     const os = detectOS();
     const cmd = os === 'windows'
-        ? 'irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex'
+        ? 'powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"'
         : 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash';
 
     // Copy command to clipboard
@@ -1102,10 +1250,10 @@ function showPatchBannerState(state) {
         icon.textContent = '✅';
         title.textContent = 'Command copied to clipboard!';
         detail.innerHTML = `
-            <div class="patch-cmd-box"><code>irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code></div>
+            <div class="patch-cmd-box"><code>powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"</code></div>
             <div class="patch-instructions">
-                1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Win+X</span> → Terminal or Command Prompt<br>
-                2. Paste &nbsp;<span class="keys">Ctrl+V</span> → press <span class="keys">Enter</span>
+                1. Press <strong>Win+R</strong> → paste → press <span class="keys">Enter</span><br>
+                2. Or open <strong>PowerShell</strong> &nbsp;<span class="keys">Win+X</span> → paste → <span class="keys">Enter</span>
             </div>`;
         actions.innerHTML = '<button class="update-banner-btn primary" onclick="triggerAutoPatch()">📋 Copy Again</button><button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Later</button>';
         document.querySelector('.update-banner-content').classList.add('has-command');
