@@ -568,7 +568,7 @@ function renderCalendars() {
             daysHTML += `<div class="${cellClass}" ${clickHandler} ${tipAttr}>${day}</div>`;
         }
 
-        const slotColors = ['#a5b4fc', '#c084fc', '#2dd4bf', '#fcd34d'];
+        const slotColors = ['#82aaff', '#c792ea', '#7fdbca', '#ecc48d'];
         const mColor = slotColors[months.indexOf(m)] || '#a5b4fc';
         card.dataset.monthSlot = months.indexOf(m); // for CSS accent colours
         card.innerHTML = `
@@ -1554,7 +1554,7 @@ function launchConfettiCanvas() {
     canvas.height = window.innerHeight;
     canvas.style.display = 'block';
     const ctx = canvas.getContext('2d');
-    const colors = ['#f0abfc','#818cf8','#38bdf8','#34d399','#fcd34d','#fb7185'];
+    const colors = ['#c792ea','#82aaff','#7fdbca','#addb67','#ecc48d','#ff6363'];
     const pieces = Array.from({ length: 140 }, () => ({
         x: Math.random() * canvas.width,
         y: Math.random() * -canvas.height,

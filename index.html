@@ -12,11 +12,8 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Particle canvas -->
+    <!-- Code Rain canvas -->
     <canvas id="oat-particle-canvas"></canvas>
-    <!-- Ambient glow orbs -->
-    <div class="ambient-glow glow-indigo"></div>
-    <div class="ambient-glow glow-purple"></div>
 
     <!-- Sticky frosted header -->
     <header class="oat-header" id="oatHeader">
@@ -408,47 +405,202 @@
 
     <script src="js/app.js"></script>
     <script>
-    /* ── Particle background (ported from DINO Suite) ─────── */
+    /* ── Code Rain with Human Silhouette — Night Owl ─── */
     (function () {
       const canvas = document.getElementById('oat-particle-canvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
-      const N = 50;
-      const particles = [];
-      function resize() {
+
+      const CHARS  = 'SMTWTFS✓✗123456789▸▹○●◆◇⬡⬢→↓↑⇒⌘⌃⎋';
+      const COLORS = [
+        [127,219,202], [130,170,255], [199,146,234],
+        [173,219,103], [236,196,141], [255,99,99]
+      ];
+
+      let cols = [], silData = null, silW = 0, silH = 0;
+
+      function rnd(a, b) { return Math.random() * (b - a) + a; }
+      function rChar()   { return CHARS[Math.floor(Math.random() * CHARS.length)]; }
+      function rColor()  { return COLORS[Math.floor(Math.random() * COLORS.length)]; }
+
+      /* ── Build human silhouette on offscreen canvas ── */
+      function buildSilhouette() {
+        const s  = document.createElement('canvas');
+        s.width  = canvas.width;
+        s.height = canvas.height;
+        const sc = s.getContext('2d');
+
+        const cx  = s.width  / 2;
+        const H   = s.height * 0.68;
+        const top = (s.height - H) / 2 + s.height * 0.04;
+
+        sc.shadowColor = 'rgba(127,219,202,1)';
+        sc.shadowBlur  = 22;
+        sc.fillStyle   = 'rgba(200,240,235,0.9)';
+        sc.strokeStyle = 'rgba(200,240,235,0.9)';
+        sc.lineCap     = 'round';
+        sc.lineJoin    = 'round';
+
+        // Head
+        const hR  = H * 0.088;
+        const hCY = top + hR * 1.4;
+        sc.beginPath();
+        sc.arc(cx, hCY, hR, 0, Math.PI * 2);
+        sc.fill();
+
+        // Neck
+        sc.lineWidth = H * 0.034;
+        sc.beginPath();
+        sc.moveTo(cx, hCY + hR * 0.9);
+        sc.lineTo(cx, hCY + hR * 2.1);
+        sc.stroke();
+
+        // Torso (trapezoid)
+        const sY  = hCY + hR * 2.3;
+        const hiY = top + H * 0.58;
+        const sW  = H * 0.155;
+        const hiW = H * 0.095;
+        sc.beginPath();
+        sc.moveTo(cx - sW, sY);
+        sc.lineTo(cx + sW, sY);
+        sc.lineTo(cx + hiW, hiY);
+        sc.lineTo(cx - hiW, hiY);
+        sc.closePath();
+        sc.fill();
+
+        // Left arm (curved, hanging at side)
+        sc.lineWidth = H * 0.048;
+        sc.beginPath();
+        sc.moveTo(cx - sW, sY + H * 0.02);
+        sc.quadraticCurveTo(cx - sW * 2.5, sY + H * 0.17, cx - sW * 1.9, sY + H * 0.37);
+        sc.stroke();
+
+        // Right arm
+        sc.beginPath();
+        sc.moveTo(cx + sW, sY + H * 0.02);
+        sc.quadraticCurveTo(cx + sW * 2.5, sY + H * 0.17, cx + sW * 1.9, sY + H * 0.37);
+        sc.stroke();
+
+        // Left leg
+        sc.lineWidth = H * 0.052;
+        const kY = hiY + H * 0.21;
+        const fY = top + H;
+        sc.beginPath();
+        sc.moveTo(cx - hiW * 0.55, hiY);
+        sc.quadraticCurveTo(cx - hiW * 1.5, kY, cx - hiW * 1.15, fY);
+        sc.stroke();
+
+        // Right leg
+        sc.beginPath();
+        sc.moveTo(cx + hiW * 0.55, hiY);
+        sc.quadraticCurveTo(cx + hiW * 1.5, kY, cx + hiW * 1.15, fY);
+        sc.stroke();
+
+        silW = s.width; silH = s.height;
+        return sc.getImageData(0, 0, silW, silH).data;
+      }
+
+      /* Returns 0–1 strength of silhouette at pixel (x,y) */
+      function silStrength(x, y) {
+        if (!silData) return 0;
+        const ix = Math.round(x), iy = Math.round(y);
+        if (ix < 0 || iy < 0 || ix >= silW || iy >= silH) return 0;
+        return silData[(iy * silW + ix) * 4 + 3] / 255;
+      }
+
+      function makeCol(x, init) {
+        const c  = rColor();
+        const fs = Math.floor(rnd(10, 17));
+        return {
+          x, fs,
+          len:       Math.floor(rnd(4, 18)),
+          y:         init ? rnd(-canvas.height, canvas.height * 0.3) : rnd(-canvas.height * 0.8, -fs * 2),
+          speed:     rnd(0.08, 0.85),
+          r: c[0], g: c[1], b: c[2],
+          baseAlpha: rnd(0.03, 0.13),
+          flicker:   Math.random() < 0.15,
+          pause:     0,
+          bright:    Math.random() < 0.08
+        };
+      }
+
+      function setup() {
         canvas.width  = window.innerWidth;
         canvas.height = window.innerHeight;
-      }
-      resize();
-      window.addEventListener('resize', resize);
-      function Particle() { this.reset(); }
-      Particle.prototype.reset = function () {
-        this.x      = Math.random() * canvas.width;
-        this.y      = Math.random() * canvas.height;
-        this.vx     = (Math.random() - 0.5) * 0.3;
-        this.vy     = (Math.random() - 0.5) * 0.3;
-        this.radius = Math.random() * 1.5 + 0.5;
-        this.alpha  = Math.random() * 0.25 + 0.08;
-      };
-      Particle.prototype.update = function () {
-        this.x += this.vx;
-        this.y += this.vy;
-        if (this.x < 0 || this.x > canvas.width)  this.vx *= -1;
-        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
-      };
-      Particle.prototype.draw = function () {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(129,140,248,' + this.alpha + ')';
-        ctx.fill();
-      };
-      for (var i = 0; i < N; i++) particles.push(new Particle());
-      function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        particles.forEach(function(p) { p.update(); p.draw(); });
-        requestAnimationFrame(animate);
+        silData = buildSilhouette();
+        cols = [];
+        for (let x = 0; x < canvas.width; x += Math.floor(rnd(10, 18))) {
+          if (Math.random() > 0.25) cols.push(makeCol(x, true));
+        }
       }
-      animate();
+      setup();
+      window.addEventListener('resize', setup);
+
+      let frame = 0;
+      function tick() {
+        frame++;
+        ctx.fillStyle = 'rgba(1,22,39,0.07)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        cols.forEach(function (col) {
+          if (col.pause > 0) { col.pause--; return; }
+
+          const sil   = silStrength(col.x, col.y);
+          const boost = sil > 0.05 ? 1 + sil * 7 : 1;
+          const a     = col.flicker && frame % 3 === 0
+                          ? col.baseAlpha * rnd(0.3, 2.5)
+                          : col.baseAlpha;
+          const amp   = col.bright ? 6 : 4;
+
+          ctx.font = col.fs + 'px "JetBrains Mono",monospace';
+
+          // Trail
+          for (let t = 1; t <= col.len; t++) {
+            const ts   = silStrength(col.x, col.y - col.fs * t);
+            const tA   = a * (1 - t / col.len) * 0.7 * (ts > 0.05 ? 1 + ts * 5 : 1);
+            if (tA < 0.005) continue;
+            if (ts > 0.1) {
+              // Inside silhouette → warm teal-white glow
+              ctx.fillStyle = 'rgba('
+                + Math.round(col.r * (1-ts) + 210 * ts) + ','
+                + Math.round(col.g * (1-ts) + 240 * ts) + ','
+                + Math.round(col.b * (1-ts) + 230 * ts) + ','
+                + Math.min(tA, 0.85) + ')';
+            } else {
+              ctx.fillStyle = 'rgba(' + col.r + ',' + col.g + ',' + col.b + ',' + tA + ')';
+            }
+            ctx.fillText(rChar(), col.x, col.y - col.fs * t);
+          }
+
+          // Head glyph
+          const headA = Math.min(a * amp * boost, sil > 0.1 ? 0.95 : 0.5);
+          if (sil > 0.1) {
+            ctx.fillStyle = 'rgba(210,245,238,' + headA + ')';
+          } else {
+            ctx.fillStyle = 'rgba(' + col.r + ',' + col.g + ',' + col.b + ',' + headA + ')';
+          }
+          ctx.fillText(rChar(), col.x, col.y);
+
+          col.y += col.fs * col.speed;
+          if (Math.random() < 0.004) col.speed = rnd(0.08, 0.85);
+
+          if (col.y > canvas.height + col.fs * col.len) {
+            const c = rColor();
+            col.r = c[0]; col.g = c[1]; col.b = c[2];
+            col.y         = rnd(-canvas.height * 0.5, -col.fs * 2);
+            col.speed     = rnd(0.08, 0.85);
+            col.fs        = Math.floor(rnd(10, 17));
+            col.len       = Math.floor(rnd(4, 18));
+            col.baseAlpha = rnd(0.03, 0.13);
+            col.flicker   = Math.random() < 0.15;
+            col.bright    = Math.random() < 0.08;
+            col.pause     = Math.random() < 0.3 ? Math.floor(rnd(0, 120)) : 0;
+          }
+        });
+        requestAnimationFrame(tick);
+      }
+      tick();
     })();
     </script>
 </body>
