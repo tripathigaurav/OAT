@@ -1752,17 +1752,31 @@ body.light-mode .theme-btn {
 body.light-mode .theme-btn:hover { background: rgba(0,0,0,0.12); }
 
 
+.settings-btn-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
 .settings-update-dot {
     position: absolute;
-    top: 0;
-    right: 0;
-    width: 13px;
-    height: 13px;
-    background: #F78C6C;
-    border-radius: 50%;
-    border: 2px solid #0f0f1a;
+    top: -4px;
+    right: -4px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    background: #ff6363;
+    border-radius: 99px;
+    border: 2px solid #011627;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     animation: dotPulse 1.5s ease-in-out infinite;
     pointer-events: none;
+    font-family: 'Inter', sans-serif;
+    line-height: 1;
 }
 
 @keyframes dotPulse {

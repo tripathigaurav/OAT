@@ -19,7 +19,7 @@
 # ============================================================
 
 # --- Configuration ---
-$SCRIPT_VERSION = "2.2"
+$SCRIPT_VERSION = "2.3"
 $OFFICE_WIFI = "corp"
 $OFFICE_DNS_DOMAIN = "wlan.netapp.com"
 $TRACKER_URL = "https://tripathigaurav.github.io/OAT/?automark=true&scriptver=$SCRIPT_VERSION"
@@ -53,25 +53,47 @@ function Write-Log {
 }
 
 function Get-WiFiSSID {
+    # Method 1: netsh wlan show interfaces (works for WiFi connections)
     try {
         $output = netsh wlan show interfaces | Select-String "^\s+SSID\s+:" | Select-Object -First 1
         if ($output) {
-            return ($output -replace '^\s+SSID\s+:\s+', '').Trim()
+            $ssid = ($output -replace '^\s+SSID\s+:\s+', '').Trim()
+            if ($ssid) { return $ssid }
         }
     } catch {}
     return ""
 }
 
 function Get-DNSDomains {
+    $found = @()
+
+    # Method 1: Per-adapter DNS suffix (most reliable for corporate DHCP)
     try {
-        $adapters = Get-DnsClientGlobalSetting
-        return $adapters.SuffixSearchList
+        $adapters = Get-WmiObject Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" -ErrorAction Stop
+        foreach ($a in $adapters) {
+            if ($a.DNSDomain)          { $found += $a.DNSDomain }
+            if ($a.DNSDomainSuffixSearchOrder) { $found += $a.DNSDomainSuffixSearchOrder }
+        }
     } catch {}
+
+    # Method 2: Global DNS suffix search list
     try {
-        $output = ipconfig /all | Select-String "DNS Suffix Search List|Connection-specific DNS Suffix"
-        return ($output -replace '.*:\s+', '').Trim()
+        $global = Get-DnsClientGlobalSetting -ErrorAction Stop
+        if ($global.SuffixSearchList) { $found += $global.SuffixSearchList }
     } catch {}
-    return @()
+
+    # Method 3: ipconfig /all — catches anything missed above
+    try {
+        $lines = ipconfig /all 2>$null
+        foreach ($line in $lines) {
+            if ($line -match '(DNS Suffix Search List|Connection-specific DNS Suffix)\s*[:.]+\s*(.+)') {
+                $val = $matches[2].Trim()
+                if ($val) { $found += $val }
+            }
+        }
+    } catch {}
+
+    return $found | Where-Object { $_ } | Select-Object -Unique
 }
 
 # --- Backfill Functions ---
@@ -244,13 +266,13 @@ if ($ssidMatch -and $dnsMatch) {
     Write-Log "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?). Skipping."
     exit 0
 } elseif ($dnsMatch -and -not $ssidMatch) {
-    Write-Log "NetApp DNS found but SSID '$currentWifi' != 'corp' (VPN from home?). Skipping."
-    exit 0
-} elseif (-not $currentWifi) {
-    # SSID undetectable (wired/ethernet) — DNS alone is sufficient
-    if ($dnsMatch) {
+    # SSID empty = WiFi adapter off, ethernet, or corporate GPO hides SSID — trust DNS alone
+    if (-not $currentWifi) {
         $onOfficeNet = $true
-        $detectedVia = "DNS domain ($OFFICE_DNS_DOMAIN) — WiFi SSID undetectable (wired?)"
+        $detectedVia = "DNS domain ($OFFICE_DNS_DOMAIN) — WiFi SSID undetectable (ethernet/adapter off?)"
+    } else {
+        Write-Log "NetApp DNS found but SSID '$currentWifi' != 'corp' (VPN from home?). Skipping."
+        exit 0
     }
 }
 

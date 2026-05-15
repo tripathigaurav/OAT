@@ -1,5 +1,5 @@
 // Configuration
-const REQUIRED_SCRIPT_VERSION = '2.2'; // Bump this to force update prompts
+const REQUIRED_SCRIPT_VERSION = '2.3'; // Bump this to force update prompts
 
 // ── Quarter definitions ───────────────────────────────────────────
 const QUARTERS = {

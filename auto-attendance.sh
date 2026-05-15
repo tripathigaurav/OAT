@@ -14,7 +14,7 @@
 # ============================================================
 
 # --- Configuration ---
-SCRIPT_VERSION="2.2"
+SCRIPT_VERSION="2.3"
 OFFICE_WIFI="corp"
 OFFICE_DNS_DOMAIN="wlan.netapp.com"
 TRACKER_URL="https://tripathigaurav.github.io/OAT/?automark=true&scriptver=$SCRIPT_VERSION"
@@ -43,17 +43,38 @@ get_wifi_ssid() {
         ssid=$(system_profiler SPAirPortDataType 2>/dev/null | awk '/Current Network Information:/{getline; gsub(/^[[:space:]]+|:$/,""); print; exit}')
     fi
 
-    # Method 3: Try airport command
+    # Method 3: Try airport command (removed on macOS 15 but safe to attempt)
     if [ -z "$ssid" ] || [ "$ssid" = "<redacted>" ]; then
         ssid=$(/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -I 2>/dev/null | awk -F': ' '/ SSID/{print $2}')
     fi
 
-    # Method 4: Fallback to networksetup
+    # Method 4: networksetup — try all common WiFi interfaces (en0, en1, en2)
     if [ -z "$ssid" ] || [ "$ssid" = "<redacted>" ]; then
-        ssid=$(networksetup -getairportnetwork en0 2>/dev/null | awk -F': ' '{print $2}')
+        for iface in en0 en1 en2 en3; do
+            local raw
+            raw=$(networksetup -getairportnetwork "$iface" 2>/dev/null)
+            # Output is "Current Wi-Fi Network: <ssid>" — strip the prefix
+            local candidate
+            candidate=$(echo "$raw" | sed 's/^Current Wi-Fi Network: //')
+            if [ -n "$candidate" ] && [ "$candidate" != "$raw" ] && [ "$candidate" != "<redacted>" ]; then
+                ssid="$candidate"
+                break
+            fi
+        done
     fi
 
     echo "$ssid"
+}
+
+# Log rotation — keep last 500 lines to prevent unbounded growth
+trim_log() {
+    if [ -f "$LOG_FILE" ]; then
+        local lines
+        lines=$(wc -l < "$LOG_FILE")
+        if [ "$lines" -gt 500 ]; then
+            tail -400 "$LOG_FILE" > "${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "$LOG_FILE"
+        fi
+    fi
 }
 
 # --- Main Logic ---
@@ -88,13 +109,13 @@ elif [ "$SSID_MATCH" = true ] && [ "$DNS_MATCH" = false ]; then
     log_msg "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?). Skipping."
     exit 0
 elif [ "$DNS_MATCH" = true ] && [ "$SSID_MATCH" = false ]; then
-    log_msg "NetApp DNS found but SSID '$CURRENT_WIFI' != 'corp' (VPN from home?). Skipping."
-    exit 0
-elif [ -z "$CURRENT_WIFI" ] || [ "$CURRENT_WIFI" = "<redacted>" ]; then
-    # SSID undetectable (wired/ethernet) — DNS alone is sufficient
-    if [ "$DNS_MATCH" = true ]; then
+    # SSID empty/undetectable = macOS Location Services blocked — trust DNS alone
+    if [ -z "$CURRENT_WIFI" ] || [ "$CURRENT_WIFI" = "<redacted>" ]; then
         ON_OFFICE_NET=true
-        DETECTED_VIA="DNS domain ($OFFICE_DNS_DOMAIN) — WiFi SSID undetectable (wired?)"
+        DETECTED_VIA="DNS domain ($OFFICE_DNS_DOMAIN) — WiFi SSID undetectable (location permission denied)"
+    else
+        log_msg "NetApp DNS found but SSID '$CURRENT_WIFI' != 'corp' (VPN from home?). Skipping."
+        exit 0
     fi
 fi
 
@@ -151,5 +172,8 @@ log_msg "✅ Opened attendance tracker with auto-mark. Done!"
 
 # Clean up old lock files (older than 2 days)
 find /tmp -name "oat-automark-*.lock" -mtime +2 -delete 2>/dev/null
+
+# Rotate log file (keep last 400 lines)
+trim_log
 
 exit 0
