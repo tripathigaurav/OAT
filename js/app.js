@@ -543,10 +543,12 @@ function toggleDay(dateStr) {
             showNotification('🔒 This day was auto-marked via office WiFi and cannot be removed.', 'info');
             return;
         }
-        // Unchecking manual mark — remove directly, show undo notification
+        // Unchecking manual mark — ask confirmation
+        if (!confirm(`Remove office attendance for ${dateStr}?`)) return;
         delete checkedDays[dateStr];
     } else {
-        // Mark directly — no confirm needed
+        // Mark with confirmation
+        if (!confirm(`Mark ${dateStr} as an office day?`)) return;
         checkedDays[dateStr] = true;
     }
     localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
@@ -836,6 +838,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show user greeting if name is saved
     showUserGreeting();
+
+    // Tooltip edge detection — prevent clipping at calendar left/right edges
+    document.addEventListener('mouseover', function(e) {
+        const cell = e.target.closest('.day-cell[data-tip]');
+        if (!cell) return;
+        cell.classList.remove('tip-left', 'tip-right');
+        const rect = cell.getBoundingClientRect();
+        const tipEstWidth = 220;
+        if (rect.left - tipEstWidth / 2 < 8) {
+            cell.classList.add('tip-left');
+        } else if (rect.right + tipEstWidth / 2 > window.innerWidth - 8) {
+            cell.classList.add('tip-right');
+        }
+    });
 });
 
 // OS tab switching in settings

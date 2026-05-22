@@ -1528,6 +1528,28 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* Edge-aware tooltip: left-edge cells */
+.day-cell[data-tip].tip-left:hover::before {
+    left: 0;
+    transform: none;
+}
+.day-cell[data-tip].tip-left:hover::after {
+    left: 12px;
+    transform: none;
+}
+
+/* Edge-aware tooltip: right-edge cells */
+.day-cell[data-tip].tip-right:hover::before {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+.day-cell[data-tip].tip-right:hover::after {
+    left: auto;
+    right: 12px;
+    transform: none;
+}
+
 .month-summary {
     margin-top: 10px;
     padding: 8px 10px;
