@@ -107,7 +107,7 @@ function qKey(base) { return `${base}_${currentQKey}`; }
 let checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || '{}');
 let autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
 const OFFICE_WIFI_SSID = 'corp'; // Fixed — NetApp office WiFi
-let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"autoMarkEnabled":true}');
+let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"autoMarkEnabled":true,"allowWeekendMark":false}');
 settings.wifiSSID = OFFICE_WIFI_SSID; // Always enforce corp, regardless of saved value
 let autoMarkLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
 
@@ -137,9 +137,9 @@ function getTodayStr() {
 function isTodayWorkday() {
     const today = new Date();
     const todayStr = getTodayStr();
-    const dayOfWeek = today.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    return isInRange(today) && !isWeekend && !isHoliday(todayStr);
+    // Weekends are valid for auto-mark (WiFi detected = always register)
+    // The allowWeekendMark toggle only controls manual calendar clicks
+    return isInRange(today) && !isHoliday(todayStr);
 }
 
 // ---- Quarter Switcher ────────────────────────────────────────────
@@ -290,6 +290,7 @@ function toggleInfoMini() {
 
 function loadSettingsUI() {
     document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
+    document.getElementById('allowWeekendMark').checked = settings.allowWeekendMark === true;
 
     // Show "Run WiFi Check Now" only for Windows users
     const os = detectOS();
@@ -335,7 +336,9 @@ function loadSettingsUI() {
 function saveSettings() {
     settings.wifiSSID = OFFICE_WIFI_SSID; // Always corp
     settings.autoMarkEnabled = document.getElementById('autoMarkEnabled').checked;
+    settings.allowWeekendMark = document.getElementById('allowWeekendMark').checked;
     localStorage.setItem('oatSettings', JSON.stringify(settings));
+    renderCalendars();
     showNotification('⚙️ Settings saved!', 'success');
 }
 
@@ -537,6 +540,12 @@ function toggleDay(dateStr) {
         showNotification('⛔ Cannot mark future dates. Come back on that day!', 'info');
         return;
     }
+    // Block weekends unless setting is enabled
+    const dow = clickedDate.getDay();
+    if ((dow === 0 || dow === 6) && !settings.allowWeekendMark) {
+        showNotification('⛔ Weekend marking is disabled. Enable it in ⚙️ Settings.', 'info');
+        return;
+    }
     if (checkedDays[dateStr]) {
         // Auto-marked days are locked — WiFi-verified, can't undo
         if (autoMarkedDays[dateStr]) {
@@ -625,8 +634,16 @@ function renderCalendars() {
                 monthHolidays++;
             } else if (isSaturday) {
                 cellClass += ' saturday';
+                if (inRange && checked) {
+                    cellClass += autoMarkedDays[dateStr] ? ' auto-checked' : ' checked';
+                    monthOfficeDays++; totalOfficeDays++;
+                }
             } else if (isSunday) {
                 cellClass += ' sunday';
+                if (inRange && checked) {
+                    cellClass += autoMarkedDays[dateStr] ? ' auto-checked' : ' checked';
+                    monthOfficeDays++; totalOfficeDays++;
+                }
             } else {
                 cellClass += ' weekday';
                 // Future dates get a dimmed style
@@ -655,7 +672,14 @@ function renderCalendars() {
             if (holiday) {
                 tooltip = `🎉 ${getHolidayName(dateStr)}`;
             } else if (isSaturday || isSunday) {
-                tooltip = 'Weekend';
+                if (checked) {
+                    tooltip = autoMarkedDays[dateStr] ? '🔒 Auto-marked (WiFi verified)' : '✅ Weekend office day (click to remove)';
+                } else if (settings.allowWeekendMark && inRange) {
+                    const _tdn = new Date(); _tdn.setHours(0,0,0,0);
+                    tooltip = date > _tdn ? 'Future date' : 'Weekend — click to mark';
+                } else {
+                    tooltip = 'Weekend';
+                }
             } else if (inRange) {
                 const today2 = new Date();
                 today2.setHours(0, 0, 0, 0);
@@ -668,7 +692,7 @@ function renderCalendars() {
                 }
             }
 
-            const clickHandler = (!inRange || holiday || isWeekend) ? '' : `onclick="toggleDay('${dateStr}')"`;
+            const clickHandler = (!inRange || holiday || (isWeekend && !settings.allowWeekendMark)) ? '' : `onclick="toggleDay('${dateStr}')"`;
             const tipAttr = tooltip ? `data-tip="${tooltip}"` : '';
 
             daysHTML += `<div class="${cellClass}" ${clickHandler} ${tipAttr}>${day}</div>`;

@@ -298,15 +298,19 @@
     <div class="info-mini-panel" id="infoMiniPanel" style="display:none;">
         <h4>What OAT can do</h4>
         <ul>
-            <li>Track office attendance across Apr–Jul 2026</li>
+            <li>Track office attendance across Q1–Q4 2026–27</li>
             <li>Auto-mark on office WiFi (<strong>corp</strong> + NetApp DNS)</li>
+            <li>Mark / unmark days manually on the calendar (with confirmation)</li>
+            <li>Allow marking attendance on weekends <em>(opt-in via ⚙️ Settings)</em></li>
             <li>Run manual WiFi check for today (Windows)</li>
             <li>Backfill past office days from WiFi history (Windows)</li>
             <li>Work fully in manual mode if no admin rights</li>
+            <li>Switch between quarters &amp; track progress per quarter</li>
         </ul>
         <div class="developer-credit" style="display:none;"></div>
     </div>
     <div class="settings-panel" id="settingsPanel" style="display:none;">
+      <div class="settings-panel-scroll">
         <!-- Update Available card (shown when setup is stale) -->
         <div class="settings-update-card" id="settingsUpdateCard" style="display:none;">
             <span>🔄 Update available for auto-tracking</span>
@@ -339,6 +343,17 @@
                 Enable Auto-Mark on WiFi Connect <span id="autoMarkModeHint" style="opacity:0.65;font-size:0.85rem;"></span>
             </label>
         </div>
+        <div class="settings-group">
+            <label>
+                <input type="checkbox" id="allowWeekendMark" />
+                Allow marking attendance on weekends
+                <span style="opacity:0.55;font-size:0.8rem;display:block;margin-top:2px;padding-left:20px;">Off by default — enable if you visited office on Sat/Sun</span>
+            </label>
+        </div>
+        <div class="settings-actions" style="margin-bottom:12px;">
+            <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
+            <button class="close-settings-btn" onclick="toggleSettings()">Close</button>
+        </div>
         <p class="manual-mode-note" id="manualModeNote" style="display:none;font-size:0.78rem;color:#74b9ff;margin:8px 0;padding:8px;background:rgba(116,185,255,0.08);border-radius:4px;">💡 <strong>Manual Mode:</strong> Scheduled task not installed (no admin). Use the buttons above to check and backfill, or re-run installer as admin.</p>
         <div class="settings-group">
             <label>
@@ -347,10 +362,6 @@
                 <button class="clear-log-btn" onclick="clearAutoMarkLog()" title="Clear activity log">🗑 Clear Log</button>
             </label>
             <div class="auto-mark-log" id="autoMarkLog" style="display:none;">No auto-marks yet.</div>
-        </div>
-        <div class="settings-actions">
-            <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
-            <button class="close-settings-btn" onclick="toggleSettings()">Close</button>
         </div>
         <div class="manual-mode-guide" id="manualModeGuide" style="display:none;margin-top:16px;padding:12px;background:rgba(116,185,255,0.05);border-left:3px solid #74b9ff;border-radius:4px;font-size:0.75rem;line-height:1.5;">
             <p style="margin:0 0 8px 0;font-weight:600;color:#74b9ff;">📖 Manual Mode Workflow:</p>
@@ -442,7 +453,7 @@
                 </div>
             </details>
         </div>
-
+      </div><!-- /.settings-panel-scroll -->
     </div>
 
     <script src="js/app.js"></script>
