@@ -2,4 +2,5 @@
 auto-attendance.log
 /tmp/
 *.lock
+*.bak
 .env

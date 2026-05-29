@@ -106,6 +106,7 @@ function qKey(base) { return `${base}_${currentQKey}`; }
 // State
 let checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || '{}');
 let autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
+let leaveDays      = JSON.parse(localStorage.getItem(qKey('leaveDays'))     || '{}');
 const OFFICE_WIFI_SSID = 'corp'; // Fixed — NetApp office WiFi
 let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"autoMarkEnabled":true,"allowWeekendMark":false}');
 settings.wifiSSID = OFFICE_WIFI_SSID; // Always enforce corp, regardless of saved value
@@ -149,6 +150,7 @@ function switchQuarter(key) {
     localStorage.setItem('oatCurrentQuarter', key);
     checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || '{}');
     autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
+    leaveDays      = JSON.parse(localStorage.getItem(qKey('leaveDays'))     || '{}');
     updateQuarterBadge();
     closeQuarterDropdown();
     renderCalendars();
@@ -204,6 +206,11 @@ function autoMarkToday() {
     // Mark today
     checkedDays[todayStr] = true;
     autoMarkedDays[todayStr] = true;
+    // Attendance overrides leave
+    if (leaveDays[todayStr]) {
+        delete leaveDays[todayStr];
+        saveLeaveDays();
+    }
     localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
     localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
 
@@ -257,6 +264,10 @@ function rescanToday() {
     // Mark today
     checkedDays[todayStr] = true;
     autoMarkedDays[todayStr] = wifiConfirmedToday;
+    if (leaveDays[todayStr]) {
+        delete leaveDays[todayStr];
+        saveLeaveDays();
+    }
     localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
     localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
     const source = wifiConfirmedToday ? 'WiFi confirmed' : 'Manual override (no WiFi)';
@@ -396,6 +407,10 @@ function wipeOATBrowserData() {
 
     localStorage.removeItem('officeDays');
     localStorage.removeItem('autoMarkedDays');
+    // Remove quarter-scoped leave keys
+    Object.keys(QUARTERS).forEach(qk => {
+        localStorage.removeItem('leaveDays_' + qk);
+    });
     localStorage.removeItem('oatSettings');
     localStorage.removeItem('autoMarkLog');
     localStorage.removeItem('oatOnboarded');
@@ -546,17 +561,23 @@ function toggleDay(dateStr) {
         showNotification('⛔ Weekend marking is disabled. Enable it in ⚙️ Settings.', 'info');
         return;
     }
+    // If day is on leave, first ask to remove leave (don't auto-mark attendance)
+    if (leaveDays[dateStr] && !checkedDays[dateStr]) {
+        if (!confirm(`🌴 This day is marked as leave. Remove leave for ${dateStr}?`)) return;
+        delete leaveDays[dateStr];
+        saveLeaveDays();
+        renderCalendars();
+        showNotification(`Removed leave for ${dateStr}. Click again to mark attendance.`, 'info');
+        return;
+    }
     if (checkedDays[dateStr]) {
-        // Auto-marked days are locked — WiFi-verified, can't undo
         if (autoMarkedDays[dateStr]) {
             showNotification('🔒 This day was auto-marked via office WiFi and cannot be removed.', 'info');
             return;
         }
-        // Unchecking manual mark — ask confirmation
         if (!confirm(`Remove office attendance for ${dateStr}?`)) return;
         delete checkedDays[dateStr];
     } else {
-        // Mark with confirmation
         if (!confirm(`Mark ${dateStr} as an office day?`)) return;
         checkedDays[dateStr] = true;
     }
@@ -569,20 +590,23 @@ function toggleDay(dateStr) {
 function resetAll() {
     const autoCount = Object.keys(autoMarkedDays).length;
     const manualCount = Object.keys(checkedDays).length - autoCount;
-    if (manualCount === 0) {
+    const leaveCount = Object.keys(leaveDays).length;
+    if (manualCount === 0 && leaveCount === 0) {
         showNotification('Nothing to reset — all marked days are WiFi auto-marks (locked).', 'info');
         return;
     }
-    if (confirm(`Reset ${manualCount} manually marked day(s)?\n\n${autoCount} auto-marked day(s) will be preserved (WiFi-verified).`)) {
-        // Keep only auto-marked days
+    const extra = leaveCount > 0 ? `\n${leaveCount} leave day(s) will also be cleared.` : '';
+    if (confirm(`Reset ${manualCount} manually marked day(s)?${extra}\n\n${autoCount} auto-marked day(s) will be preserved (WiFi-verified).`)) {
         const preserved = {};
         for (const dateStr of Object.keys(autoMarkedDays)) {
             preserved[dateStr] = true;
         }
         checkedDays = preserved;
+        leaveDays = {};
         localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
+        saveLeaveDays();
         renderCalendars();
-        showNotification(`🔄 Reset ${manualCount} manual mark(s). ${autoCount} auto-mark(s) preserved.`, 'success');
+        showNotification(`🔄 Reset ${manualCount} manual mark(s)${leaveCount > 0 ? ` + ${leaveCount} leave(s)` : ''}. ${autoCount} auto-mark(s) preserved.`, 'success');
     }
 }
 
@@ -594,6 +618,7 @@ function renderCalendars() {
     const months = getMonthsForQuarter(getQ());
     let totalWorkDays = 0;
     let totalOfficeDays = 0;
+    let totalLeaveDays = 0;
 
     months.forEach(m => {
         const card = document.createElement('div');
@@ -607,6 +632,7 @@ function renderCalendars() {
         let monthWorkDays = 0;
         let monthOfficeDays = 0;
         let monthHolidays = 0;
+        let monthLeaveDays = 0;
 
         let daysHTML = '';
 
@@ -624,6 +650,7 @@ function renderCalendars() {
             const isSunday = dayOfWeek === 0;
             const isWeekend = isSaturday || isSunday;
             const checked = checkedDays[dateStr];
+            const onLeave = leaveDays[dateStr] && !checked;
 
             let cellClass = 'day-cell';
 
@@ -646,7 +673,6 @@ function renderCalendars() {
                 }
             } else {
                 cellClass += ' weekday';
-                // Future dates get a dimmed style
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 if (date > today) {
@@ -664,6 +690,10 @@ function renderCalendars() {
                     }
                     monthOfficeDays++;
                     totalOfficeDays++;
+                } else if (onLeave) {
+                    cellClass += ' leave';
+                    monthLeaveDays++;
+                    totalLeaveDays++;
                 }
             }
 
@@ -684,9 +714,11 @@ function renderCalendars() {
                 const today2 = new Date();
                 today2.setHours(0, 0, 0, 0);
                 if (date > today2) {
-                    tooltip = 'Future date';
+                    tooltip = onLeave ? '🌴 Leave/PTO (planned)' : 'Future date';
                 } else if (checked) {
                     tooltip = autoMarkedDays[dateStr] ? '🔒 Auto-marked (WiFi verified)' : '✅ Office day (click to remove)';
+                } else if (onLeave) {
+                    tooltip = '🌴 Leave/PTO';
                 } else {
                     tooltip = 'Workday (not marked)';
                 }
@@ -700,7 +732,10 @@ function renderCalendars() {
 
         const slotColors = ['#82aaff', '#c792ea', '#7fdbca', '#ecc48d'];
         const mColor = slotColors[months.indexOf(m)] || '#a5b4fc';
-        card.dataset.monthSlot = months.indexOf(m); // for CSS accent colours
+        card.dataset.monthSlot = months.indexOf(m);
+        const leaveHTML = monthLeaveDays > 0
+            ? `<div style="color:#ecc48d">🌴 Leaves: <strong style="font-family:'JetBrains Mono',monospace">${monthLeaveDays}</strong></div>`
+            : '';
         card.innerHTML = `
             <div class="month-title">${m.name}</div>
             <div class="day-headers">
@@ -714,6 +749,7 @@ function renderCalendars() {
             <div class="month-summary">
                 <div>📊 Working Days: <strong style="font-family:'JetBrains Mono',monospace;color:${mColor}">${monthWorkDays}</strong></div>
                 <div style="color:#00b894">✅ Office: <strong style="font-family:'JetBrains Mono',monospace">${monthOfficeDays}</strong></div>
+                ${leaveHTML}
                 <div class="${monthHolidays > 0 ? 'summary-holidays' : 'summary-holidays summary-holidays--none'}">🎉 Holidays: <strong style="font-family:'JetBrains Mono',monospace">${monthHolidays > 0 ? monthHolidays : '—'}</strong></div>
             </div>
         `;
@@ -729,24 +765,25 @@ function renderCalendars() {
     ['totalWorkDays', 'totalWorkDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = totalWorkDays; });
     ['totalOfficeDays', 'totalOfficeDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = totalOfficeDays; });
     ['remainingDays', 'remainingDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = remaining; });
+    const leaveEl = document.getElementById('totalLeaveDays');
+    if (leaveEl) leaveEl.textContent = totalLeaveDays;
     // Update target pill
     const pillTarget = document.getElementById('pillTarget');
     if (pillTarget) { const sv = pillTarget.querySelector('.stat-value'); if (sv) sv.textContent = TARGET(); }
 
-    // Working days left in quarter (today+1 → end, excluding weekends & holidays)
+    // Working days left in quarter (today+1 → end, excluding weekends, holidays & leaves)
     const wdLeftEl = document.getElementById('workingDaysLeft');
     if (wdLeftEl) {
         const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
         const qStart = startDate();
         const qEnd   = endDate();
-        // For future quarters start from quarter start; for current/past use today
         const loopStart = todayMidnight < qStart ? new Date(qStart) : new Date(todayMidnight);
         let wdLeft = 0;
         if (todayMidnight <= qEnd) {
             for (let d = new Date(loopStart); d <= qEnd; d.setDate(d.getDate() + 1)) {
                 const dow = d.getDay();
                 const ds  = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
-                if (dow !== 0 && dow !== 6 && !isHoliday(ds)) wdLeft++;
+                if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds]) wdLeft++;
             }
         }
         wdLeftEl.textContent = wdLeft;
@@ -799,6 +836,229 @@ function renderFlipCounter(el, newVal, label, subtext, color) {
             </div>
         </div>`;
 }
+
+// ── Leave / PTO Manager ──────────────────────────────────────────
+let _leaveSelection = new Set();
+let _leaveShiftAnchor = null;
+
+function toggleLeavePanel() {
+    const overlay = document.getElementById('leaveOverlay');
+    const infoPanel = document.getElementById('infoMiniPanel');
+    const settingsPanel = document.getElementById('settingsPanel');
+    if (infoPanel) infoPanel.style.display = 'none';
+    if (settingsPanel) settingsPanel.style.display = 'none';
+
+    const isOpen = overlay.style.display === 'flex';
+    overlay.style.display = isOpen ? 'none' : 'flex';
+    if (!isOpen) {
+        _leaveSelection.clear();
+        _leaveShiftAnchor = null;
+        renderLeaveCalendar();
+    }
+}
+
+function renderLeaveCalendar() {
+    const container = document.getElementById('leaveMonths');
+    const q = getQ();
+    container.innerHTML = '';
+
+    document.getElementById('leaveQuarterLabel').textContent = q.display;
+
+    const months = getMonthsForQuarter(q);
+    months.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'leave-month-card';
+
+        const daysInMonth = new Date(m.year, m.month + 1, 0).getDate();
+        const firstDay = new Date(m.year, m.month, 1).getDay();
+        const startDay = firstDay === 0 ? 6 : firstDay - 1;
+
+        let daysHTML = '';
+        for (let i = 0; i < startDay; i++) {
+            daysHTML += '<div class="leave-day leave-day--empty"></div>';
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(m.year, m.month, day);
+            const dateStr = formatDate(m.year, m.month, day);
+            const dayOfWeek = date.getDay();
+            const inRange = isInRange(date);
+            const holiday = isHoliday(dateStr);
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const hasLeave = leaveDays[dateStr];
+            const hasOffice = checkedDays[dateStr];
+            const isSelected = _leaveSelection.has(dateStr);
+
+            let cls = 'leave-day';
+            let clickable = true;
+            let tooltip = '';
+
+            if (!inRange) {
+                cls += ' leave-day--disabled';
+                clickable = false;
+            } else if (holiday) {
+                cls += ' leave-day--holiday leave-day--disabled';
+                clickable = false;
+                tooltip = getHolidayName(dateStr);
+            } else if (isWeekend) {
+                cls += ' leave-day--weekend leave-day--disabled';
+                clickable = false;
+                tooltip = 'Weekend';
+            } else if (hasOffice) {
+                cls += ' leave-day--has-office';
+                clickable = false;
+                tooltip = autoMarkedDays[dateStr] ? 'Office (WiFi verified)' : 'Office day';
+            } else if (hasLeave) {
+                cls += ' leave-day--has-leave';
+                tooltip = 'On leave';
+            }
+
+            if (isSelected) cls += ' leave-day--selected';
+
+            const onClick = clickable
+                ? `onclick="toggleLeaveDate('${dateStr}', event)"`
+                : '';
+            const tipAttr = tooltip ? `title="${tooltip}"` : '';
+
+            daysHTML += `<div class="${cls}" ${onClick} ${tipAttr}>${day}</div>`;
+        }
+
+        card.innerHTML = `
+            <div class="leave-month-title">${m.name}</div>
+            <div class="leave-day-headers">
+                <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+            </div>
+            <div class="leave-days-grid">${daysHTML}</div>
+        `;
+        container.appendChild(card);
+    });
+
+    updateLeaveSelectionBar();
+    updateLeaveSummary();
+}
+
+function toggleLeaveDate(dateStr, event) {
+    if (event && event.shiftKey && _leaveShiftAnchor) {
+        const allDates = getSelectableLeaveDates();
+        const anchorIdx = allDates.indexOf(_leaveShiftAnchor);
+        const targetIdx = allDates.indexOf(dateStr);
+        if (anchorIdx !== -1 && targetIdx !== -1) {
+            const [from, to] = anchorIdx < targetIdx ? [anchorIdx, targetIdx] : [targetIdx, anchorIdx];
+            for (let i = from; i <= to; i++) {
+                _leaveSelection.add(allDates[i]);
+            }
+            renderLeaveCalendar();
+            return;
+        }
+    }
+
+    _leaveShiftAnchor = dateStr;
+
+    if (_leaveSelection.has(dateStr)) {
+        _leaveSelection.delete(dateStr);
+    } else {
+        _leaveSelection.add(dateStr);
+    }
+    renderLeaveCalendar();
+}
+
+function getSelectableLeaveDates() {
+    const q = getQ();
+    const months = getMonthsForQuarter(q);
+    const dates = [];
+    months.forEach(m => {
+        const daysInMonth = new Date(m.year, m.month + 1, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(m.year, m.month, day);
+            const dateStr = formatDate(m.year, m.month, day);
+            const dayOfWeek = date.getDay();
+            if (!isInRange(date) || isHoliday(dateStr) || dayOfWeek === 0 || dayOfWeek === 6 || checkedDays[dateStr]) continue;
+            dates.push(dateStr);
+        }
+    });
+    return dates;
+}
+
+function updateLeaveSelectionBar() {
+    const count = _leaveSelection.size;
+    const el = document.getElementById('leaveSelectionCount');
+    if (el) el.textContent = count === 0 ? 'No dates selected' : `${count} date${count > 1 ? 's' : ''} selected`;
+}
+
+function updateLeaveSummary() {
+    const el = document.getElementById('leaveSummary');
+    if (!el) return;
+    const count = Object.keys(leaveDays).length;
+    if (count === 0) {
+        el.innerHTML = 'No leaves marked this quarter.';
+        return;
+    }
+    const sorted = Object.keys(leaveDays).sort();
+    const formatted = sorted.map(d => {
+        const dt = new Date(d + 'T00:00:00');
+        return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    });
+    el.innerHTML = `<strong>${count}</strong> leave day${count > 1 ? 's' : ''} this quarter: ${formatted.join(', ')}`;
+}
+
+function saveLeaveDays() {
+    localStorage.setItem(qKey('leaveDays'), JSON.stringify(leaveDays));
+}
+
+function addSelectedLeaves() {
+    if (_leaveSelection.size === 0) {
+        showNotification('Select dates first, then click Add Leave.', 'info');
+        return;
+    }
+    let added = 0;
+    _leaveSelection.forEach(dateStr => {
+        if (!checkedDays[dateStr] && !leaveDays[dateStr]) {
+            leaveDays[dateStr] = true;
+            added++;
+        }
+    });
+    saveLeaveDays();
+    _leaveSelection.clear();
+    _leaveShiftAnchor = null;
+    renderLeaveCalendar();
+    renderCalendars();
+    if (added > 0) {
+        showNotification(`🌴 Added ${added} leave day${added > 1 ? 's' : ''}!`, 'success');
+    } else {
+        showNotification('No new leave days to add (already marked or office days).', 'info');
+    }
+}
+
+function removeSelectedLeaves() {
+    if (_leaveSelection.size === 0) {
+        showNotification('Select dates first, then click Remove Leave.', 'info');
+        return;
+    }
+    let removed = 0;
+    _leaveSelection.forEach(dateStr => {
+        if (leaveDays[dateStr]) {
+            delete leaveDays[dateStr];
+            removed++;
+        }
+    });
+    saveLeaveDays();
+    _leaveSelection.clear();
+    _leaveShiftAnchor = null;
+    renderLeaveCalendar();
+    renderCalendars();
+    if (removed > 0) {
+        showNotification(`Removed ${removed} leave day${removed > 1 ? 's' : ''}.`, 'success');
+    } else {
+        showNotification('None of the selected dates had leave to remove.', 'info');
+    }
+}
+
+// Close leave panel on overlay click
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('leave-overlay')) {
+        toggleLeavePanel();
+    }
+});
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -904,28 +1164,27 @@ function showOS(os, btn) {
 
 // ---- Feedback ----
 function openFeedback() {
-    const name = localStorage.getItem('oatUserName') || '';
-    const subject = encodeURIComponent('OAT Feedback');
-    const body = encodeURIComponent(`Hi Gaurav,\n\n[Your feedback here]\n\n---\nFrom: ${name || 'OAT User'}`);
-    window.open(`mailto:gtripath@netapp.com?subject=${subject}&body=${body}`);
+    window.open('https://teams.microsoft.com/l/chat/0/0?users=Gaurav.Tripathi@netapp.com', '_blank');
 }
 
 // ---- Theme Toggle ----
 function initTheme() {
     const saved = localStorage.getItem('oatTheme');
     const btn = document.getElementById('themeBtn');
+    const icon = btn && (btn.querySelector('span') || btn);
     if (saved === 'light') {
         document.body.classList.add('light-mode');
-        if (btn) btn.textContent = '☀️';
+        if (icon) icon.textContent = '☀️';
     } else {
-        if (btn) btn.textContent = '🌙';
+        if (icon) icon.textContent = '🌙';
     }
 }
 
 function toggleTheme() {
     const isLight = document.body.classList.toggle('light-mode');
     const btn = document.getElementById('themeBtn');
-    if (btn) btn.textContent = isLight ? '☀️' : '🌙';
+    const icon = btn && (btn.querySelector('span') || btn);
+    if (icon) icon.textContent = isLight ? '☀️' : '🌙';
     localStorage.setItem('oatTheme', isLight ? 'light' : 'dark');
 }
 
@@ -1579,18 +1838,16 @@ function handleBackfill(dateString) {
             return;
         }
 
-        // Mark it — overwrite manual entry with WiFi-verified data
         const wasManual = checkedDays[dateStr] && !autoMarkedDays[dateStr];
         checkedDays[dateStr] = true;
         autoMarkedDays[dateStr] = true;
-        if (wasManual) {
-            // upgraded from manual → wifi-verified
-        }
+        if (leaveDays[dateStr]) delete leaveDays[dateStr];
         newCount++;
     });
 
     localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
     localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
+    saveLeaveDays();
 
     // Log the backfill
     const logEntry = `${new Date().toLocaleString()} \u2014 Backfilled ${newCount} days from WiFi logs (${skipCount} already marked)`;
@@ -1617,14 +1874,19 @@ function handleBackfill(dateString) {
     function getLines() {
         const days = parseInt((document.getElementById('totalOfficeDays') || {}).textContent || '0', 10);
         const rem  = parseInt((document.getElementById('remainingDays')   || {}).textContent || '39', 10);
+        const leaves = parseInt((document.getElementById('totalLeaveDays') || {}).textContent || '0', 10);
         const pct  = Math.min(100, Math.round((days / 39) * 100));
-        return [
+        const lines = [
             { text: 'Auto-tracking active...', active: true },
             { text: `${days} / 39 days done`,  active: false },
             { text: `${rem} days to go`,        active: false },
             { text: `${pct}% of target reached`, active: false },
-            { text: 'NetApp corp WiFi · Apr\u2013Jul 2026', active: false },
+            { text: 'NetApp corp WiFi \u00b7 Apr\u2013Jul 2026', active: false },
         ];
+        if (leaves > 0) {
+            lines.splice(3, 0, { text: `${leaves} leave day${leaves > 1 ? 's' : ''} taken`, active: false });
+        }
+        return lines;
     }
 
     let lineIdx = 0, charIdx = 0, deleting = false;

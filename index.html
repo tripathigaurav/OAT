@@ -197,6 +197,10 @@
                 <span class="stat-value" id="totalOfficeDays">0</span>
                 <span class="stat-label">in office</span>
             </div>
+            <div class="stat-card stat-card--leave" id="pillLeaves">
+                <span class="stat-value" id="totalLeaveDays">0</span>
+                <span class="stat-label">🌴 leaves</span>
+            </div>
             <div class="stat-card stat-card--amber" id="pillTarget">
                 <span class="stat-value">39</span>
                 <span class="stat-label">target days</span>
@@ -226,6 +230,7 @@
         <div class="legend-item"><div class="legend-box workday"></div> Workday</div>
         <div class="legend-item"><div class="legend-box office"></div> ✅ Office</div>
         <div class="legend-item"><div class="legend-box auto-marked"></div> 🤖 Auto</div>
+        <div class="legend-item"><div class="legend-box leave"></div> 🌴 Leave</div>
         <div class="legend-item"><div class="legend-box saturday"></div> 🟣 Saturday</div>
         <div class="legend-item"><div class="legend-box sunday"></div> 🔴 Sunday</div>
         <div class="legend-item"><div class="legend-box holiday"></div> 🎉 Holiday</div>
@@ -249,7 +254,7 @@
                     <span class="credit-name">Gaurav Tripathi</span>
                 </div>
                 <div class="credit-badges">
-                    <span class="credit-badge">&#9679; v2.3</span>
+                    <span class="credit-badge">&#9679; v2.4</span>
                     <span class="credit-badge">&#128187; NetApp</span>
                 </div>
             </div>
@@ -264,11 +269,25 @@
 
     <!-- Settings Panel -->
     <div class="settings-toggle-wrap">
-        <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
-        <button class="info-fab" onclick="toggleInfoMini()" title="What this tracker does">ℹ️</button>
-        <button class="feedback-fab" onclick="openFeedback()" title="Send Feedback">💬</button>
-        <div class="settings-btn-wrap">
-            <button class="settings-toggle" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">⚙️</button>
+        <div class="fab-item" onclick="toggleTheme()" title="Toggle theme">
+            <div class="fab-dot fab-dot--theme" id="themeBtn"><span>🌙</span></div>
+            <span class="fab-label fab-label--theme">Theme</span>
+        </div>
+        <div class="fab-item" onclick="toggleInfoMini()" title="What this tracker does">
+            <div class="fab-dot fab-dot--info"><span>ℹ️</span></div>
+            <span class="fab-label fab-label--info">Info</span>
+        </div>
+        <div class="fab-item" onclick="toggleLeavePanel()" title="Manage Leaves / PTO">
+            <div class="fab-dot fab-dot--leave"><span>🌴</span></div>
+            <span class="fab-label fab-label--leave">Leave</span>
+        </div>
+        <div class="fab-item" onclick="openFeedback()" title="Chat on Teams">
+            <div class="fab-dot fab-dot--feedback"><span>💬</span></div>
+            <span class="fab-label fab-label--feedback">Chat</span>
+        </div>
+        <div class="fab-item settings-btn-wrap" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">
+            <div class="fab-dot fab-dot--settings"><span>⚙️</span></div>
+            <span class="fab-label fab-label--settings">Setup</span>
             <span class="settings-update-dot" id="settingsUpdateDot" style="display:none;" title="Update available">1</span>
         </div>
     </div>
@@ -282,6 +301,7 @@
             <li>Run manual WiFi check for today <em>(Windows)</em></li>
             <li>Backfill past office days from WiFi history <em>(Windows)</em></li>
             <li>Work fully in manual mode if no admin rights <em>(Windows)</em></li>
+            <li>Track leaves / PTO via the 🌴 button — supports future dates &amp; ranges</li>
             <li>Switch between quarters &amp; track progress per quarter</li>
             <li>🌙 Dark / Light theme toggle</li>
             <li>🔧 Diagnose auto-tracking health from ⚙️ Settings</li>
@@ -415,6 +435,47 @@
             </details>
         </div>
       </div><!-- /.settings-panel-scroll -->
+    </div>
+
+    <!-- Leave Manager Popup -->
+    <div class="leave-overlay" id="leaveOverlay" style="display:none;">
+        <div class="leave-modal">
+            <div class="leave-modal-header">
+                <div class="leave-header-title">
+                    <span class="leave-header-icon">🌴</span>
+                    <div>
+                        <h2>Manage Leaves</h2>
+                        <p class="leave-header-sub">Plan your time off for the quarter</p>
+                    </div>
+                </div>
+                <div class="leave-header-right">
+                    <span class="leave-quarter-label" id="leaveQuarterLabel"></span>
+                    <button class="leave-close-btn" onclick="toggleLeavePanel()" title="Close">&times;</button>
+                </div>
+            </div>
+            <div class="leave-modal-body">
+                <div class="leave-legend">
+                    <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--available"></span>Available</span>
+                    <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--selected"></span>Selected</span>
+                    <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--leave"></span>On Leave</span>
+                    <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--office"></span>Office Day</span>
+                </div>
+                <p class="leave-hint">Click dates to select &middot; Shift-click for range selection</p>
+                <div class="leave-months" id="leaveMonths"></div>
+                <div class="leave-selection-bar" id="leaveSelectionBar">
+                    <span class="leave-selection-count" id="leaveSelectionCount">0 selected</span>
+                    <div class="leave-action-btns">
+                        <button class="leave-action-btn add" onclick="addSelectedLeaves()">
+                            <span class="leave-btn-icon">＋</span> Add Leave
+                        </button>
+                        <button class="leave-action-btn remove" onclick="removeSelectedLeaves()">
+                            <span class="leave-btn-icon">−</span> Remove
+                        </button>
+                    </div>
+                </div>
+                <div class="leave-summary" id="leaveSummary"></div>
+            </div>
+        </div>
     </div>
 
     <script src="js/app.js"></script>
