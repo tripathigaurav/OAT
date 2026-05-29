@@ -806,6 +806,22 @@ document.addEventListener('DOMContentLoaded', () => {
     updateQuarterBadge();
     renderCalendars();
 
+    // Auto-scroll settings panel when a <details> dropdown opens
+    // Uses capture phase because 'toggle' events don't bubble
+    document.addEventListener('toggle', function(e) {
+        if (!e.target.closest('.settings-panel')) return;
+        if (!e.target.open) return;
+        setTimeout(() => {
+            const scrollContainer = document.querySelector('.settings-panel-scroll');
+            if (!scrollContainer) return;
+            const elRect = e.target.getBoundingClientRect();
+            const containerRect = scrollContainer.getBoundingClientRect();
+            if (elRect.bottom > containerRect.bottom) {
+                scrollContainer.scrollBy({ top: elRect.bottom - containerRect.bottom + 16, behavior: 'smooth' });
+            }
+        }, 100);
+    }, true);
+
     // Check for auto-mark trigger via URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('automark') === 'true') {
@@ -1413,54 +1429,18 @@ function onboardYes() {
     document.getElementById('onboardStep1').style.display = 'none';
     document.getElementById('onboardStep2').style.display = 'block';
 
-    const cmdsEl = document.getElementById('setupCommands');
-
     if (os === 'windows') {
         document.getElementById('osIcon').textContent = '\uD83E\uDE9F';
         document.getElementById('osTitle').textContent = 'Windows Setup';
         document.getElementById('osName').textContent = 'Windows';
-        document.getElementById('terminalName').textContent = 'Terminal / Command Prompt';
-        document.getElementById('downloadBtn1').textContent = '\uD83D\uDCE5 Download auto-attendance.ps1';
-        document.getElementById('downloadBtn2').textContent = '\uD83D\uDCE5 Download Task XML';
-        // Show Windows one-click, hide Mac
         document.getElementById('oneClickWin').style.display = 'block';
         document.getElementById('oneClickMac').style.display = 'none';
-        cmdsEl.innerHTML = `
-            <code># Move files to local OAT folder (avoids OneDrive sync issues)</code>
-            <code>mkdir -Force $env:LOCALAPPDATA\OAT</code>
-            <code>Move-Item -Force $env:USERPROFILE\Downloads\auto-attendance.ps1 $env:LOCALAPPDATA\OAT\</code>
-            <code>Move-Item -Force $env:USERPROFILE\Downloads\auto-attendance-task.xml $env:LOCALAPPDATA\OAT\</code>
-            <code># Fix path in task config</code>
-            <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code>
-            <code># Register scheduled task (requires Admin)</code>
-            <code>Register-ScheduledTask -Xml (Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force</code>
-        `;
-        window._oatCmds = `mkdir -Force $env:LOCALAPPDATA\\OAT\nMove-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance.ps1 $env:LOCALAPPDATA\\OAT\\\nMove-Item -Force $env:USERPROFILE\\Downloads\\auto-attendance-task.xml $env:LOCALAPPDATA\\OAT\\\n(Get-Content "$env:LOCALAPPDATA\\OAT\\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\\\OAT', "$env:LOCALAPPDATA\\OAT" | Set-Content "$env:LOCALAPPDATA\\OAT\\auto-attendance-task.xml"\nRegister-ScheduledTask -Xml (Get-Content "$env:LOCALAPPDATA\\OAT\\auto-attendance-task.xml" | Out-String) -TaskName "OAT-WiFiAttendance" -Force`;
     } else {
-        // Mac / Linux — show terminal command (avoids permission issues)
         document.getElementById('osIcon').textContent = '\uD83C\uDF4E';
         document.getElementById('osTitle').textContent = 'Mac Setup';
         document.getElementById('osName').textContent = 'macOS';
-        document.getElementById('terminalName').textContent = 'Terminal';
-        document.getElementById('downloadBtn1').textContent = '\uD83D\uDCE5 Download auto-attendance.sh';
-        document.getElementById('downloadBtn2').textContent = '\uD83D\uDCE5 Download LaunchAgent plist';
-        // Show Mac one-click, hide Windows
         document.getElementById('oneClickMac').style.display = 'block';
         document.getElementById('oneClickWin').style.display = 'none';
-        cmdsEl.innerHTML = `
-            <code># Move files to ~/.oat/ (local path — avoids cloud-sync issues)</code>
-            <code>mkdir -p ~/.oat</code>
-            <code>mv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/.oat/</code>
-            <code>chmod +x ~/.oat/auto-attendance.sh</code>
-            <code>xattr -cr ~/.oat/auto-attendance.sh 2>/dev/null</code>
-            <code># Fix script path in plist to match your user</code>
-            <code>sed -i '' "s|/Users/USERNAME/PLACEHOLDER/auto-attendance.sh|$HOME/.oat/auto-attendance.sh|g" ~/.oat/com.oat.wifiattendance.plist</code>
-            <code># Install LaunchAgent (unload old one first if exists)</code>
-            <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null</code>
-            <code>cp ~/.oat/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
-            <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code>
-        `;
-        window._oatCmds = `mkdir -p ~/.oat\nmv ~/Downloads/auto-attendance.sh ~/Downloads/com.oat.wifiattendance.plist ~/.oat/\nchmod +x ~/.oat/auto-attendance.sh\nxattr -cr ~/.oat/auto-attendance.sh 2>/dev/null\nsed -i '' "s|/Users/USERNAME/PLACEHOLDER/auto-attendance.sh|$HOME/.oat/auto-attendance.sh|g" ~/.oat/com.oat.wifiattendance.plist\nlaunchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null\ncp ~/.oat/com.oat.wifiattendance.plist ~/Library/LaunchAgents/\nlaunchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist`;
     }
 }
 
@@ -1469,63 +1449,7 @@ function onboardBack() {
     document.getElementById('onboardStep2').style.display = 'none';
 }
 
-function downloadFile1() {
-    const os = detectOS();
-    const a = document.createElement('a');
-    a.href = os === 'windows' ? 'auto-attendance.ps1' : 'auto-attendance.sh';
-    a.download = '';
-    a.click();
-    document.getElementById('downloadBtn1').style.opacity = '0.5';
-    document.getElementById('downloadBtn1').textContent = '\u2705 Downloaded!';
-    updateDownloadStatus();
-}
 
-function downloadFile2() {
-    const os = detectOS();
-    const a = document.createElement('a');
-    a.href = os === 'windows' ? 'auto-attendance-task.xml' : 'com.oat.wifiattendance.plist';
-    a.download = '';
-    a.click();
-    document.getElementById('downloadBtn2').style.opacity = '0.5';
-    document.getElementById('downloadBtn2').textContent = '\u2705 Downloaded!';
-    updateDownloadStatus();
-}
-
-function updateDownloadStatus() {
-    const btn1 = document.getElementById('downloadBtn1').textContent;
-    const btn2 = document.getElementById('downloadBtn2').textContent;
-    if (btn1.includes('\u2705') && btn2.includes('\u2705')) {
-        document.getElementById('downloadStatus').textContent = '\u2705 Both files downloaded!';
-        document.getElementById('downloadStatus').style.color = '#55efc4';
-    }
-}
-
-function copyCommands() {
-    if (window._oatCmds) {
-        navigator.clipboard.writeText(window._oatCmds).then(() => {
-            document.getElementById('copyStatus').textContent = '\u2705 Copied!';
-            document.getElementById('copyStatus').style.color = '#55efc4';
-        }).catch(() => {
-            // Fallback for non-HTTPS
-            const ta = document.createElement('textarea');
-            ta.value = window._oatCmds;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            document.getElementById('copyStatus').textContent = '\u2705 Copied!';
-            document.getElementById('copyStatus').style.color = '#55efc4';
-        });
-    }
-}
-
-// ---- Setup Option Tabs ----
-function showSetupOption(option) {
-    document.getElementById('optionOneClick').style.display = option === 'oneclick' ? 'block' : 'none';
-    document.getElementById('optionManual').style.display = option === 'manual' ? 'block' : 'none';
-    document.getElementById('tabOneClick').classList.toggle('active', option === 'oneclick');
-    document.getElementById('tabManual').classList.toggle('active', option === 'manual');
-}
 
 function downloadInstaller() {
     // Legacy — kept for backward compat; prefer copyWinInstallCmd()

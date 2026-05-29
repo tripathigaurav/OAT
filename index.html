@@ -86,12 +86,6 @@
                 <h2 id="osTitle">Mac Setup</h2>
                 <p>Detected: <strong id="osName">macOS</strong></p>
 
-                <!-- Option Tabs -->
-                <div class="setup-option-tabs">
-                    <button class="setup-option-tab active" id="tabOneClick" onclick="showSetupOption('oneclick')">🚀 One-Click Setup</button>
-                    <button class="setup-option-tab" id="tabManual" onclick="showSetupOption('manual')">🔧 Manual Setup</button>
-                </div>
-
                 <!-- Option 1: One-Click -->
                 <div class="setup-option-content" id="optionOneClick">
                     <!-- Mac: Terminal command (no permission issues) -->
@@ -137,23 +131,6 @@
                             <strong>Setup Verified!</strong>
                             <p>Auto-tracking is installed and working.</p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Option 2: Manual -->
-                <div class="setup-option-content" id="optionManual" style="display:none;">
-                    <div class="onboard-download-box">
-                        <p>Step 1: Download these files</p>
-                        <button class="onboard-btn download" id="downloadBtn1" onclick="downloadFile1()">📥 Download Script</button>
-                        <button class="onboard-btn download" id="downloadBtn2" onclick="downloadFile2()">📥 Download Config</button>
-                        <span class="download-status" id="downloadStatus">Click both buttons above</span>
-                    </div>
-
-                    <div class="onboard-cmd-box">
-                        <p>Step 2: Run these commands in <strong id="terminalName">Terminal</strong>:</p>
-                        <div class="onboard-cmds" id="setupCommands"></div>
-                        <button class="onboard-btn copy" onclick="copyCommands()">📋 Copy All Commands</button>
-                        <span class="copy-status" id="copyStatus"></span>
                     </div>
                 </div>
 
@@ -302,10 +279,12 @@
             <li>Auto-mark on office WiFi (<strong>corp</strong> + NetApp DNS)</li>
             <li>Mark / unmark days manually on the calendar (with confirmation)</li>
             <li>Allow marking attendance on weekends <em>(opt-in via ⚙️ Settings)</em></li>
-            <li>Run manual WiFi check for today (Windows)</li>
-            <li>Backfill past office days from WiFi history (Windows)</li>
-            <li>Work fully in manual mode if no admin rights</li>
+            <li>Run manual WiFi check for today <em>(Windows)</em></li>
+            <li>Backfill past office days from WiFi history <em>(Windows)</em></li>
+            <li>Work fully in manual mode if no admin rights <em>(Windows)</em></li>
             <li>Switch between quarters &amp; track progress per quarter</li>
+            <li>🌙 Dark / Light theme toggle</li>
+            <li>🔧 Diagnose auto-tracking health from ⚙️ Settings</li>
         </ul>
         <div class="developer-credit" style="display:none;"></div>
     </div>
@@ -399,44 +378,26 @@
             </div>
 
             <div class="os-content" id="os-mac">
-                <details class="setup-dropdown">
-                    <summary>Manual setup steps (Mac)</summary>
-                    <ol>
-                        <li>Download <a href="auto-attendance.sh" download>auto-attendance.sh</a> &amp; <a href="com.oat.wifiattendance.plist" download>LaunchAgent plist</a></li>
-                        <li>Put both files in <code>~/.oat/</code> (local path — avoids cloud-sync issues)</li>
-                        <li>Open <strong>Terminal</strong> and run:
-                            <code>mkdir -p ~/.oat && chmod +x ~/.oat/auto-attendance.sh && xattr -cr ~/.oat/auto-attendance.sh 2>/dev/null</code></li>
-                        <li>Fix the script path in the plist for your user:
-                            <code>sed -i '' "s|/Users/USERNAME/PLACEHOLDER/auto-attendance.sh|$HOME/.oat/auto-attendance.sh|g" ~/.oat/com.oat.wifiattendance.plist</code></li>
-                        <li>Install the LaunchAgent:
-                            <code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null</code>
-                            <code>cp ~/.oat/com.oat.wifiattendance.plist ~/Library/LaunchAgents/</code>
-                            <code>launchctl load ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></li>
-                        <li>Done! ✨ Runs automatically on WiFi change &amp; login.</li>
-                    </ol>
-                </details>
-                <details class="setup-dropdown">
+                <p style="margin:8px 0 4px;">Open <strong>Terminal</strong> and paste:</p>
+                <div class="terminal-cmd-box">
+                    <code>curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash</code>
+                    <button class="copy-cmd-btn" onclick="navigator.clipboard.writeText('curl -sL https://tripathigaurav.github.io/OAT/install-mac.command | bash')" title="Copy">📋</button>
+                </div>
+                <details class="setup-dropdown" style="margin-top:10px;">
                     <summary>How to stop auto-tracking (Mac)</summary>
                     <p><code>launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist</code></p>
                 </details>
             </div>
 
             <div class="os-content" id="os-win" style="display:none;">
-                <details class="setup-dropdown">
-                    <summary>Manual setup steps (Windows)</summary>
-                    <ol>
-                        <li>Download <a href="auto-attendance.ps1" download>auto-attendance.ps1</a> &amp; <a href="auto-attendance-task.xml" download>Task XML</a></li>
-                        <li>Put both files in <code>%LOCALAPPDATA%\OAT\</code> (local path &mdash; avoids OneDrive sync issues)</li>
-                        <li>Open <strong>PowerShell</strong> (Win+R → type <strong>powershell</strong> → Enter) and fix the path in the XML:
-                            <code>(Get-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml") -replace '%LOCALAPPDATA%\\OAT', "$env:LOCALAPPDATA\OAT" | Set-Content "$env:LOCALAPPDATA\OAT\auto-attendance-task.xml"</code></li>
-                        <li>Register the scheduled task:
-                            <code>schtasks /Create /TN "OAT-WiFiAttendance" /XML "%LOCALAPPDATA%\OAT\auto-attendance-task.xml" /F</code></li>
-                        <li>Done! ✨ Runs on network change &amp; login.</li>
-                    </ol>
-                </details>
-                <details class="setup-dropdown">
+                <p style="margin:8px 0 4px;">Open <strong>PowerShell</strong> (Win+R → type <code>powershell</code> → Enter) and paste:</p>
+                <div class="terminal-cmd-box">
+                    <code>irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code>
+                    <button class="copy-cmd-btn" onclick="navigator.clipboard.writeText('irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex')" title="Copy">📋</button>
+                </div>
+                <details class="setup-dropdown" style="margin-top:10px;">
                     <summary>How to stop auto-tracking (Windows)</summary>
-                    <p><code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance"</code></p>
+                    <p><code>Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance" -Confirm:$false</code></p>
                 </details>
             </div>
 

@@ -1885,7 +1885,7 @@ body.light-mode .theme-btn:hover { background: rgba(0,0,0,0.12); }
     right: 20px;
     width: 380px;
     max-height: 80vh;
-    overflow-y: hidden;
+    overflow: hidden;
     background: rgba(8, 8, 22, 0.9);
     border: 1px solid rgba(33, 199, 168, 0.25);
     border-radius: 15px;
@@ -1899,9 +1899,10 @@ body.light-mode .theme-btn:hover { background: rgba(0,0,0,0.12); }
 }
 
 .settings-panel-scroll {
-    flex: 1;
-    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(80vh - 58px);
     padding: 20px 20px 8px;
 }
 
