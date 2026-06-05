@@ -109,10 +109,16 @@ elif [ "$SSID_MATCH" = true ] && [ "$DNS_MATCH" = false ]; then
     log_msg "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?). Skipping."
     exit 0
 elif [ "$DNS_MATCH" = true ] && [ "$SSID_MATCH" = false ]; then
-    # SSID undetectable or doesn't match — do NOT auto-mark without confirming 'corp' WiFi
-    # (prevents false positives when on VPN from home with undetectable SSID)
-    log_msg "DNS matches but SSID '$CURRENT_WIFI' != 'corp' or undetectable. Cannot confirm office network. Skipping."
-    exit 0
+    # SSID empty/undetectable = macOS Location Services blocked
+    # Safe to trust wlan.netapp.com DNS alone — it is office WiFi specific and
+    # does NOT appear on home VPN (unlike the broader netapp.com domain)
+    if [ -z "$CURRENT_WIFI" ] || [ "$CURRENT_WIFI" = "<redacted>" ]; then
+        ON_OFFICE_NET=true
+        DETECTED_VIA="DNS domain ($OFFICE_DNS_DOMAIN) — WiFi SSID undetectable (location permission denied)"
+    else
+        log_msg "NetApp DNS found but SSID '$CURRENT_WIFI' != 'corp' (VPN from home?). Skipping."
+        exit 0
+    fi
 fi
 
 if [ "$ON_OFFICE_NET" = false ]; then
