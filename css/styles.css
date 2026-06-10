@@ -1197,6 +1197,85 @@ h1 {
     font-size: 1rem;
 }
 
+/* New Feature Banner */
+.new-feature-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    animation: newFeaturePulse 2s ease-in-out infinite;
+}
+.new-feature-banner--big {
+    flex-direction: column;
+    gap: 10px;
+    margin: 18px auto 0;
+    max-width: 520px;
+    padding: 14px 20px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(242,200,17,0.08), rgba(242,200,17,0.03));
+    border: 1px solid rgba(242,200,17,0.18);
+    backdrop-filter: blur(6px);
+    position: relative;
+}
+.nf-close {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.2s, background 0.2s;
+}
+.nf-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+body.light-mode .nf-close { color: rgba(0,0,0,0.3); }
+body.light-mode .nf-close:hover { color: #000; background: rgba(0,0,0,0.06); }
+.new-feature-pill {
+    background: linear-gradient(135deg, #f2c811, #e8a800);
+    color: #1a1a1a;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 999px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+.new-feature-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+}
+.new-feature-item {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.4;
+}
+.new-feature-item strong { color: #f2c811; }
+.new-feature-text {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.7);
+}
+.new-feature-text strong { color: #f2c811; }
+@keyframes newFeaturePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+body.light-mode .new-feature-banner--big {
+    background: linear-gradient(135deg, rgba(180,130,0,0.06), rgba(180,130,0,0.02));
+    border-color: rgba(180,130,0,0.15);
+}
+body.light-mode .new-feature-item { color: rgba(0,0,0,0.6); }
+body.light-mode .new-feature-item strong { color: #92650a; }
+body.light-mode .new-feature-text { color: rgba(0,0,0,0.6); }
+body.light-mode .new-feature-text strong { color: #92650a; }
+
 /* Flip Counter */
 .flip-counter-wrap {
     display: flex;

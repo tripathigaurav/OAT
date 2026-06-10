@@ -837,6 +837,30 @@ function renderFlipCounter(el, newVal, label, subtext, color) {
         </div>`;
 }
 
+// ── New Feature Banner (auto-expires June 17 2026) ─────────────
+function renderNewFeatureBanner() {
+    const expiry = new Date('2026-06-13T18:00:00');
+    if (new Date() > expiry) return;
+    if (localStorage.getItem('oat-nf-dismissed')) return;
+    const el = document.getElementById('newFeatureBannerC');
+    if (!el) return;
+    el.style.display = 'block';
+    el.innerHTML = `
+        <div class="new-feature-banner new-feature-banner--big">
+            <button class="nf-close" onclick="dismissNewFeature()" title="Dismiss">&times;</button>
+            <span class="new-feature-pill">✨ What's New</span>
+            <div class="new-feature-items">
+                <span class="new-feature-item">🌴 <strong>Leave & PTO Tracking</strong> — Log your time off directly in OAT</span>
+                <span class="new-feature-item">📊 <strong>Official Office Visit Dashboard</strong> — View your NetApp attendance data</span>
+            </div>
+        </div>`;
+}
+function dismissNewFeature() {
+    const el = document.getElementById('newFeatureBannerC');
+    if (el) el.style.display = 'none';
+    localStorage.setItem('oat-nf-dismissed', '1');
+}
+
 // ── Leave / PTO Manager ──────────────────────────────────────────
 let _leaveSelection = new Set();
 let _leaveShiftAnchor = null;
@@ -1065,6 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     updateQuarterBadge();
     renderCalendars();
+    renderNewFeatureBanner();
 
     // Auto-scroll settings panel when a <details> dropdown opens
     // Uses capture phase because 'toggle' events don't bubble
