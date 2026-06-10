@@ -1711,11 +1711,12 @@ body.light-mode .summary-holidays--none { color: rgba(0,0,0,0.25); }
     display: inline-block;
     animation: fabBounce 2.5s ease-in-out infinite;
 }
-.fab-dot--theme span  { animation-delay: 0s; }
-.fab-dot--info span   { animation-delay: 0.2s; }
-.fab-dot--leave span  { animation-delay: 0.4s; }
-.fab-dot--feedback span { animation-delay: 0.6s; }
-.fab-dot--settings span { animation-delay: 0.8s; }
+.fab-dot--powerbi span { animation-delay: 0s; }
+.fab-dot--theme span  { animation-delay: 0.2s; }
+.fab-dot--info span   { animation-delay: 0.4s; }
+.fab-dot--leave span  { animation-delay: 0.6s; }
+.fab-dot--feedback span { animation-delay: 0.8s; }
+.fab-dot--settings span { animation-delay: 1.0s; }
 .fab-item:hover .fab-dot span { animation: none; transform: scale(1.2); }
 @keyframes fabBounce {
     0%, 100% { transform: translateY(0); }
@@ -1736,6 +1737,13 @@ body.light-mode .summary-holidays--none { color: rgba(0,0,0,0.25); }
 }
 
 /* Per-button colors */
+.fab-dot--powerbi {
+    background: linear-gradient(145deg, rgba(242,200,17,0.3), rgba(242,200,17,0.08));
+    border-color: rgba(242,200,17,0.2);
+    --fab-glow: rgba(242,200,17,0.2);
+}
+.fab-label--powerbi { color: #f2c811; }
+
 .fab-dot--theme {
     background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04));
     border-color: rgba(255,255,255,0.12);
@@ -1778,6 +1786,12 @@ body.light-mode .fab-dot--theme {
     --fab-glow: rgba(0,0,0,0.08);
 }
 body.light-mode .fab-label--theme { color: #78716c; }
+body.light-mode .fab-dot--powerbi {
+    background: linear-gradient(145deg, rgba(180,130,0,0.18), rgba(180,130,0,0.06));
+    border-color: rgba(180,130,0,0.15);
+    --fab-glow: rgba(180,130,0,0.15);
+}
+body.light-mode .fab-label--powerbi { color: #92650a; }
 body.light-mode .fab-dot--info {
     background: linear-gradient(145deg, rgba(99,102,241,0.18), rgba(99,102,241,0.06));
     border-color: rgba(99,102,241,0.15);
