@@ -1,5 +1,5 @@
 # ============================================================
-# OAT — One-Line Installer for Windows
+# OAT - One-Line Installer for Windows
 # ============================================================
 # Run this in PowerShell:
 #   irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex
@@ -9,14 +9,14 @@
 
 Write-Host ""
 Write-Host "  ======================================================" -ForegroundColor Cyan
-Write-Host "  OAT — Office Attendance Tracker" -ForegroundColor Cyan
+Write-Host "  OAT - Office Attendance Tracker" -ForegroundColor Cyan
 Write-Host "  One-Line Installer for Windows" -ForegroundColor Cyan
 Write-Host "  ======================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # --- Configuration ---
 $GITHUB_BASE = "https://tripathigaurav.github.io/OAT"
-# Install to %LOCALAPPDATA%\OAT (local path) — NOT Desktop which may be
+# Install to %LOCALAPPDATA%\OAT (local path) - NOT Desktop which may be
 # synced to OneDrive. Windows blocks scheduled tasks from cloud-synced dirs.
 $OAT_DIR = "$env:LOCALAPPDATA\OAT"
 $PS_SCRIPT = "auto-attendance.ps1"
@@ -66,7 +66,7 @@ Write-Host "  [4/5] Installing Scheduled Task..."
 
 $taskInstalled = $false
 
-# Method 1: schtasks.exe — works WITHOUT admin for user-level tasks
+# Method 1: schtasks.exe - works WITHOUT admin for user-level tasks
 try {
     $result = schtasks /Create /TN "OAT-WiFiAttendance" /XML "$OAT_DIR\$TASK_XML" /F 2>&1
     if ($LASTEXITCODE -eq 0) {
@@ -127,7 +127,7 @@ Write-Host "  ======================================================" -Foregroun
 Write-Host ""
 
 # Open the tracker with manual_mode parameter
-$trackerUrl = "$GITHUB_BASE/?automark=true&scriptver=$SCRIPT_VERSION&manual_mode="
+$trackerUrl = "$GITHUB_BASE/?automark=true" + "&scriptver=$SCRIPT_VERSION" + "&manual_mode="
 if ($fullySetup) {
     $trackerUrl += "false"  # Scheduled task installed = not manual
 } else {

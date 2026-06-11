@@ -1,15 +1,15 @@
 # ============================================================
-# OAT - Office Attendance Tracker — WiFi Auto-Mark Script
+# OAT - Office Attendance Tracker - WiFi Auto-Mark Script
 # For Windows (PowerShell)
 # ============================================================
 # This script checks if you're connected to the office WiFi
 # and automatically opens the attendance tracker to mark today.
 #
 # Usage:
-#   auto-attendance.ps1                  — Normal mode (auto-mark today)
-#   auto-attendance.ps1 --dry-run        — Test without making changes
-#   auto-attendance.ps1 --backfill       — Scan WiFi logs & backfill past days
-#   auto-attendance.ps1 --backfill-dry   — Preview backfill without opening browser
+#   auto-attendance.ps1                  - Normal mode (auto-mark today)
+#   auto-attendance.ps1 --dry-run        - Test without making changes
+#   auto-attendance.ps1 --backfill       - Scan WiFi logs & backfill past days
+#   auto-attendance.ps1 --backfill-dry   - Preview backfill without opening browser
 #
 # Setup:
 #   1. Right-click this file → Run with PowerShell (to test)
@@ -27,7 +27,7 @@ $TRACKER_BACKFILL_URL = "https://tripathigaurav.github.io/OAT/?backfill="
 $LOG_FILE = "$PSScriptRoot\auto-attendance.log"
 $LOCK_FILE = "$env:TEMP\oat-automark-$(Get-Date -Format 'yyyy-MM-dd').lock"
 
-# OAT Quarter Range — auto-calculated based on current date
+# OAT Quarter Range - auto-calculated based on current date
 # NetApp quarters: Q1=Aug-Oct, Q2=Nov-Jan, Q3=Feb-Apr, Q4=May-Jul
 function Get-OATQuarter {
     param([DateTime]$Date = (Get-Date))
@@ -82,7 +82,7 @@ function Get-DNSDomains {
         if ($global.SuffixSearchList) { $found += $global.SuffixSearchList }
     } catch {}
 
-    # Method 3: ipconfig /all — catches anything missed above
+    # Method 3: ipconfig /all - catches anything missed above
     try {
         $lines = ipconfig /all 2>$null
         foreach ($line in $lines) {
@@ -266,10 +266,10 @@ if ($ssidMatch -and $dnsMatch) {
     Write-Log "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?). Skipping."
     exit 0
 } elseif ($dnsMatch -and -not $ssidMatch) {
-    # SSID empty = WiFi adapter off, ethernet, or corporate GPO hides SSID — trust DNS alone
+    # SSID empty = WiFi adapter off, ethernet, or corporate GPO hides SSID - trust DNS alone
     if (-not $currentWifi) {
         $onOfficeNet = $true
-        $detectedVia = "DNS domain ($OFFICE_DNS_DOMAIN) — WiFi SSID undetectable (ethernet/adapter off?)"
+        $detectedVia = "DNS domain ($OFFICE_DNS_DOMAIN) - WiFi SSID undetectable (ethernet/adapter off?)"
     } else {
         Write-Log "NetApp DNS found but SSID '$currentWifi' != 'corp' (VPN from home?). Skipping."
         exit 0
@@ -329,9 +329,9 @@ try {
 # Append manual_mode parameter to tracker URL
 $openUrl = $TRACKER_URL
 if ($isManualMode) {
-    $openUrl += "&manual_mode=true"
+    $openUrl += "&" + "manual_mode=true"
 } else {
-    $openUrl += "&manual_mode=false"
+    $openUrl += "&" + "manual_mode=false"
 }
 
 # Open tracker in default browser

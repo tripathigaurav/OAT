@@ -9,7 +9,7 @@ title OAT - Office Attendance Tracker Installer
 cls
 echo.
 echo  ======================================================
-echo  📅 OAT — Office Attendance Tracker
+echo  OAT - Office Attendance Tracker
 echo  🚀 One-Click Installer for Windows
 echo  ======================================================
 echo.
