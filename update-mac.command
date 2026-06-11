@@ -181,7 +181,7 @@ echo ""
 
 # Open OAT in browser to confirm update is working
 # Pass scriptver so the app records the new version and hides the update card
-open "https://tripathigaurav.github.io/OAT/?automark=true&scriptver=2.2"
+open "https://tripathigaurav.github.io/OAT/?automark=true&scriptver=$NEW_VERSION"
 echo "  🌐 Opening OAT in browser..."
 echo ""
 

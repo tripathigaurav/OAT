@@ -115,14 +115,14 @@
                         <div class="oneclick-icon">⚡</div>
                         <p><strong>Open PowerShell</strong> and paste this command:</p>
                         <div class="terminal-cmd-box">
-                            <code id="winInstallCmd">irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code>
+                            <code id="winInstallCmd">powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"</code>
                             <button class="copy-cmd-btn" onclick="copyWinInstallCmd()" title="Copy command">📋</button>
                         </div>
-                        <span class="download-status" id="winInstallStatus">⚠️ Must use PowerShell — not Command Prompt</span>
+                        <span class="download-status" id="winInstallStatus">Works in PowerShell, Terminal, or Command Prompt</span>
                         <div class="oneclick-steps" id="winSteps">
                             <div class="oneclick-step">1️⃣ Press <strong>Win + R</strong>, type <strong>powershell</strong>, press Enter</div>
                             <div class="oneclick-step">2️⃣ Paste the command above (Ctrl+V)</div>
-                            <div class="oneclick-step">3️⃣ Press Enter — click "Yes" on Admin prompt if asked</div>
+                            <div class="oneclick-step">3️⃣ Press Enter — done!</div>
                             <div class="oneclick-step">4️⃣ ✅ Done! Auto-tracking is installed.</div>
                         </div>
                         <!-- Shows after installer runs and sets oatScriptActive -->
@@ -417,8 +417,8 @@
             <div class="os-content" id="os-win" style="display:none;">
                 <p style="margin:8px 0 4px;">Open <strong>PowerShell</strong> (Win+R → type <code>powershell</code> → Enter) and paste:</p>
                 <div class="terminal-cmd-box">
-                    <code>irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex</code>
-                    <button class="copy-cmd-btn" onclick="navigator.clipboard.writeText('irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex')" title="Copy">📋</button>
+                    <code>powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"</code>
+                    <button class="copy-cmd-btn" onclick="navigator.clipboard.writeText('powershell -ExecutionPolicy Bypass -Command \"irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex\"')" title="Copy">📋</button>
                 </div>
                 <details class="setup-dropdown" style="margin-top:10px;">
                     <summary>How to stop auto-tracking (Windows)</summary>
