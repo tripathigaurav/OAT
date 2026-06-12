@@ -303,39 +303,6 @@ function loadSettingsUI() {
     document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
     document.getElementById('allowWeekendMark').checked = settings.allowWeekendMark === true;
 
-    // Show "Run WiFi Check Now" only for Windows users
-    const os = detectOS();
-    const runBox = document.getElementById('winManualRunBox');
-    if (runBox) runBox.style.display = os === 'windows' ? 'block' : 'none';
-
-    // ---- Auto-tracking status for Windows ----
-    if (os === 'windows') {
-        const hasScheduledTask = localStorage.getItem('oatScheduledTaskInstalled') === 'true';
-        const statusBox = document.getElementById('autoTrackStatusBox');
-        const statusIndicator = document.getElementById('statusIndicator');
-        const manualModeNote = document.getElementById('manualModeNote');
-        const manualModeGuide = document.getElementById('manualModeGuide');
-        const autoMarkModeHint = document.getElementById('autoMarkModeHint');
-
-        if (hasScheduledTask) {
-            // Automatic mode
-            if (statusBox) statusBox.style.display = 'block';
-            if (statusIndicator) statusIndicator.innerHTML = '✅ <strong>Auto-Tracking Active</strong> — Runs automatically on WiFi connect';
-            if (statusIndicator) statusIndicator.className = 'status-indicator active';
-            if (manualModeNote) manualModeNote.style.display = 'none';
-            if (manualModeGuide) manualModeGuide.style.display = 'none';
-            if (autoMarkModeHint) autoMarkModeHint.textContent = '(automatic)';
-        } else {
-            // Manual mode
-            if (statusBox) statusBox.style.display = 'block';
-            if (statusIndicator) statusIndicator.innerHTML = '⚠️ <strong>Manual Mode</strong> — Use buttons to check/backfill';
-            if (statusIndicator) statusIndicator.className = 'status-indicator manual';
-            if (manualModeNote) manualModeNote.style.display = 'block';
-            if (manualModeGuide) manualModeGuide.style.display = 'block';
-            if (autoMarkModeHint) autoMarkModeHint.textContent = '(not active — scheduled task not installed)';
-        }
-    }
-
     const logEl = document.getElementById('autoMarkLog');
     const logBtn = document.getElementById('checkAutoLogBtn');
     if (logEl) logEl.style.display = 'none';
@@ -416,7 +383,6 @@ function wipeOATBrowserData() {
     localStorage.removeItem('oatOnboarded');
     localStorage.removeItem('oatScriptActive');
     localStorage.removeItem('oatScriptVersion');
-    localStorage.removeItem('oatScheduledTaskInstalled');
     localStorage.removeItem('oatTheme');
     localStorage.removeItem('oatUserName');
     localStorage.removeItem('oatUpdateDismissed');
@@ -1127,14 +1093,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({}, document.title, cleanUrl);
     }
 
-    // Check if this was opened from installer in manual mode
-    const manualMode = urlParams.get('manual_mode');
-    if (manualMode === 'true') {
-        localStorage.setItem('oatScheduledTaskInstalled', 'false');
-    } else if (manualMode === 'false') {
-        localStorage.setItem('oatScheduledTaskInstalled', 'true');
-    }
-
     // Check for backfill trigger via URL parameter (?backfill=2026-05-05,2026-05-06,...)
     const backfillDates = urlParams.get('backfill');
     if (backfillDates) {
@@ -1489,55 +1447,6 @@ function updatePopupLater() {
     sessionStorage.setItem('oatPopupDismissed', '1');
     // Show the smaller banner as fallback
     showUpdateBanner();
-}
-
-function copyWinRunNow() {
-    const cmd = 'powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\\OAT\\auto-attendance.ps1"';
-    navigator.clipboard.writeText(cmd).then(() => {
-        showWinRunStatus('copied');
-    }).catch(() => {
-        const ta = document.createElement('textarea');
-        ta.value = cmd;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showWinRunStatus('copied');
-    });
-}
-
-function copyWinBackfill() {
-    const cmd = 'powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\\OAT\\auto-attendance.ps1" --backfill';
-    const note = document.getElementById('winScanNote');
-    navigator.clipboard.writeText(cmd).then(() => {
-        showWinRunStatus('backfill');
-        if (note) note.style.display = 'block';
-    }).catch(() => {
-        const ta = document.createElement('textarea');
-        ta.value = cmd;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showWinRunStatus('backfill');
-        if (note) note.style.display = 'block';
-    });
-}
-
-function showWinRunStatus(state) {
-    const status = document.getElementById('winManualRunStatus');
-    const btn = document.querySelector('.manual-run-btn');
-    if (state === 'copied') {
-        if (status) {
-            status.textContent = '✅ Copied! Paste in PowerShell (Ctrl+V) and press Enter. Uses -ExecutionPolicy Bypass automatically.';
-            status.style.color = '#55efc4';
-        }
-    } else if (state === 'backfill') {
-        if (status) {
-            status.textContent = '✅ Copied backfill command! Paste in PowerShell → it will open the tracker with past days.';
-            status.style.color = '#74b9ff';
-        }
-    }
 }
 
 function dismissUpdateBanner() {

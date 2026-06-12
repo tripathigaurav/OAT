@@ -326,25 +326,13 @@
             <button class="settings-setup-reminder-btn" onclick="document.querySelector('.setup-instructions').scrollIntoView({behavior:'smooth'})">View Setup ↓</button>
         </div>
         <h3>🤖 WiFi Auto-Mark Settings</h3>
-        <div class="auto-track-status-box" id="autoTrackStatusBox" style="display:none;">
-            <div class="status-indicator" id="statusIndicator"></div>
-        </div>
-        <div class="manual-run-box" id="winManualRunBox" style="display:none;">
-            <p>Manually trigger a WiFi check or scan past history:</p>
-            <div class="manual-run-btns">
-                <button class="manual-run-btn" onclick="copyWinRunNow()">▶ Run WiFi Check Now</button>
-                <button class="manual-run-btn scan-btn" onclick="copyWinBackfill()">📜 Scan WiFi History</button>
-            </div>
-            <span class="manual-run-status" id="winManualRunStatus"></span>
-            <p class="scan-note" id="winScanNote" style="display:none;">💡 Scans Windows WiFi event logs for past office days and marks them automatically. Overwrites manual entries with verified WiFi data.</p>
-        </div>
         <div class="settings-group" style="opacity:0.6;font-size:0.82rem;">
             📡 Office WiFi: <strong>corp</strong> (NetApp)
         </div>
         <div class="settings-group">
             <label>
                 <input type="checkbox" id="autoMarkEnabled" />
-                Enable Auto-Mark on WiFi Connect <span id="autoMarkModeHint" style="opacity:0.65;font-size:0.85rem;"></span>
+                Enable Auto-Mark on WiFi Connect
             </label>
         </div>
         <div class="settings-group">
@@ -358,7 +346,6 @@
             <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
             <button class="close-settings-btn" onclick="toggleSettings()">Close</button>
         </div>
-        <p class="manual-mode-note" id="manualModeNote" style="display:none;font-size:0.78rem;color:#74b9ff;margin:8px 0;padding:8px;background:rgba(116,185,255,0.08);border-radius:4px;">💡 <strong>Manual Mode:</strong> Scheduled task not installed (no admin). Use the buttons above to check and backfill, or re-run installer as admin.</p>
         <div class="settings-group">
             <label>
                 Auto-mark log:
@@ -366,15 +353,6 @@
                 <button class="clear-log-btn" onclick="clearAutoMarkLog()" title="Clear activity log">🗑 Clear Log</button>
             </label>
             <div class="auto-mark-log" id="autoMarkLog" style="display:none;">No auto-marks yet.</div>
-        </div>
-        <div class="manual-mode-guide" id="manualModeGuide" style="display:none;margin-top:16px;padding:12px;background:rgba(116,185,255,0.05);border-left:3px solid #74b9ff;border-radius:4px;font-size:0.75rem;line-height:1.5;">
-            <p style="margin:0 0 8px 0;font-weight:600;color:#74b9ff;">📖 Manual Mode Workflow:</p>
-            <ol style="margin:0;padding-left:16px;">
-                <li><strong>To check today:</strong> Click "▶ Run WiFi Check Now" → paste command in PowerShell → press Enter</li>
-                <li><strong>To backfill past days:</strong> Click "📜 Scan WiFi History" → paste command → press Enter (scans WiFi event logs)</li>
-                <li><strong>To mark manually:</strong> Click days on the calendar (always works, no script needed)</li>
-                <li><strong>To enable auto-tracking:</strong> Run installer again as admin (Win+R → powershell → Ctrl+Shift+Enter)</li>
-            </ol>
         </div>
         <div class="setup-instructions">
             <h4>📋 Auto-Mark Setup</h4>
@@ -430,8 +408,8 @@
                 <summary>🧹 Remove OAT completely from this system</summary>
                 <div class="uninstall-step">
                     <p><strong>Step 1:</strong> Copy uninstall command and run it in your OS terminal.</p>
-                    <button class="manual-run-btn uninstall-copy-btn" onclick="copyUninstallCommand()">📋 Copy Uninstall Command</button>
-                    <span class="manual-run-status" id="uninstallStatus"></span>
+                    <button class="uninstall-copy-btn" onclick="copyUninstallCommand()">📋 Copy Uninstall Command</button>
+                    <span class="uninstall-status" id="uninstallStatus"></span>
                 </div>
                 <div class="uninstall-step">
                     <p><strong>Step 2:</strong> Delete OAT data saved in this browser.</p>

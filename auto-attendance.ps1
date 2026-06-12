@@ -315,27 +315,8 @@ if ($args -contains "--dry-run") {
 # Create lock file
 New-Item -Path $LOCK_FILE -ItemType File -Force | Out-Null
 
-# Determine manual mode status
-$isManualMode = $false
-try {
-    $task = Get-ScheduledTask -TaskName "OAT-WiFiAttendance" -ErrorAction SilentlyContinue
-    if (-not $task) {
-        $isManualMode = $true
-    }
-} catch {
-    $isManualMode = $true
-}
-
-# Append manual_mode parameter to tracker URL
-$openUrl = $TRACKER_URL
-if ($isManualMode) {
-    $openUrl += "&" + "manual_mode=true"
-} else {
-    $openUrl += "&" + "manual_mode=false"
-}
-
 # Open tracker in default browser
-Start-Process $openUrl
+Start-Process $TRACKER_URL
 
 Write-Log "Opened attendance tracker with auto-mark. Done!"
 
