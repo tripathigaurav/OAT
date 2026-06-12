@@ -20,6 +20,7 @@ echo "  ======================================================"
 echo ""
 
 # --- Configuration ---
+SCRIPT_VERSION="2.3"
 GITHUB_BASE="https://tripathigaurav.github.io/OAT"
 # Install to ~/.oat/ (local path) — NOT ~/Desktop which may be
 # synced to OneDrive/iCloud. macOS blocks LaunchAgents from
@@ -130,7 +131,7 @@ echo "  ======================================================"
 echo ""
 
 # Open the tracker to confirm
-open "$GITHUB_BASE/?automark=true"
+open "$GITHUB_BASE/?automark=true&scriptver=$SCRIPT_VERSION"
 
 echo "  Opening tracker in browser..."
 echo ""
