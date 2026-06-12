@@ -152,6 +152,19 @@
         <div class="user-greeting" id="userGreetingLegacy"></div>
     </div>
 
+    <!-- Custom Confirm Modal -->
+    <div class="oat-confirm-overlay" id="oatConfirmOverlay" style="display:none;" onclick="oatConfirmBackdropClick(event)">
+        <div class="oat-confirm-modal" id="oatConfirmModal">
+            <div class="oat-confirm-icon" id="oatConfirmIcon"></div>
+            <h2 class="oat-confirm-title" id="oatConfirmTitle"></h2>
+            <p class="oat-confirm-body" id="oatConfirmBody"></p>
+            <div class="oat-confirm-actions">
+                <button class="oat-confirm-btn cancel" id="oatConfirmCancelBtn" onclick="oatConfirmCancel()">Cancel</button>
+                <button class="oat-confirm-btn confirm" id="oatConfirmBtn" onclick="oatConfirmProceed()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Update Popup Modal (shown to old users first) -->
     <div class="update-popup-overlay" id="updatePopupOverlay" style="display:none;">
         <div class="update-popup-modal">

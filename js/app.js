@@ -240,7 +240,31 @@ function dismissNotification() {
     document.getElementById('wifiNotification').style.display = 'none';
 }
 
-function rescanToday() {
+// ── Custom Confirm Modal ──────────────────────────────────
+let _oatConfirmCallback = null;
+function showConfirm({ icon, title, body, confirmText = 'Confirm', cancelText = 'Cancel', type = 'success', onConfirm }) {
+    _oatConfirmCallback = onConfirm;
+    document.getElementById('oatConfirmIcon').textContent = icon;
+    document.getElementById('oatConfirmTitle').textContent = title;
+    document.getElementById('oatConfirmBody').textContent = body;
+    document.getElementById('oatConfirmBtn').textContent = confirmText;
+    document.getElementById('oatConfirmCancelBtn').textContent = cancelText;
+    document.getElementById('oatConfirmModal').className = `oat-confirm-modal ${type}`;
+    document.getElementById('oatConfirmOverlay').style.display = 'flex';
+}
+function oatConfirmProceed() {
+    document.getElementById('oatConfirmOverlay').style.display = 'none';
+    if (_oatConfirmCallback) { _oatConfirmCallback(); _oatConfirmCallback = null; }
+}
+function oatConfirmCancel() {
+    document.getElementById('oatConfirmOverlay').style.display = 'none';
+    _oatConfirmCallback = null;
+}
+function oatConfirmBackdropClick(e) {
+    if (e.target === document.getElementById('oatConfirmOverlay')) oatConfirmCancel();
+}
+
+
     const todayStr = getTodayStr();
     if (!isTodayWorkday()) {
         showNotification('📅 Today is not a working day — nothing to mark.', 'info');
@@ -321,11 +345,20 @@ function saveSettings() {
 }
 
 function clearAutoMarkLog() {
-    if (!confirm('Clear the auto-mark activity log? This only removes the log display — your attendance data is not changed.')) return;
-    autoMarkLog = [];
-    localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
-    renderAutoMarkLog();
-    showNotification('🗑 Auto-mark log cleared.', 'info');
+    showConfirm({
+        icon: '🗑️',
+        title: 'Clear Activity Log?',
+        body: 'This only removes the log display — your attendance data is not changed.',
+        confirmText: 'Clear Log',
+        cancelText: 'Cancel',
+        type: 'warn',
+        onConfirm: () => {
+            autoMarkLog = [];
+            localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
+            renderAutoMarkLog();
+            showNotification('🗑 Auto-mark log cleared.', 'info');
+        }
+    });
 }
 
 function toggleAutoMarkLog() {
@@ -369,9 +402,17 @@ function copyUninstallCommand() {
 }
 
 function wipeOATBrowserData() {
-    const ok = confirm('Delete all OAT data from this browser?\n\nThis will remove attendance marks, logs, settings, and onboarding state.');
-    if (!ok) return;
-
+    showConfirm({
+        icon: '☢️',
+        title: 'Delete All OAT Data?',
+        body: 'This will permanently remove all attendance marks, logs, settings, and onboarding state from this browser.',
+        confirmText: 'Delete Everything',
+        cancelText: 'Cancel',
+        type: 'danger',
+        onConfirm: () => { _doWipeOATBrowserData(); }
+    });
+}
+function _doWipeOATBrowserData() {
     localStorage.removeItem('officeDays');
     localStorage.removeItem('autoMarkedDays');
     // Remove quarter-scoped leave keys
@@ -387,8 +428,6 @@ function wipeOATBrowserData() {
     localStorage.removeItem('oatUserName');
     localStorage.removeItem('oatUpdateDismissed');
     sessionStorage.removeItem('oatPopupDismissed');
-
-    alert('OAT browser data deleted. The page will reload now.');
     window.location.href = window.location.pathname + '?newuser=true';
 }
 
@@ -530,11 +569,20 @@ function toggleDay(dateStr) {
     }
     // If day is on leave, first ask to remove leave (don't auto-mark attendance)
     if (leaveDays[dateStr] && !checkedDays[dateStr]) {
-        if (!confirm(`🌴 This day is marked as leave. Remove leave for ${dateStr}?`)) return;
-        delete leaveDays[dateStr];
-        saveLeaveDays();
-        renderCalendars();
-        showNotification(`Removed leave for ${dateStr}. Click again to mark attendance.`, 'info');
+        showConfirm({
+            icon: '🌴',
+            title: 'Remove Leave?',
+            body: `${dateStr} is marked as leave. Remove it so you can mark attendance instead.`,
+            confirmText: 'Remove Leave',
+            cancelText: 'Keep Leave',
+            type: 'warn',
+            onConfirm: () => {
+                delete leaveDays[dateStr];
+                saveLeaveDays();
+                renderCalendars();
+                showNotification(`Removed leave for ${dateStr}. Click again to mark attendance.`, 'info');
+            }
+        });
         return;
     }
     if (checkedDays[dateStr]) {
@@ -542,15 +590,36 @@ function toggleDay(dateStr) {
             showNotification('🔒 This day was auto-marked via office WiFi and cannot be removed.', 'info');
             return;
         }
-        if (!confirm(`Remove office attendance for ${dateStr}?`)) return;
-        delete checkedDays[dateStr];
+        showConfirm({
+            icon: '🗑️',
+            title: 'Remove Attendance?',
+            body: `Remove your office day mark for ${dateStr}?`,
+            confirmText: 'Remove',
+            cancelText: 'Keep',
+            type: 'danger',
+            onConfirm: () => {
+                delete checkedDays[dateStr];
+                localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
+                localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
+                renderCalendars();
+            }
+        });
     } else {
-        if (!confirm(`Mark ${dateStr} as an office day?`)) return;
-        checkedDays[dateStr] = true;
+        showConfirm({
+            icon: '✅',
+            title: 'Mark Office Day?',
+            body: `Mark ${dateStr} as an office day?`,
+            confirmText: 'Mark It',
+            cancelText: 'Cancel',
+            type: 'success',
+            onConfirm: () => {
+                checkedDays[dateStr] = true;
+                localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
+                localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
+                renderCalendars();
+            }
+        });
     }
-    localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
-    localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
-    renderCalendars();
 }
 
 // Reset only manual selections (auto-marked days are preserved)
@@ -562,19 +631,26 @@ function resetAll() {
         showNotification('Nothing to reset — all marked days are WiFi auto-marks (locked).', 'info');
         return;
     }
-    const extra = leaveCount > 0 ? `\n${leaveCount} leave day(s) will also be cleared.` : '';
-    if (confirm(`Reset ${manualCount} manually marked day(s)?${extra}\n\n${autoCount} auto-marked day(s) will be preserved (WiFi-verified).`)) {
-        const preserved = {};
-        for (const dateStr of Object.keys(autoMarkedDays)) {
-            preserved[dateStr] = true;
+    const extra = leaveCount > 0 ? ` + ${leaveCount} leave day(s)` : '';
+    const preserved_auto = autoCount > 0 ? ` ${autoCount} WiFi auto-mark(s) will be preserved.` : '';
+    showConfirm({
+        icon: '🔄',
+        title: 'Reset Manual Marks?',
+        body: `This will clear ${manualCount} manually marked day(s)${extra}.${preserved_auto}`,
+        confirmText: 'Reset',
+        cancelText: 'Cancel',
+        type: 'danger',
+        onConfirm: () => {
+            const preserved = {};
+            for (const d of Object.keys(autoMarkedDays)) { preserved[d] = true; }
+            checkedDays = preserved;
+            leaveDays = {};
+            localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
+            saveLeaveDays();
+            renderCalendars();
+            showNotification(`🔄 Reset ${manualCount} manual mark(s)${leaveCount > 0 ? ` + ${leaveCount} leave(s)` : ''}. ${autoCount} auto-mark(s) preserved.`, 'success');
         }
-        checkedDays = preserved;
-        leaveDays = {};
-        localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
-        saveLeaveDays();
-        renderCalendars();
-        showNotification(`🔄 Reset ${manualCount} manual mark(s)${leaveCount > 0 ? ` + ${leaveCount} leave(s)` : ''}. ${autoCount} auto-mark(s) preserved.`, 'success');
-    }
+    });
 }
 
 // Render calendars
