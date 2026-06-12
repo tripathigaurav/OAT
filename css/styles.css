@@ -1173,7 +1173,7 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     border: 1px solid rgba(255,255,255,0.08);
     transition: border-color 0.32s ease, box-shadow 0.32s ease;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     opacity: 0;
     animation: fadeUp 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
     display: flex;
@@ -1185,6 +1185,8 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     content: '';
     position: absolute;
     inset: 0;
+    border-radius: 18px;
+    clip-path: inset(0 round 18px);
     background: linear-gradient(
         135deg,
         rgba(255,255,255,0)   20%,
