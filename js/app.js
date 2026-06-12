@@ -431,11 +431,12 @@ function renderDiagnostic() {
     // Script version
     if (scriptVer) {
         const ok = scriptVer === REQUIRED_SCRIPT_VERSION;
-        rows.push(diagRow('🔢', 'Script version',
-            `v${scriptVer}${ok ? ' ✓ (current)' : ` ⚠ (need v${REQUIRED_SCRIPT_VERSION})`}`,
-            ok ? 'ok' : 'warn'));
+        const label = scriptVer === 'legacy'
+            ? `Pre-v${REQUIRED_SCRIPT_VERSION} ⚠ (update script)`
+            : `v${scriptVer}${ok ? ' ✓ (current)' : ` ⚠ (need v${REQUIRED_SCRIPT_VERSION})`}`;
+        rows.push(diagRow('🔢', 'Script version', label, ok ? 'ok' : 'warn'));
     } else {
-        rows.push(diagRow('🔢', 'Script version', 'Unknown — not recorded yet', 'warn'));
+        rows.push(diagRow('🔢', 'Script version', `Unknown — script not yet run`, 'warn'));
     }
 
     // Auto-mark enabled
@@ -1080,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('oatScriptActive', new Date().toISOString());
         // Save script version so update card doesn't show after a successful run
         const sv = urlParams.get('scriptver');
-        if (sv) localStorage.setItem('oatScriptVersion', sv);
+        localStorage.setItem('oatScriptVersion', sv || 'legacy');
         // Hide setup-reminder card since script is now confirmed working
         const reminderCard = document.getElementById('settingsSetupReminder');
         if (reminderCard) reminderCard.style.display = 'none';
