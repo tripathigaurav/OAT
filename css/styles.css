@@ -14,8 +14,8 @@
 
 /* ── Sticky frosted header ──────────────────────────── */
 .oat-header {
-    position: fixed;
-    top: 0; left: 0; right: 0;
+    position: sticky;
+    top: 0;
     z-index: 200;
 }
 .oat-header-inner {
@@ -45,10 +45,7 @@
     align-items: center;
     justify-content: flex-end;
     min-width: 160px;
-    position: fixed;
-    right: 20px;
-    top: 16px;
-    z-index: 201;
+    gap: 8px;
 }
 .oat-brand-text .user-greeting {
     justify-content: center;
@@ -64,6 +61,10 @@
     grid-template-columns: repeat(6, 1fr);
     gap: 8px;
     margin: 10px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 150;
+    padding: 10px 0 8px;
 }
 
 .stat-card {
@@ -515,8 +516,8 @@
     cursor: pointer;
 }
 
-/* Center the badge below h1 */
-h1 + .setup-status-badge {
+/* Center the badge below h1 — only when directly after h1, not in header-right */
+.oat-brand-text h1 + .setup-status-badge {
     display: block;
     margin-left: auto;
     margin-right: auto;
@@ -528,6 +529,112 @@ h1 + .setup-status-badge {
     color: #fab1a0;
     cursor: pointer;
 }
+
+/* ---- Fancy Confirm Modal ---- */
+.oat-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.80);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+}
+.oat-confirm-modal {
+    background: rgba(8,8,22,0.97);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 22px;
+    padding: 0 0 24px;
+    max-width: 360px;
+    width: 100%;
+    text-align: center;
+    animation: slideUp 0.35s cubic-bezier(0.22,1,0.36,1);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+    overflow: hidden;
+    position: relative;
+}
+/* Colored top strip */
+.oat-confirm-modal::before {
+    content: '';
+    display: block;
+    height: 4px;
+    width: 100%;
+    background: linear-gradient(90deg, #ADDB67, #7fdbca);
+}
+.oat-confirm-modal.danger::before  { background: linear-gradient(90deg, #F78C6C, #d63031); }
+.oat-confirm-modal.warn::before    { background: linear-gradient(90deg, #ECC48D, #F78C6C); }
+.oat-confirm-modal.info::before    { background: linear-gradient(90deg, #82aaff, #c792ea); }
+
+.oat-confirm-icon {
+    font-size: 2.8rem;
+    margin: 22px 0 12px;
+    line-height: 1;
+    display: block;
+    animation: confirmIconBounce 0.5s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes confirmIconBounce {
+    0%   { transform: scale(0.4); opacity: 0; }
+    70%  { transform: scale(1.15); }
+    100% { transform: scale(1);   opacity: 1; }
+}
+
+.oat-confirm-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ADDB67;
+    margin-bottom: 8px;
+    padding: 0 24px;
+}
+.oat-confirm-modal.danger .oat-confirm-title { color: #F78C6C; }
+.oat-confirm-modal.warn   .oat-confirm-title { color: #ECC48D; }
+.oat-confirm-modal.info   .oat-confirm-title { color: #82aaff; }
+
+.oat-confirm-body {
+    font-size: 0.86rem;
+    color: #7c8fa6;
+    margin-bottom: 22px;
+    line-height: 1.6;
+    padding: 0 24px;
+}
+.oat-confirm-actions { display: flex; gap: 10px; justify-content: center; padding: 0 24px; }
+.oat-confirm-btn {
+    border: none; border-radius: 10px; padding: 10px 26px;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; font-family: inherit;
+}
+.oat-confirm-btn.cancel {
+    background: rgba(255,255,255,0.07); color: #7c8fa6;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.oat-confirm-btn.cancel:hover { background: rgba(255,255,255,0.13); color: #d6deeb; }
+.oat-confirm-btn.confirm { background: linear-gradient(135deg,#ADDB67,#7fdbca); color: #0a0e1a; }
+.oat-confirm-btn.confirm:hover { transform: scale(1.05); box-shadow: 0 4px 20px rgba(173,219,103,0.4); }
+
+.oat-confirm-modal.danger  { border-color: rgba(247,140,108,0.4); box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 40px rgba(247,140,108,0.08); }
+.oat-confirm-modal.danger  .oat-confirm-btn.confirm { background: linear-gradient(135deg,#F78C6C,#d63031); color:#fff; }
+.oat-confirm-modal.danger  .oat-confirm-btn.confirm:hover { box-shadow: 0 4px 20px rgba(247,140,108,0.5); transform: scale(1.05); }
+.oat-confirm-modal.warn    { border-color: rgba(236,196,141,0.4); box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 40px rgba(236,196,141,0.08); }
+.oat-confirm-modal.warn    .oat-confirm-btn.confirm { background: linear-gradient(135deg,#ECC48D,#F78C6C); color:#0a0e1a; }
+.oat-confirm-modal.warn    .oat-confirm-btn.confirm:hover { box-shadow: 0 4px 20px rgba(236,196,141,0.45); transform: scale(1.05); }
+.oat-confirm-modal.info    { border-color: rgba(130,170,255,0.4); box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 40px rgba(130,170,255,0.08); }
+.oat-confirm-modal.info    .oat-confirm-btn.confirm { background: linear-gradient(135deg,#82aaff,#c792ea); color:#fff; }
+.oat-confirm-modal.info    .oat-confirm-btn.confirm:hover { box-shadow: 0 4px 20px rgba(130,170,255,0.45); transform: scale(1.05); }
+
+body.light-mode .oat-confirm-overlay { background: rgba(30,27,75,0.5); }
+body.light-mode .oat-confirm-modal { background: rgba(255,255,255,0.97); border-color: rgba(0,0,0,0.1); }
+body.light-mode .oat-confirm-title { color: #1e1b4b; }
+body.light-mode .oat-confirm-modal.danger .oat-confirm-title { color: #c0392b; }
+body.light-mode .oat-confirm-modal.warn   .oat-confirm-title { color: #d97706; }
+body.light-mode .oat-confirm-modal.info   .oat-confirm-title { color: #1a5fa8; }
+body.light-mode .oat-confirm-body  { color: #64748b; }
+body.light-mode .oat-confirm-btn.cancel { background: rgba(0,0,0,0.06); color: #64748b; border-color: rgba(0,0,0,0.1); }
+body.light-mode .oat-confirm-btn.cancel:hover { background: rgba(0,0,0,0.11); color: #1e1b4b; }
 
 /* ---- Update Popup Modal ---- */
 .update-popup-overlay {
@@ -870,7 +977,7 @@ body {
     background: transparent;
     color: #d6deeb;
     min-height: 100vh;
-    padding: 80px 20px 20px;
+    padding: 20px 20px 20px;
     overflow-x: hidden;
 }
 
