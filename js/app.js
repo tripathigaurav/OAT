@@ -1286,86 +1286,6 @@ function showSettingsSetupReminder() {
         if (dot) dot.style.display = 'block';
     }
 }
-function isSetupStale() {
-    // Check if user had setup before but it hasn't triggered recently
-    const scriptActive = localStorage.getItem('oatScriptActive');
-    const onboarded = localStorage.getItem('oatOnboarded');
-    const dismissed = localStorage.getItem('oatUpdateDismissed');
-
-    // Not an existing user — skip
-    if (!onboarded && !scriptActive && Object.keys(autoMarkedDays).length === 0) return false;
-
-    // User dismissed the banner today — don't nag
-    if (dismissed) {
-        const dismissDate = new Date(dismissed);
-        const today = new Date();
-        if (dismissDate.toDateString() === today.toDateString()) return false;
-    }
-
-    // If the page was opened via ?automark=true, script is working — save version & not stale
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('automark') === 'true') {
-        const sv = urlParams.get('scriptver');
-        if (sv) localStorage.setItem('oatScriptVersion', sv);
-        return false;
-    }
-
-    // Windows users with an old script version need to update
-    const scriptVer = localStorage.getItem('oatScriptVersion');
-    const onWindows = /Win/i.test(navigator.platform) || /Windows/i.test(navigator.userAgent);
-    const onMac = /Mac/i.test(navigator.platform) || /Mac/i.test(navigator.userAgent);
-    if (onWindows && scriptVer && scriptVer !== REQUIRED_SCRIPT_VERSION) return true;
-    // Windows users who have run the old script (no version stored) also need update
-    if (onWindows && scriptActive && !scriptVer) return true;
-    // Mac users who have an old script (no version stored) need update
-    if (onMac && scriptVer && scriptVer !== REQUIRED_SCRIPT_VERSION) return true;
-    if (onMac && scriptActive && !scriptVer) return true;
-
-    // If last auto-mark trigger was more than 3 days ago on a workday, setup is likely broken
-    if (scriptActive) {
-        const lastRun = new Date(scriptActive);
-        const now = new Date();
-        const daysSince = Math.floor((now - lastRun) / (1000 * 60 * 60 * 24));
-        // Count how many workdays have passed since last trigger
-        if (daysSince >= 3) return true;
-    }
-
-    // User completed onboarding but script never triggered at all
-    if (onboarded === 'completed' && !scriptActive) return true;
-
-    return false;
-}
-
-// checkForStaleSetup() is defined above (stub) — auto-prompts disabled in v2.2
-
-function showUpdateBanner() {
-    const banner = document.getElementById('updateBanner');
-    if (!banner) return;
-
-    const scriptActive = localStorage.getItem('oatScriptActive');
-    const detail = document.getElementById('updateBannerDetail');
-    if (detail) {
-        if (scriptActive) {
-            detail.textContent = 'A new update is available that improves auto-tracking reliability. Quick one-click fix!';
-        } else {
-            detail.textContent = 'A new update is available to get your auto-tracking working. Quick one-click fix!';
-        }
-    }
-    banner.style.display = 'block';
-
-    // Show notification dot on settings gear + card inside settings
-    const dot = document.getElementById('settingsUpdateDot');
-    if (dot) dot.style.display = 'block';
-    const card = document.getElementById('settingsUpdateCard');
-    if (card) card.style.display = 'flex';
-
-    // Also update the status badge to show warning
-    const badge = document.getElementById('setupStatusBadge');
-    if (badge) {
-        badge.className = 'setup-status-badge stale';
-        badge.innerHTML = '🔄 Update available';
-    }
-}
 
 function reopenUpdatePopup() {
     sessionStorage.removeItem('oatPopupDismissed');
@@ -1402,7 +1322,6 @@ function updatePopupNow() {
 
     navigator.clipboard.writeText(cmd).then(() => {
         showPopupCopiedState(os);
-        startPatchVerification();
     }).catch(() => {
         const ta = document.createElement('textarea');
         ta.value = cmd;
@@ -1411,7 +1330,6 @@ function updatePopupNow() {
         document.execCommand('copy');
         document.body.removeChild(ta);
         showPopupCopiedState(os);
-        startPatchVerification();
     });
 }
 
@@ -1445,99 +1363,12 @@ function updatePopupLater() {
     const popup = document.getElementById('updatePopupOverlay');
     if (popup) popup.style.display = 'none';
     sessionStorage.setItem('oatPopupDismissed', '1');
-    // Show the smaller banner as fallback
-    showUpdateBanner();
 }
 
 function dismissUpdateBanner() {
-    document.getElementById('updateBanner').style.display = 'none';
+    const banner = document.getElementById('updateBanner');
+    if (banner) banner.style.display = 'none';
     localStorage.setItem('oatUpdateDismissed', new Date().toISOString());
-}
-
-function triggerAutoPatch() {
-    const os = detectOS();
-    const cmd = os === 'windows'
-        ? 'powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"'
-        : 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash';
-
-    // Copy command to clipboard
-    navigator.clipboard.writeText(cmd).then(() => {
-        showPatchBannerState(os === 'windows' ? 'copied-win' : 'copied-mac');
-        startPatchVerification();
-    }).catch(() => {
-        // Fallback for non-HTTPS or permission denied
-        const ta = document.createElement('textarea');
-        ta.value = cmd;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showPatchBannerState(os === 'windows' ? 'copied-win' : 'copied-mac');
-        startPatchVerification();
-    });
-}
-
-function showPatchBannerState(state) {
-    const icon = document.getElementById('updateBannerIcon');
-    const title = document.getElementById('updateBannerTitle');
-    const detail = document.getElementById('updateBannerDetail');
-    const actions = document.getElementById('updateBannerActions');
-
-    if (state === 'copied-mac') {
-        icon.textContent = '✅';
-        title.textContent = 'Command copied to clipboard!';
-        detail.innerHTML = `
-            <div class="patch-cmd-box"><code>curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash</code></div>
-            <div class="patch-instructions">
-                1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Cmd+Space</span> → type "Terminal"<br>
-                2. Paste &nbsp;<span class="keys">Cmd+V</span> → press <span class="keys">Enter</span>
-            </div>`;
-        actions.innerHTML = '<button class="update-banner-btn primary" onclick="triggerAutoPatch()">📋 Copy Again</button><button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Later</button>';
-        // Switch to stacked layout
-        document.querySelector('.update-banner-content').classList.add('has-command');
-    } else if (state === 'copied-win') {
-        icon.textContent = '✅';
-        title.textContent = 'Command copied to clipboard!';
-        detail.innerHTML = `
-            <div class="patch-cmd-box"><code>powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"</code></div>
-            <div class="patch-instructions">
-                1. Press <strong>Win+R</strong> → paste → press <span class="keys">Enter</span><br>
-                2. Or open <strong>PowerShell</strong> &nbsp;<span class="keys">Win+X</span> → paste → <span class="keys">Enter</span>
-            </div>`;
-        actions.innerHTML = '<button class="update-banner-btn primary" onclick="triggerAutoPatch()">📋 Copy Again</button><button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Later</button>';
-        document.querySelector('.update-banner-content').classList.add('has-command');
-    } else if (state === 'verified') {
-        icon.textContent = '✅';
-        title.textContent = 'Auto-tracking updated!';
-        detail.textContent = 'Your setup has been updated and is working again.';
-        actions.innerHTML = '<button class="update-banner-btn dismiss" onclick="dismissUpdateBanner()">Dismiss</button>';
-        // Remove pulse animation
-        document.getElementById('updateBanner').style.animation = 'none';
-        document.getElementById('updateBanner').style.borderColor = 'rgba(0, 184, 148, 0.4)';
-        document.getElementById('updateBanner').style.background = 'linear-gradient(135deg, rgba(0,184,148,0.15), rgba(85,239,196,0.08))';
-        title.style.color = '#55efc4';
-        // Update status badge
-        updateSetupStatus();
-        localStorage.removeItem('oatUpdateDismissed');
-    }
-}
-
-function startPatchVerification() {
-    // Poll for the fix to take effect (installer opens ?automark=true when done)
-    const checkInterval = setInterval(() => {
-        const scriptActive = localStorage.getItem('oatScriptActive');
-        if (scriptActive) {
-            const lastRun = new Date(scriptActive);
-            const now = new Date();
-            // Use a 10-minute window instead of same-day check — avoids midnight rollover failure
-            if ((now - lastRun) < 10 * 60 * 1000) {
-                clearInterval(checkInterval);
-                showPatchBannerState('verified');
-            }
-        }
-    }, 2000);
-    // Stop polling after 5 minutes
-    setTimeout(() => clearInterval(checkInterval), 5 * 60 * 1000);
 }
 
 function showOnboarding() {
@@ -1640,16 +1471,6 @@ function onboardYes() {
 function onboardBack() {
     document.getElementById('onboardStep1').style.display = 'block';
     document.getElementById('onboardStep2').style.display = 'none';
-}
-
-
-
-function downloadInstaller() {
-    // Legacy — kept for backward compat; prefer copyWinInstallCmd()
-    const a = document.createElement('a');
-    a.href = 'install-win.bat';
-    a.download = 'install-win.bat';
-    a.click();
 }
 
 // Listen for cross-tab localStorage changes (installer opens new tab → sets oatScriptActive)
@@ -1799,60 +1620,6 @@ function handleBackfill(dateString) {
 
     renderCalendars();
 }
-
-/* ── Typewriter subtitle ──────────────────────────────── */
-(function initTypewriter() {
-    const el = document.getElementById('twText');
-    if (!el) return;
-
-    function getLines() {
-        const days = parseInt((document.getElementById('totalOfficeDays') || {}).textContent || '0', 10);
-        const rem  = parseInt((document.getElementById('remainingDays')   || {}).textContent || '39', 10);
-        const leaves = parseInt((document.getElementById('totalLeaveDays') || {}).textContent || '0', 10);
-        const pct  = Math.min(100, Math.round((days / 39) * 100));
-        const lines = [
-            { text: 'Auto-tracking active...', active: true },
-            { text: `${days} / 39 days done`,  active: false },
-            { text: `${rem} days to go`,        active: false },
-            { text: `${pct}% of target reached`, active: false },
-            { text: 'NetApp corp WiFi \u00b7 Apr\u2013Jul 2026', active: false },
-        ];
-        if (leaves > 0) {
-            lines.splice(3, 0, { text: `${leaves} leave day${leaves > 1 ? 's' : ''} taken`, active: false });
-        }
-        return lines;
-    }
-
-    let lineIdx = 0, charIdx = 0, deleting = false;
-
-    function tick() {
-        const lines = getLines();
-        const line  = lines[lineIdx % lines.length];
-
-        el.classList.toggle('tw-active', line.active);
-
-        if (!deleting) {
-            charIdx++;
-            el.textContent = line.text.slice(0, charIdx);
-            if (charIdx === line.text.length) {
-                deleting = true;
-                setTimeout(tick, 2200);
-                return;
-            }
-        } else {
-            charIdx--;
-            el.textContent = line.text.slice(0, charIdx);
-            if (charIdx === 0) {
-                deleting = false;
-                lineIdx++;
-                setTimeout(tick, 400);
-                return;
-            }
-        }
-        setTimeout(tick, deleting ? 28 : 52);
-    }
-    setTimeout(tick, 800);
-})();
 
 /* ── Canvas confetti burst ────────────────────────────── */
 function launchConfettiCanvas() {

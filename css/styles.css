@@ -57,29 +57,6 @@
 }
 /* badge now lives in header-right — remove old centred override */
 .oat-brand-text .setup-status-badge { display: none !important; }
-.hero-typewriter { display: none; }
-.typewriter-row  { display: none; }
-.tw-cursor {
-    display: inline-block;
-    width: 2px;
-    height: 1em;
-    background: #80a4c2;
-    margin-left: 2px;
-    vertical-align: text-bottom;
-    animation: blink 1s step-end infinite;
-}
-
-/* green when typewriter shows active status */
-.tw-text.tw-active {
-    color: #ADDB67;
-}
-.tw-active ~ .tw-cursor {
-    background: #ADDB67;
-}
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-}
 
 /* ── Stats pill ribbon ───────────────────────────────── */
 .stats-ribbon {
@@ -552,22 +529,6 @@ h1 + .setup-status-badge {
     cursor: pointer;
 }
 
-/* Update Required Banner */
-.update-banner {
-    margin: 8px auto 12px;
-    max-width: 620px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, rgba(225, 112, 85, 0.15), rgba(253, 203, 110, 0.1));
-    border: 1px solid rgba(225, 112, 85, 0.3);
-    padding: 14px 18px;
-    animation: bannerPulse 2s ease-in-out infinite;
-}
-
-@keyframes bannerPulse {
-    0%, 100% { border-color: rgba(225, 112, 85, 0.3); }
-    50% { border-color: rgba(225, 112, 85, 0.6); }
-}
-
 /* ---- Update Popup Modal ---- */
 .update-popup-overlay {
     position: fixed;
@@ -700,70 +661,6 @@ h1 + .setup-status-badge {
     margin-top: 8px;
 }
 
-.update-banner-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.update-banner-icon {
-    font-size: 1.8rem;
-    flex-shrink: 0;
-}
-
-.update-banner-text {
-    flex: 1;
-    min-width: 180px;
-}
-
-.update-banner-text strong {
-    display: block;
-    color: #fab1a0;
-    font-size: 0.95rem;
-    margin-bottom: 2px;
-}
-
-.update-banner-text span {
-    font-size: 0.8rem;
-    color: #b2bec3;
-}
-
-.update-banner-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-.update-banner-btn {
-    border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-
-.update-banner-btn.primary {
-    background: linear-gradient(135deg, #F78C6C, #d63031);
-    color: white;
-}
-
-.update-banner-btn.primary:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 12px rgba(225, 112, 85, 0.4);
-}
-
-.update-banner-btn.dismiss {
-    background: rgba(255,255,255,0.08);
-    color: #b2bec3;
-}
-
-.update-banner-btn.dismiss:hover {
-    background: rgba(255,255,255,0.15);
-}
-
 .patch-cmd-box {
     background: rgba(0,0,0,0.4);
     border: 1px solid rgba(85, 239, 196, 0.25);
@@ -783,31 +680,6 @@ h1 + .setup-status-badge {
     white-space: nowrap;
     flex: 1;
     user-select: all;
-}
-
-/* Banner switches to stacked layout when showing command */
-.update-banner-content.has-command {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: center;
-}
-
-.update-banner-content.has-command .update-banner-icon {
-    font-size: 1.5rem;
-}
-
-.update-banner-content.has-command .update-banner-text {
-    min-width: unset;
-}
-
-.update-banner-content.has-command .update-banner-text strong {
-    font-size: 1rem;
-    margin-bottom: 6px;
-}
-
-.update-banner-content.has-command .update-banner-actions {
-    justify-content: center;
-    margin-top: 4px;
 }
 
 .patch-instructions {

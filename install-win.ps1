@@ -15,6 +15,7 @@ Write-Host "  ======================================================" -Foregroun
 Write-Host ""
 
 # --- Configuration ---
+$SCRIPT_VERSION = "2.3"
 $GITHUB_BASE = "https://tripathigaurav.github.io/OAT"
 # Install to %LOCALAPPDATA%\OAT (local path) - NOT Desktop which may be
 # synced to OneDrive. Windows blocks scheduled tasks from cloud-synced dirs.
@@ -115,9 +116,9 @@ if ($fullySetup) {
     Write-Host "  Status: Ready - Manual mode" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  You can still use the full app:" -ForegroundColor White
-    Write-Host "     • Click 'Run WiFi Check Now' in Settings to check manually" -ForegroundColor White
-    Write-Host "     • Use 'Scan WiFi History' to backfill past office days" -ForegroundColor White
     Write-Host "     • Mark days manually on the calendar" -ForegroundColor White
+    Write-Host "     • Run auto-attendance.ps1 --backfill to scan WiFi history" -ForegroundColor White
+    Write-Host "     • Re-run installer to try scheduled task again" -ForegroundColor White
 }
 
 Write-Host ""
