@@ -67,22 +67,108 @@ Write-Host "  [4/5] Installing Scheduled Task..."
 
 $taskInstalled = $false
 
-# Method 1: schtasks.exe - works WITHOUT admin for user-level tasks
+# Pre-check: Ensure WLAN event log is enabled (EventTrigger needs it)
+try {
+    $wlanLog = Get-WinEvent -ListLog "Microsoft-Windows-WLAN-AutoConfig/Operational" -ErrorAction Stop
+    if (-not $wlanLog.IsEnabled) {
+        Write-Host "        Enabling WLAN event log..." -ForegroundColor Yellow
+        try { wevtutil sl "Microsoft-Windows-WLAN-AutoConfig/Operational" /e:true 2>$null } catch {}
+    }
+} catch {
+    Write-Host "        Note: WLAN event log not accessible (non-admin)" -ForegroundColor Gray
+}
+
+# Method 1: schtasks.exe with full XML (EventTrigger + LogonTrigger)
 try {
     $result = schtasks /Create /TN "OAT-WiFiAttendance" /XML "$OAT_DIR\$TASK_XML" /F 2>&1
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "        Scheduled Task installed!" -ForegroundColor Green
+        Write-Host "        Scheduled Task installed (WiFi trigger + logon)!" -ForegroundColor Green
         $taskInstalled = $true
+    } else {
+        Write-Host "        Method 1 (schtasks /XML): $result" -ForegroundColor Gray
     }
-} catch {}
+} catch {
+    Write-Host "        Method 1 (schtasks /XML): $($_.Exception.Message)" -ForegroundColor Gray
+}
 
-# Method 2: Register-ScheduledTask
+# Method 2: Register-ScheduledTask with full XML
 if (-not $taskInstalled) {
     try {
-        Register-ScheduledTask -Xml (Get-Content "$OAT_DIR\$TASK_XML" -Raw -Encoding UTF8) -TaskName "OAT-WiFiAttendance" -Force -ErrorAction Stop | Out-Null
-        Write-Host "        Scheduled Task installed!" -ForegroundColor Green
+        Register-ScheduledTask -Xml (Get-Content "$OAT_DIR\$TASK_XML" -Raw -Encoding UTF8) `
+            -TaskName "OAT-WiFiAttendance" -Force -ErrorAction Stop | Out-Null
+        Write-Host "        Scheduled Task installed (WiFi trigger + logon)!" -ForegroundColor Green
         $taskInstalled = $true
-    } catch {}
+    } catch {
+        Write-Host "        Method 2 (Register XML): $($_.Exception.Message)" -ForegroundColor Gray
+    }
+}
+
+# Method 3: Fallback - Create task programmatically WITHOUT EventTrigger
+# EventTrigger often fails on corporate PCs (needs admin or WLAN log enabled)
+# This uses LogonTrigger + repeating every 15 min as a reliable alternative
+if (-not $taskInstalled) {
+    Write-Host "        WiFi event trigger unavailable, using logon + interval mode..." -ForegroundColor Yellow
+    try {
+        $action = New-ScheduledTaskAction `
+            -Execute "powershell.exe" `
+            -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$OAT_DIR\$PS_SCRIPT`"" `
+            -WorkingDirectory $OAT_DIR
+
+        # Trigger at logon (30s delay) with repetition every 15 min for 12 hours
+        $trigger = New-ScheduledTaskTrigger -AtLogOn
+        $trigger.Delay = "PT30S"
+        try {
+            $repSource = New-ScheduledTaskTrigger -Once -At "00:00" `
+                -RepetitionInterval (New-TimeSpan -Minutes 15) `
+                -RepetitionDuration (New-TimeSpan -Hours 12)
+            $trigger.Repetition = $repSource.Repetition
+        } catch {
+            # Repetition not supported on this OS version - logon-only is fine,
+            # the script's lock file prevents double-marking anyway
+        }
+
+        $settings = New-ScheduledTaskSettingsSet `
+            -ExecutionTimeLimit (New-TimeSpan -Minutes 1) `
+            -AllowStartIfOnBatteries `
+            -DontStopIfGoingOnBatteries `
+            -StartWhenAvailable `
+            -MultipleInstances IgnoreNew
+
+        Register-ScheduledTask `
+            -TaskName "OAT-WiFiAttendance" `
+            -Action $action `
+            -Trigger $trigger `
+            -Settings $settings `
+            -RunLevel Limited `
+            -Force -ErrorAction Stop | Out-Null
+
+        Write-Host "        Scheduled Task installed (logon + every 15 min)!" -ForegroundColor Green
+        $taskInstalled = $true
+    } catch {
+        Write-Host "        Method 3 (programmatic): $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+# Method 4: Last resort - schtasks.exe simple command (no XML, most compatible)
+if (-not $taskInstalled) {
+    try {
+        $psCmd = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$OAT_DIR\$PS_SCRIPT`""
+        $result = schtasks /Create /TN "OAT-WiFiAttendance" /TR $psCmd /SC ONLOGON /DELAY 0001:00 /F 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "        Scheduled Task installed (logon only)!" -ForegroundColor Green
+            $taskInstalled = $true
+        } else {
+            Write-Host "        Method 4 (schtasks /SC): $result" -ForegroundColor Red
+        }
+    } catch {
+        Write-Host "        Method 4 (schtasks /SC): $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+if (-not $taskInstalled) {
+    Write-Host ""
+    Write-Host "        All methods failed. Try running PowerShell as Admin" -ForegroundColor Red
+    Write-Host "        and re-run the installer." -ForegroundColor Red
 }
 Write-Host ""
 
@@ -108,17 +194,20 @@ Write-Host "  Files installed to: $OAT_DIR" -ForegroundColor White
 
 if ($fullySetup) {
     Write-Host "  Scheduled Task: OAT-WiFiAttendance (ACTIVE)" -ForegroundColor Green
-    Write-Host "  Status: COMPLETE - Auto-tracking enabled ✅" -ForegroundColor Green
+    Write-Host "  Status: COMPLETE - Auto-tracking enabled" -ForegroundColor Green
     Write-Host ""
     Write-Host "  Your attendance WILL auto-mark when you connect to" -ForegroundColor White
     Write-Host "  office WiFi. No further action needed!" -ForegroundColor White
 } else {
     Write-Host "  Status: Ready - Manual mode" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  You can still use the full app:" -ForegroundColor White
-    Write-Host "     • Mark days manually on the calendar" -ForegroundColor White
-    Write-Host "     • Run auto-attendance.ps1 --backfill to scan WiFi history" -ForegroundColor White
-    Write-Host "     • Re-run installer to try scheduled task again" -ForegroundColor White
+    Write-Host "  Scheduled task could not be installed." -ForegroundColor Yellow
+    Write-Host "  Try: Run PowerShell as Administrator and re-run:" -ForegroundColor Yellow
+    Write-Host '  powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"' -ForegroundColor White
+    Write-Host ""
+    Write-Host "  You can still use the app:" -ForegroundColor White
+    Write-Host "     * Mark days manually on the calendar" -ForegroundColor White
+    Write-Host "     * Run auto-attendance.ps1 --backfill to scan WiFi history" -ForegroundColor White
 }
 
 Write-Host ""
