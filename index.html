@@ -15,6 +15,7 @@
     <!-- Code Rain canvas -->
     <canvas id="oat-particle-canvas"></canvas>
 
+
     <!-- Sticky frosted header -->
     <header class="oat-header" id="oatHeader">
         <div class="oat-header-inner">
@@ -152,6 +153,17 @@
         <div class="user-greeting" id="userGreetingLegacy"></div>
     </div>
 
+    <!-- Birthday Popup -->
+    <div class="bday-popup-overlay" id="bdayPopupOverlay" style="display:none;" onclick="bdayPopupClose(event)">
+        <div class="bday-popup-modal" id="bdayPopupModal">
+            <div class="bday-popup-balloons">🎈🎈🎈</div>
+            <div class="bday-popup-icon">🎂</div>
+            <h2 class="bday-popup-title" id="bdayPopupTitle"></h2>
+            <p class="bday-popup-msg" id="bdayPopupMsg"></p>
+            <button class="bday-popup-btn" onclick="document.getElementById('bdayPopupOverlay').style.display='none'">🥳 Celebrate!</button>
+        </div>
+    </div>
+
     <!-- Fancy Confirm Modal -->
     <div class="oat-confirm-overlay" id="oatConfirmOverlay" style="display:none;" onclick="oatConfirmBackdropClick(event)">
         <div class="oat-confirm-modal" id="oatConfirmModal">
@@ -238,6 +250,41 @@
         <canvas id="confetti-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:9000;display:none;"></canvas>
     </div>
 
+    <!-- Trends Button + Panel -->
+    <div class="trends-panel" id="trendsPanel">
+        <div class="trends-header">📈 Attendance Trends</div>
+        <div class="trends-body">
+            <div class="trend-row" id="trendPrediction">
+                <span class="trend-icon">🔮</span>
+                <div class="trend-content">
+                    <div class="trend-label">Estimated target completion</div>
+                    <div class="trend-value" id="trendPredictVal">—</div>
+                </div>
+            </div>
+            <div class="trend-row">
+                <span class="trend-icon">📊</span>
+                <div class="trend-content">
+                    <div class="trend-label">Overall attendance rate</div>
+                    <div class="trend-value" id="trendOverallRate">—</div>
+                </div>
+            </div>
+            <div class="trend-row">
+                <span class="trend-icon">🕐</span>
+                <div class="trend-content">
+                    <div class="trend-label">Recent pace (last 2 weeks)</div>
+                    <div class="trend-value" id="trendRecentRate">—</div>
+                </div>
+            </div>
+            <div class="trend-row">
+                <span class="trend-icon">🎯</span>
+                <div class="trend-content">
+                    <div class="trend-label">Days needed at current pace</div>
+                    <div class="trend-value" id="trendDaysNeeded">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="calendars" id="calendars"></div>
 
     <div class="legend">
@@ -283,6 +330,10 @@
 
     <!-- Settings Panel -->
     <div class="settings-toggle-wrap">
+        <div class="fab-item" onclick="toggleTrends()" title="Attendance Trends & Predictions">
+            <div class="fab-dot fab-dot--trends"><span>📈</span></div>
+            <span class="fab-label fab-label--trends">Trends</span>
+        </div>
         <div class="fab-item" onclick="window.open('https://netapp.sharepoint.com/sites/ThriveTogether/SitePages/Employee-Office-Visit-Dashboard.aspx','_blank')" title="View Office Attendance Data">
             <div class="fab-dot fab-dot--powerbi"><span>📊</span></div>
             <span class="fab-label fab-label--powerbi">Office Data</span>

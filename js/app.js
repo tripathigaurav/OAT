@@ -1,6 +1,28 @@
 // Configuration
 const REQUIRED_SCRIPT_VERSION = '2.3'; // Bump this to force update prompts
 
+// ── Team Birthdays (MM-DD, year-agnostic) ────────────────────────
+const BIRTHDAYS = [
+    { mmdd: '02-26', name: 'Abhijeet Chauhan' },
+    { mmdd: '03-22', name: 'Srinidhi M' },
+    { mmdd: '04-13', name: 'Chetan Teja Gurrala' },
+    { mmdd: '04-19', name: 'Rahul Agarwal' },
+    { mmdd: '06-25', name: 'Mohak Ahuja' },
+    { mmdd: '07-10', name: 'Amartya Om' },
+    { mmdd: '07-17', name: 'Sneha Priya' },
+    { mmdd: '07-22', name: 'Avinash S' },
+    { mmdd: '08-19', name: 'Luv Gupta' },
+    { mmdd: '11-09', name: 'Gaurav Tripathi' },
+    { mmdd: '11-13', name: 'Divya Naiga' },
+    { mmdd: '11-25', name: 'Vijayarajan R' },
+];
+
+function getBirthdayPeople(dateStr) {
+    // dateStr is YYYY-MM-DD
+    const mmdd = dateStr.slice(5); // MM-DD
+    return BIRTHDAYS.filter(b => b.mmdd === mmdd);
+}
+
 // ── Quarter definitions ───────────────────────────────────────────
 const QUARTERS = {
     Q1: {
@@ -671,6 +693,7 @@ function renderCalendars() {
             const isWeekend = isSaturday || isSunday;
             const checked = checkedDays[dateStr];
             const onLeave = leaveDays[dateStr] && !checked;
+            const bdayPeople = getBirthdayPeople(dateStr);
 
             let cellClass = 'day-cell';
 
@@ -726,7 +749,7 @@ function renderCalendars() {
                     tooltip = autoMarkedDays[dateStr] ? '🔒 Auto-marked (WiFi verified)' : '✅ Weekend office day (click to remove)';
                 } else if (settings.allowWeekendMark && inRange) {
                     const _tdn = new Date(); _tdn.setHours(0,0,0,0);
-                    tooltip = date > _tdn ? 'Future date' : 'Weekend — click to mark';
+                    tooltip = date > _tdn ? '' : 'Weekend — click to mark';
                 } else {
                     tooltip = 'Weekend';
                 }
@@ -734,7 +757,7 @@ function renderCalendars() {
                 const today2 = new Date();
                 today2.setHours(0, 0, 0, 0);
                 if (date > today2) {
-                    tooltip = onLeave ? '🌴 Leave/PTO (planned)' : 'Future date';
+                    tooltip = onLeave ? '🌴 Leave/PTO (planned)' : '';
                 } else if (checked) {
                     tooltip = autoMarkedDays[dateStr] ? '🔒 Auto-marked (WiFi verified)' : '✅ Office day (click to remove)';
                 } else if (onLeave) {
@@ -745,7 +768,10 @@ function renderCalendars() {
             }
 
             const clickHandler = (!inRange || holiday || (isWeekend && !settings.allowWeekendMark)) ? '' : `onclick="toggleDay('${dateStr}')"`;
-            const tipAttr = tooltip ? `data-tip="${tooltip}"` : '';
+            if (bdayPeople.length > 0) cellClass += ' bday';
+            const bdayTip = bdayPeople.length > 0 ? `🎂 ${bdayPeople.map(b => b.name).join(' & ')}` : '';
+            const finalTooltip = bdayTip ? (tooltip ? `${tooltip} | ${bdayTip}` : bdayTip) : tooltip;
+            const tipAttr = finalTooltip ? `data-tip="${finalTooltip}"` : '';
 
             daysHTML += `<div class="${cellClass}" ${clickHandler} ${tipAttr}>${day}</div>`;
         }
@@ -815,6 +841,9 @@ function renderCalendars() {
         }
     }
 
+    // Update trends panel (recalculates silently, shown only when panel is open)
+    updateTrendsPanel(totalOfficeDays);
+
     const progressBar = document.getElementById('progressBar');
     progressBar.style.width = percentage + '%';
     const progressLabel = document.getElementById('progressLabel');
@@ -837,6 +866,108 @@ function renderCalendars() {
         progressBar.className = 'progress-bar';
         confetti.style.display = 'none';
         renderFlipCounter(status, remaining, 'DAYS TO GO', 'Keep showing up 💪', '#74b9ff');
+    }
+}
+
+// ── Trends Panel ──────────────────────────────────────────
+function toggleTrends() {
+    const panel = document.getElementById('trendsPanel');
+    if (!panel) return;
+    const isOpen = panel.classList.toggle('open');
+}
+
+function calculatePrediction(officeDays) {
+    const target    = TARGET();
+    const remaining = Math.max(0, target - officeDays);
+    const months    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    if (remaining === 0) return { text: 'Done! 🏆', status: 'done', overallRate: null, recentRate: null, wdNeeded: 0 };
+
+    const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+    const qStart = startDate();
+    const qEnd   = endDate();
+
+    if (todayMid > qEnd)   return { text: 'Q ended',   status: 'risk',    overallRate: null, recentRate: null, wdNeeded: null };
+    if (todayMid < qStart) return { text: '—',         status: 'waiting', overallRate: null, recentRate: null, wdNeeded: null };
+
+    // Working days elapsed so far (qStart → today inclusive)
+    let wdElapsed = 0;
+    for (let d = new Date(qStart); d <= todayMid; d.setDate(d.getDate() + 1)) {
+        const dow = d.getDay(), ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+        if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds]) wdElapsed++;
+    }
+
+    if (wdElapsed < 3 || officeDays === 0) return { text: '—', status: 'waiting', overallRate: null, recentRate: null, wdNeeded: null };
+
+    const overallRate = officeDays / wdElapsed;
+
+    // Recent velocity: last 14 calendar days
+    const twoWeeksAgo = new Date(todayMid); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const recentStart = twoWeeksAgo < qStart ? new Date(qStart) : twoWeeksAgo;
+    let recentWd = 0, recentOffice = 0;
+    for (let d = new Date(recentStart); d <= todayMid; d.setDate(d.getDate() + 1)) {
+        const dow = d.getDay(), ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+        if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds]) {
+            recentWd++;
+            if (checkedDays[ds]) recentOffice++;
+        }
+    }
+    const recentRate   = recentWd >= 3 ? recentOffice / recentWd : overallRate;
+    // 70% recent + 30% overall for smarter projection
+    const weightedRate = recentWd >= 5 ? (0.7 * recentRate + 0.3 * overallRate) : overallRate;
+
+    if (weightedRate <= 0) return { text: 'At risk ⚠️', status: 'risk', overallRate, recentRate, wdNeeded: null };
+
+    const wdNeeded = Math.ceil(remaining / weightedRate);
+
+    // Walk forward wdNeeded working days from today
+    let counted = 0, projDate = new Date(todayMid);
+    while (counted < wdNeeded) {
+        projDate.setDate(projDate.getDate() + 1);
+        const dow = projDate.getDay(), ds = formatDate(projDate.getFullYear(), projDate.getMonth(), projDate.getDate());
+        if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds]) counted++;
+        if (projDate.getFullYear() - todayMid.getFullYear() > 1) break;
+    }
+
+    if (projDate > qEnd) return { text: 'At risk ⚠️', status: 'risk', overallRate, recentRate, wdNeeded };
+
+    const mon  = months[projDate.getMonth()];
+    const week = Math.ceil(projDate.getDate() / 7);
+    return { text: `${mon} Wk ${week}`, status: 'ontrack', overallRate, recentRate, wdNeeded };
+}
+
+function updateTrendsPanel(officeDays) {
+    const pred = calculatePrediction(officeDays);
+
+    const setVal = (id, text, cls) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text;
+        el.className   = 'trend-value' + (cls ? ' ' + cls : '');
+    };
+
+    const statusClass = pred.status === 'risk' ? 'risk' : pred.status === 'done' ? 'done' : pred.status === 'warning' ? 'warn' : '';
+    setVal('trendPredictVal',  pred.text, statusClass);
+
+    if (pred.overallRate !== null) {
+        setVal('trendOverallRate', Math.round(pred.overallRate * 100) + '% of work days', pred.overallRate < 0.5 ? 'warn' : '');
+    } else {
+        setVal('trendOverallRate', '—', '');
+    }
+
+    if (pred.recentRate !== null) {
+        const rr = Math.round(pred.recentRate * 100);
+        const or = Math.round((pred.overallRate || 0) * 100);
+        const cls = rr < 50 ? 'warn' : rr >= or ? '' : 'warn';
+        setVal('trendRecentRate', rr + '% of work days', cls);
+    } else {
+        setVal('trendRecentRate', '—', '');
+    }
+
+    if (pred.wdNeeded !== null) {
+        setVal('trendDaysNeeded', pred.wdNeeded + ' more working days', pred.status === 'risk' ? 'risk' : '');
+    } else {
+        setVal('trendDaysNeeded', '—', '');
     }
 }
 
@@ -1129,6 +1260,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Check for auto-mark trigger via URL parameter
     const urlParams = new URLSearchParams(window.location.search);
+
+    // Demo mode: load sample data for testing trends
+    if (urlParams.get('demo') === 'true') {
+        const demoData = {};
+        const today = new Date(); today.setHours(0,0,0,0);
+        const qS = startDate();
+        let count = 0;
+        for (let d = new Date(qS); d <= today && count < 33; d.setDate(d.getDate() + 1)) {
+            const dow = d.getDay();
+            if (dow !== 0 && dow !== 6) {
+                // Mark ~80% of workdays
+                if (Math.random() < 0.8 || count < 10) {
+                    demoData[formatDate(d.getFullYear(), d.getMonth(), d.getDate())] = true;
+                    count++;
+                }
+            }
+        }
+        localStorage.setItem(qKey('officeDays'), JSON.stringify(demoData));
+        checkedDays = demoData;
+        renderCalendars();
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     if (urlParams.get('automark') === 'true') {
         // Record that the background script is working
         localStorage.setItem('oatScriptActive', new Date().toISOString());
@@ -1175,6 +1329,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show user greeting if name is saved
     showUserGreeting();
+
+    // Show birthday popup if today is someone's birthday (once per day)
+    checkBirthdayToday();
 
     // Tooltip edge detection — prevent clipping at calendar left/right edges
     document.addEventListener('mouseover', function(e) {
@@ -1338,6 +1495,40 @@ function showSettingsSetupReminder() {
         if (card) card.style.display = 'flex';
         const dot = document.getElementById('settingsUpdateDot');
         if (dot) dot.style.display = 'block';
+    }
+}
+
+// ── Birthday popup ────────────────────────────────────────────────
+function checkBirthdayToday() {
+    const todayStr = getTodayStr(); // YYYY-MM-DD
+    const people = getBirthdayPeople(todayStr);
+    if (people.length === 0) return;
+    // Show once per day
+    const seenKey = 'oatBdaySeen_' + todayStr;
+    if (sessionStorage.getItem(seenKey)) return;
+    sessionStorage.setItem(seenKey, '1');
+    // Slight delay so page loads first
+    setTimeout(() => showBirthdayPopup(people), 900);
+}
+
+function showBirthdayPopup(people) {
+    const names = people.map(p => p.name);
+    const isYou = names.includes('Gaurav Tripathi');
+    const nameStr = names.join(' & ');
+    const title = isYou && names.length === 1
+        ? '🎉 Happy Birthday, Gaurav!'
+        : `🎂 ${nameStr}'s Birthday Today!`;
+    const msg = isYou && names.length === 1
+        ? 'Wishing you a fantastic birthday! Hope this year brings you joy, success, and lots of office check-ins 🎈'
+        : `Today is ${nameStr}'s birthday! 🎈 Take a moment to wish them — it'll make their day special! 🥳`;
+    document.getElementById('bdayPopupTitle').textContent = title;
+    document.getElementById('bdayPopupMsg').textContent = msg;
+    document.getElementById('bdayPopupOverlay').style.display = 'flex';
+}
+
+function bdayPopupClose(e) {
+    if (e.target === document.getElementById('bdayPopupOverlay')) {
+        document.getElementById('bdayPopupOverlay').style.display = 'none';
     }
 }
 
@@ -1720,4 +1911,38 @@ function launchConfettiCanvas() {
     }
     draw();
     setTimeout(() => { canvas.style.display = 'none'; cancelAnimationFrame(frame); }, 4000);
+}
+
+// ── Sidebar Popup Functions ──────────────────────────────────────────
+function showOfficeDataPopup() {
+    // Scroll to calendars smoothly
+    const calendars = document.getElementById('calendars');
+    if (calendars) {
+        calendars.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function showInfoPopup() {
+    // Toggle settings/info panel visibility
+    const settings = document.getElementById('settingsPanel');
+    if (settings) {
+        if (settings.style.display === 'none' || !settings.style.display) {
+            settings.style.display = 'block';
+            settings.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            settings.style.display = 'none';
+        }
+    }
+}
+
+function showLeavePopup() {
+    // Show leave modal
+    const overlay = document.getElementById('leaveOverlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function showChatPopup() {
+    // Open feedback/contact
+    const feedback = `mailto:gtripath@netapp.com?subject=OAT%20Feedback&body=Share%20your%20feedback%20about%20Office%20Attendance%20Tracker...`;
+    window.open(feedback);
 }
