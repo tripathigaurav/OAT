@@ -874,6 +874,8 @@ function toggleTrends() {
     const panel = document.getElementById('trendsPanel');
     if (!panel) return;
     const isOpen = panel.classList.toggle('open');
+    // Draw chart when panel becomes visible (canvas needs non-zero size)
+    if (isOpen) drawWeeklyChart();
 }
 
 function calculatePrediction(officeDays) {
@@ -881,14 +883,14 @@ function calculatePrediction(officeDays) {
     const remaining = Math.max(0, target - officeDays);
     const months    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    if (remaining === 0) return { text: 'Done! 🏆', status: 'done', overallRate: null, recentRate: null, wdNeeded: 0 };
+    if (remaining === 0) return { text: 'Done! 🏆', status: 'done', overallRate: null, recentRate: null, wdNeeded: 0, projDate: null };
 
     const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
     const qStart = startDate();
     const qEnd   = endDate();
 
-    if (todayMid > qEnd)   return { text: 'Q ended',   status: 'risk',    overallRate: null, recentRate: null, wdNeeded: null };
-    if (todayMid < qStart) return { text: '—',         status: 'waiting', overallRate: null, recentRate: null, wdNeeded: null };
+    if (todayMid > qEnd)   return { text: 'Q ended',   status: 'risk',    overallRate: null, recentRate: null, wdNeeded: null, projDate: null };
+    if (todayMid < qStart) return { text: '—',         status: 'waiting', overallRate: null, recentRate: null, wdNeeded: null, projDate: null };
 
     // Working days elapsed so far (qStart → today inclusive)
     let wdElapsed = 0;
@@ -897,7 +899,7 @@ function calculatePrediction(officeDays) {
         if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds]) wdElapsed++;
     }
 
-    if (wdElapsed < 3 || officeDays === 0) return { text: '—', status: 'waiting', overallRate: null, recentRate: null, wdNeeded: null };
+    if (wdElapsed < 3 || officeDays === 0) return { text: '—', status: 'waiting', overallRate: null, recentRate: null, wdNeeded: null, projDate: null };
 
     const overallRate = officeDays / wdElapsed;
 
@@ -916,7 +918,7 @@ function calculatePrediction(officeDays) {
     // 70% recent + 30% overall for smarter projection
     const weightedRate = recentWd >= 5 ? (0.7 * recentRate + 0.3 * overallRate) : overallRate;
 
-    if (weightedRate <= 0) return { text: 'At risk ⚠️', status: 'risk', overallRate, recentRate, wdNeeded: null };
+    if (weightedRate <= 0) return { text: 'At risk ⚠️', status: 'risk', overallRate, recentRate, wdNeeded: null, projDate: null };
 
     const wdNeeded = Math.ceil(remaining / weightedRate);
 
@@ -929,11 +931,11 @@ function calculatePrediction(officeDays) {
         if (projDate.getFullYear() - todayMid.getFullYear() > 1) break;
     }
 
-    if (projDate > qEnd) return { text: 'At risk ⚠️', status: 'risk', overallRate, recentRate, wdNeeded };
+    if (projDate > qEnd) return { text: 'At risk ⚠️', status: 'risk', overallRate, recentRate, wdNeeded, projDate };
 
     const mon  = months[projDate.getMonth()];
     const week = Math.ceil(projDate.getDate() / 7);
-    return { text: `${mon} Wk ${week}`, status: 'ontrack', overallRate, recentRate, wdNeeded };
+    return { text: `${mon} Wk ${week}`, status: 'ontrack', overallRate, recentRate, wdNeeded, projDate };
 }
 
 function updateTrendsPanel(officeDays) {
@@ -946,29 +948,165 @@ function updateTrendsPanel(officeDays) {
         el.className   = 'trend-value' + (cls ? ' ' + cls : '');
     };
 
-    const statusClass = pred.status === 'risk' ? 'risk' : pred.status === 'done' ? 'done' : pred.status === 'warning' ? 'warn' : '';
-    setVal('trendPredictVal',  pred.text, statusClass);
-
-    if (pred.overallRate !== null) {
-        setVal('trendOverallRate', Math.round(pred.overallRate * 100) + '% of work days', pred.overallRate < 0.5 ? 'warn' : '');
+    // Expected completion date as a clear sentence
+    const statusClass = pred.status === 'risk' ? 'risk' : pred.status === 'done' ? 'done' : '';
+    if (pred.projDate && pred.status === 'ontrack') {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const pd = pred.projDate;
+        const dateStr = months[pd.getMonth()] + ' ' + pd.getDate();
+        const el = document.getElementById('trendPredictVal');
+        if (el) {
+            el.innerHTML = "You'll hit <strong>" + TARGET() + "</strong> by <strong>" + dateStr + "</strong>";
+            el.className = 'trend-value trend-value--big';
+        }
     } else {
-        setVal('trendOverallRate', '—', '');
+        const el = document.getElementById('trendPredictVal');
+        if (el) {
+            el.textContent = pred.text;
+            el.className = 'trend-value trend-value--big' + (statusClass ? ' ' + statusClass : '');
+        }
     }
 
-    if (pred.recentRate !== null) {
-        const rr = Math.round(pred.recentRate * 100);
-        const or = Math.round((pred.overallRate || 0) * 100);
-        const cls = rr < 50 ? 'warn' : rr >= or ? '' : 'warn';
-        setVal('trendRecentRate', rr + '% of work days', cls);
-    } else {
-        setVal('trendRecentRate', '—', '');
+    // Draw weekly visits chart (only if panel is visible)
+    const trendsPanel = document.getElementById('trendsPanel');
+    if (trendsPanel && trendsPanel.classList.contains('open')) drawWeeklyChart();
+}
+
+// roundRect polyfill for older browsers
+function fillRoundRect(ctx, x, y, w, h, radii) {
+    const r = typeof radii === 'number' ? radii : (radii[0] || 0);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function drawWeeklyChart() {
+    const canvas = document.getElementById('trendsChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Make canvas crisp on high-DPI screens
+    const rect = canvas.parentElement.getBoundingClientRect();
+    if (rect.width < 10) return; // Panel not visible yet
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = 140 * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = '140px';
+    ctx.scale(dpr, dpr);
+    const W = rect.width, H = 140;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const qStart = startDate();
+    const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+    const qEnd = endDate();
+    const endLoop = todayMid < qEnd ? todayMid : qEnd;
+
+    // Build weekly data
+    const weeks = [];
+    let weekStart = new Date(qStart);
+    // Align to Monday
+    while (weekStart.getDay() !== 1 && weekStart <= endLoop) weekStart.setDate(weekStart.getDate() + 1);
+    if (weekStart > endLoop && weeks.length === 0) {
+        // First partial week
+        let visits = 0, workDays = 0;
+        for (let d = new Date(qStart); d < weekStart && d <= endLoop; d.setDate(d.getDate() + 1)) {
+            const dow = d.getDay();
+            if (dow !== 0 && dow !== 6) {
+                workDays++;
+                const ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+                if (checkedDays[ds]) visits++;
+            }
+        }
+        if (workDays > 0) weeks.push({ label: 'W1', visits, workDays });
+    }
+    // Count from first partial week
+    let partialVisits = 0, partialWd = 0;
+    for (let d = new Date(qStart); d < weekStart && d <= endLoop; d.setDate(d.getDate() + 1)) {
+        const dow = d.getDay();
+        if (dow !== 0 && dow !== 6) {
+            partialWd++;
+            const ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+            if (checkedDays[ds]) partialVisits++;
+        }
+    }
+    if (partialWd > 0 && weeks.length === 0) weeks.push({ label: 'W1', visits: partialVisits, workDays: partialWd });
+
+    let wNum = weeks.length + 1;
+    let ws = new Date(weekStart);
+    while (ws <= endLoop) {
+        const we = new Date(ws); we.setDate(we.getDate() + 4); // Mon-Fri
+        let visits = 0, workDays = 0;
+        for (let d = new Date(ws); d <= we && d <= endLoop; d.setDate(d.getDate() + 1)) {
+            const dow = d.getDay();
+            if (dow !== 0 && dow !== 6) {
+                workDays++;
+                const ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+                if (checkedDays[ds]) visits++;
+            }
+        }
+        if (workDays > 0) weeks.push({ label: 'W' + wNum, visits, workDays });
+        wNum++;
+        ws.setDate(ws.getDate() + 7);
     }
 
-    if (pred.wdNeeded !== null) {
-        setVal('trendDaysNeeded', pred.wdNeeded + ' more working days', pred.status === 'risk' ? 'risk' : '');
-    } else {
-        setVal('trendDaysNeeded', '—', '');
+    if (weeks.length === 0) return;
+
+    const maxVisits = Math.max(5, ...weeks.map(w => w.workDays));
+    const padding = { top: 10, bottom: 28, left: 8, right: 8 };
+    const chartW = W - padding.left - padding.right;
+    const chartH = H - padding.top - padding.bottom;
+    const barW = Math.min(32, (chartW / weeks.length) * 0.55);
+    const gap = (chartW - barW * weeks.length) / (weeks.length + 1);
+
+    // Draw horizontal grid lines
+    ctx.strokeStyle = 'rgba(127,219,202,0.1)';
+    ctx.lineWidth = 0.5;
+    for (let i = 1; i <= 4; i++) {
+        const y = padding.top + chartH - (chartH * (i / 4));
+        ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(W - padding.right, y); ctx.stroke();
     }
+
+    weeks.forEach((w, i) => {
+        const x = padding.left + gap + i * (barW + gap);
+        const visitH = (w.visits / maxVisits) * chartH;
+        const workH = (w.workDays / maxVisits) * chartH;
+        const yBase = padding.top + chartH;
+
+        // Background bar (total workdays) — dim
+        ctx.fillStyle = 'rgba(127,219,202,0.12)';
+        const r = Math.min(3, barW / 4);
+        fillRoundRect(ctx, x, yBase - workH, barW, workH, r);
+
+        // Foreground bar (visits) — colored by rate
+        const rate = w.visits / w.workDays;
+        let barColor;
+        if (rate >= 0.8) barColor = 'rgba(127,219,202,0.85)';      // teal
+        else if (rate >= 0.5) barColor = 'rgba(236,196,141,0.85)'; // amber
+        else barColor = 'rgba(255,99,99,0.7)';                      // red
+
+        ctx.fillStyle = barColor;
+        fillRoundRect(ctx, x, yBase - visitH, barW, visitH, r);
+
+        // Visit count on top of bar
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = '600 10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(w.visits, x + barW / 2, yBase - visitH - 3);
+
+        // Week label below
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '500 9px Inter, sans-serif';
+        ctx.fillText(w.label, x + barW / 2, yBase + 14);
+    });
 }
 
 function renderFlipCounter(el, newVal, label, subtext, color) {

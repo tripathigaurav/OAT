@@ -254,34 +254,17 @@
     <div class="trends-panel" id="trendsPanel">
         <div class="trends-header">📈 Attendance Trends</div>
         <div class="trends-body">
-            <div class="trend-row" id="trendPrediction">
+            <div class="trend-row trend-row--wide" id="trendPrediction">
                 <span class="trend-icon">🔮</span>
                 <div class="trend-content">
-                    <div class="trend-label">Estimated target completion</div>
-                    <div class="trend-value" id="trendPredictVal">—</div>
+                    <div class="trend-label">Expected completion</div>
+                    <div class="trend-value trend-value--big" id="trendPredictVal">—</div>
                 </div>
             </div>
-            <div class="trend-row">
-                <span class="trend-icon">📊</span>
-                <div class="trend-content">
-                    <div class="trend-label">Overall attendance rate</div>
-                    <div class="trend-value" id="trendOverallRate">—</div>
-                </div>
-            </div>
-            <div class="trend-row">
-                <span class="trend-icon">🕐</span>
-                <div class="trend-content">
-                    <div class="trend-label">Recent pace (last 2 weeks)</div>
-                    <div class="trend-value" id="trendRecentRate">—</div>
-                </div>
-            </div>
-            <div class="trend-row">
-                <span class="trend-icon">🎯</span>
-                <div class="trend-content">
-                    <div class="trend-label">Days needed at current pace</div>
-                    <div class="trend-value" id="trendDaysNeeded">—</div>
-                </div>
-            </div>
+        </div>
+        <div class="trends-chart-wrap">
+            <div class="trends-chart-title">Weekly Office Visits</div>
+            <canvas id="trendsChart" height="140"></canvas>
         </div>
     </div>
 

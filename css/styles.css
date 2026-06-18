@@ -2834,11 +2834,37 @@ body.light-mode .fab-label--settings { color: #0d9488; }
     color: #7fdbca;
     font-family: 'JetBrains Mono', monospace;
 }
+.trend-value--big {
+    font-size: 1.1rem;
+    font-family: 'Inter', sans-serif;
+}
+.trend-value--big strong { color: #82aaff; }
+.trend-row--wide { grid-column: 1 / -1; }
 .trend-value.risk  { color: #FF6363; }
 .trend-value.done  { color: #ADDB67; }
 .trend-value.warn  { color: #ECC48D; }
 
+/* Weekly chart */
+.trends-chart-wrap {
+    padding: 14px 18px 10px;
+    border-top: 1px solid rgba(127,219,202,0.1);
+}
+.trends-chart-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 8px;
+}
+#trendsChart {
+    width: 100%;
+    display: block;
+}
+
 /* Light mode */
+body.light-mode .trends-chart-wrap { border-top-color: rgba(13,148,136,0.12); }
+body.light-mode .trends-chart-title { color: rgba(0,0,0,0.4); }
+body.light-mode .trend-value--big strong { color: #0369a1; }
 body.light-mode .trends-btn { background: linear-gradient(135deg, #0d9488, #0369a1); color: white; }
 body.light-mode .trends-btn:hover { background: linear-gradient(135deg, #0369a1, #0d9488); }
 body.light-mode .trends-btn.open { opacity: 0.85; }
