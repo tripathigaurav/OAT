@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OAT — Floating Action Strip Design Showcase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0e1a;
+    color: #c8d6e5;
+    min-height: 100vh;
+  }
+
+  .page-header {
+    text-align: center;
+    padding: 48px 24px 28px;
+  }
+  .page-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #82aaff 0%, #c792ea 50%, #7fdbca 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .page-header p { color: #636e80; font-size: 0.9rem; max-width: 580px; margin: 0 auto; }
+
+  .designs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 28px;
+    padding: 28px 40px 80px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+
+  .design-card {
+    background: linear-gradient(145deg, rgba(20,26,46,0.95), rgba(14,18,32,0.98));
+    border: 1px solid rgba(130,170,255,0.12);
+    border-radius: 20px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.35s ease;
+  }
+  .design-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent, #82aaff), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .design-card:hover {
+    border-color: rgba(130,170,255,0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  }
+  .design-card:hover::before { opacity: 1; }
+
+  .design-number {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(130,170,255,0.4);
+    letter-spacing: 1px;
+  }
+  .design-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #dfe6e9;
+    text-align: center;
+  }
+  .design-desc {
+    font-size: 0.78rem;
+    color: #636e80;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 300px;
+  }
+
+  .strip-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 16px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  /* ═══════════════════════════════════════════
+     CURRENT DESIGN (baseline)
+     ═══════════════════════════════════════════ */
+  .d0 .btn { width: 50px; height: 50px; border-radius: 50%; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s ease; border: 2px solid; }
+  .d0 .btn:hover { transform: scale(1.1); }
+  .d0 .btn-theme { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18); }
+  .d0 .btn-info  { background: rgba(130,170,255,0.24); border-color: rgba(130,170,255,0.5); }
+  .d0 .btn-leave { background: rgba(236,196,141,0.22); border-color: rgba(236,196,141,0.55); }
+  .d0 .btn-feedback { background: rgba(173,219,103,0.25); border-color: rgba(173,219,103,0.5); }
+  .d0 .btn-settings { background: rgba(33,199,168,0.2); border-color: rgba(33,199,168,0.6); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 1 — Neon Glow Rings
+     ═══════════════════════════════════════════ */
+  .d1 .btn { width: 50px; height: 50px; border-radius: 50%; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; background: transparent; border: 2px solid; }
+  .d1 .btn:hover { transform: scale(1.12); }
+  .d1 .btn-theme { border-color: rgba(255,255,255,0.3); box-shadow: 0 0 10px rgba(255,255,255,0.1), inset 0 0 8px rgba(255,255,255,0.05); }
+  .d1 .btn-theme:hover { box-shadow: 0 0 20px rgba(255,255,255,0.25), inset 0 0 12px rgba(255,255,255,0.1); }
+  .d1 .btn-info  { border-color: #82aaff; box-shadow: 0 0 10px rgba(130,170,255,0.2), inset 0 0 8px rgba(130,170,255,0.08); }
+  .d1 .btn-info:hover { box-shadow: 0 0 22px rgba(130,170,255,0.4), inset 0 0 12px rgba(130,170,255,0.15); }
+  .d1 .btn-leave { border-color: #ecc48d; box-shadow: 0 0 10px rgba(236,196,141,0.2), inset 0 0 8px rgba(236,196,141,0.08); }
+  .d1 .btn-leave:hover { box-shadow: 0 0 22px rgba(236,196,141,0.4), inset 0 0 12px rgba(236,196,141,0.15); }
+  .d1 .btn-feedback { border-color: #addb67; box-shadow: 0 0 10px rgba(173,219,103,0.2), inset 0 0 8px rgba(173,219,103,0.08); }
+  .d1 .btn-feedback:hover { box-shadow: 0 0 22px rgba(173,219,103,0.4), inset 0 0 12px rgba(173,219,103,0.15); }
+  .d1 .btn-settings { border-color: #7fdbca; box-shadow: 0 0 10px rgba(127,219,202,0.2), inset 0 0 8px rgba(127,219,202,0.08); }
+  .d1 .btn-settings:hover { box-shadow: 0 0 22px rgba(127,219,202,0.4), inset 0 0 12px rgba(127,219,202,0.15); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 2 — Gradient Filled Orbs
+     ═══════════════════════════════════════════ */
+  .d2 .btn { width: 50px; height: 50px; border-radius: 50%; font-size: 1.35rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; border: none; box-shadow: 0 4px 14px rgba(0,0,0,0.3); filter: saturate(0.85); }
+  .d2 .btn:hover { transform: scale(1.12); filter: saturate(1); box-shadow: 0 6px 22px rgba(0,0,0,0.4); }
+  .d2 .btn-theme { background: linear-gradient(135deg, #636e80, #3d4f6f); }
+  .d2 .btn-info  { background: linear-gradient(135deg, #82aaff, #5c7cfa); }
+  .d2 .btn-leave { background: linear-gradient(135deg, #f5a623, #e67e22); }
+  .d2 .btn-feedback { background: linear-gradient(135deg, #addb67, #6ab04c); }
+  .d2 .btn-settings { background: linear-gradient(135deg, #7fdbca, #00b894); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 3 — Glassmorphism Squares
+     ═══════════════════════════════════════════ */
+  .d3 .btn { width: 48px; height: 48px; border-radius: 14px; font-size: 1.35rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; backdrop-filter: blur(12px); border: 1.5px solid; box-shadow: 0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05); }
+  .d3 .btn:hover { transform: translateY(-2px) scale(1.05); }
+  .d3 .btn-theme { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.15); }
+  .d3 .btn-theme:hover { box-shadow: 0 8px 24px rgba(255,255,255,0.08); }
+  .d3 .btn-info  { background: rgba(130,170,255,0.1); border-color: rgba(130,170,255,0.25); }
+  .d3 .btn-info:hover { box-shadow: 0 8px 24px rgba(130,170,255,0.15); }
+  .d3 .btn-leave { background: rgba(236,196,141,0.1); border-color: rgba(236,196,141,0.25); }
+  .d3 .btn-leave:hover { box-shadow: 0 8px 24px rgba(236,196,141,0.15); }
+  .d3 .btn-feedback { background: rgba(173,219,103,0.1); border-color: rgba(173,219,103,0.25); }
+  .d3 .btn-feedback:hover { box-shadow: 0 8px 24px rgba(173,219,103,0.15); }
+  .d3 .btn-settings { background: rgba(127,219,202,0.1); border-color: rgba(127,219,202,0.25); }
+  .d3 .btn-settings:hover { box-shadow: 0 8px 24px rgba(127,219,202,0.15); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 4 — Pill Labels
+     ═══════════════════════════════════════════ */
+  .d4 .btn { height: 42px; padding: 0 14px; border-radius: 21px; font-size: 0.78rem; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.25s ease; border: 2px solid; letter-spacing: 0.3px; }
+  .d4 .btn:hover { transform: scale(1.05); }
+  .d4 .btn .emoji { font-size: 1.1rem; }
+  .d4 .btn-theme { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); color: #c8d6e5; }
+  .d4 .btn-info  { background: rgba(130,170,255,0.12); border-color: rgba(130,170,255,0.35); color: #82aaff; }
+  .d4 .btn-leave { background: rgba(236,196,141,0.12); border-color: rgba(236,196,141,0.35); color: #ecc48d; }
+  .d4 .btn-feedback { background: rgba(173,219,103,0.12); border-color: rgba(173,219,103,0.35); color: #addb67; }
+  .d4 .btn-settings { background: rgba(127,219,202,0.12); border-color: rgba(127,219,202,0.35); color: #7fdbca; }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 5 — Neumorphic Soft
+     ═══════════════════════════════════════════ */
+  .d5 .btn { width: 50px; height: 50px; border-radius: 15px; font-size: 1.35rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; border: none; background: #141a2e; box-shadow: 6px 6px 16px rgba(0,0,0,0.5), -4px -4px 12px rgba(40,50,80,0.35); }
+  .d5 .btn:hover { box-shadow: 3px 3px 8px rgba(0,0,0,0.5), -2px -2px 6px rgba(40,50,80,0.3); transform: scale(0.96); }
+  .d5 .btn:active { box-shadow: inset 3px 3px 8px rgba(0,0,0,0.5), inset -2px -2px 6px rgba(40,50,80,0.3); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 6 — Dot + Label Stacked
+     ═══════════════════════════════════════════ */
+  .d6 .btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: all 0.25s; }
+  .d6 .btn-wrap:hover { transform: translateY(-3px); }
+  .d6 .dot { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.25s; }
+  .d6 .btn-wrap:hover .dot { transform: scale(1.1); }
+  .d6 .lbl { font-size: 0.55rem; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+  .d6 .btn-theme .dot { background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); box-shadow: 0 3px 10px rgba(255,255,255,0.08); }
+  .d6 .btn-theme .lbl { color: #636e80; }
+  .d6 .btn-info .dot  { background: linear-gradient(135deg, rgba(130,170,255,0.3), rgba(130,170,255,0.1)); box-shadow: 0 3px 10px rgba(130,170,255,0.15); }
+  .d6 .btn-info .lbl  { color: #82aaff; }
+  .d6 .btn-leave .dot { background: linear-gradient(135deg, rgba(245,166,35,0.35), rgba(236,196,141,0.15)); box-shadow: 0 3px 10px rgba(236,196,141,0.15); }
+  .d6 .btn-leave .lbl { color: #ecc48d; }
+  .d6 .btn-feedback .dot { background: linear-gradient(135deg, rgba(173,219,103,0.3), rgba(173,219,103,0.1)); box-shadow: 0 3px 10px rgba(173,219,103,0.15); }
+  .d6 .btn-feedback .lbl { color: #addb67; }
+  .d6 .btn-settings .dot { background: linear-gradient(135deg, rgba(127,219,202,0.3), rgba(127,219,202,0.1)); box-shadow: 0 3px 10px rgba(127,219,202,0.15); }
+  .d6 .btn-settings .lbl { color: #7fdbca; }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 7 — Morphing Icons (expand on hover)
+     ═══════════════════════════════════════════ */
+  .d7 .btn { width: 50px; height: 50px; border-radius: 50%; font-size: 1.35rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); border: 2px solid; overflow: hidden; white-space: nowrap; }
+  .d7 .btn .txt { display: none; font-size: 0.65rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; margin-left: 4px; }
+  .d7 .btn:hover { width: 110px; border-radius: 25px; }
+  .d7 .btn:hover .txt { display: inline; }
+  .d7 .btn-theme { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); color: #c8d6e5; }
+  .d7 .btn-info  { background: rgba(130,170,255,0.15); border-color: rgba(130,170,255,0.4); color: #82aaff; }
+  .d7 .btn-leave { background: rgba(236,196,141,0.15); border-color: rgba(236,196,141,0.4); color: #ecc48d; }
+  .d7 .btn-feedback { background: rgba(173,219,103,0.15); border-color: rgba(173,219,103,0.4); color: #addb67; }
+  .d7 .btn-settings { background: rgba(127,219,202,0.15); border-color: rgba(127,219,202,0.4); color: #7fdbca; }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 8 — Concentric Rings
+     ═══════════════════════════════════════════ */
+  .d8 .btn { width: 46px; height: 46px; border-radius: 50%; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; background: transparent; border: 2px solid; position: relative; }
+  .d8 .btn::before, .d8 .btn::after { content: ''; position: absolute; border-radius: 50%; border: 1.5px solid; transition: all 0.35s ease; }
+  .d8 .btn::before { inset: -6px; }
+  .d8 .btn::after  { inset: -12px; }
+  .d8 .btn:hover { transform: scale(1.05); }
+  .d8 .btn:hover::before { transform: rotate(15deg); }
+  .d8 .btn:hover::after  { transform: rotate(-10deg); }
+  .d8 .btn-theme { border-color: rgba(255,255,255,0.3); }
+  .d8 .btn-theme::before { border-color: rgba(255,255,255,0.12); }
+  .d8 .btn-theme::after  { border-color: rgba(255,255,255,0.05); }
+  .d8 .btn-theme:hover::before { border-color: rgba(255,255,255,0.3); }
+  .d8 .btn-theme:hover::after  { border-color: rgba(255,255,255,0.15); }
+  .d8 .btn-info  { border-color: rgba(130,170,255,0.5); }
+  .d8 .btn-info::before  { border-color: rgba(130,170,255,0.2); }
+  .d8 .btn-info::after   { border-color: rgba(130,170,255,0.08); }
+  .d8 .btn-info:hover::before  { border-color: rgba(130,170,255,0.4); }
+  .d8 .btn-info:hover::after   { border-color: rgba(130,170,255,0.2); }
+  .d8 .btn-leave { border-color: rgba(236,196,141,0.5); }
+  .d8 .btn-leave::before { border-color: rgba(236,196,141,0.2); }
+  .d8 .btn-leave::after  { border-color: rgba(236,196,141,0.08); }
+  .d8 .btn-leave:hover::before { border-color: rgba(236,196,141,0.4); }
+  .d8 .btn-leave:hover::after  { border-color: rgba(236,196,141,0.2); }
+  .d8 .btn-feedback { border-color: rgba(173,219,103,0.5); }
+  .d8 .btn-feedback::before { border-color: rgba(173,219,103,0.2); }
+  .d8 .btn-feedback::after  { border-color: rgba(173,219,103,0.08); }
+  .d8 .btn-feedback:hover::before { border-color: rgba(173,219,103,0.4); }
+  .d8 .btn-feedback:hover::after  { border-color: rgba(173,219,103,0.2); }
+  .d8 .btn-settings { border-color: rgba(127,219,202,0.5); }
+  .d8 .btn-settings::before { border-color: rgba(127,219,202,0.2); }
+  .d8 .btn-settings::after  { border-color: rgba(127,219,202,0.08); }
+  .d8 .btn-settings:hover::before { border-color: rgba(127,219,202,0.4); }
+  .d8 .btn-settings:hover::after  { border-color: rgba(127,219,202,0.2); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 9 — Hexagonal
+     ═══════════════════════════════════════════ */
+  .d9 .btn { width: 50px; height: 50px; clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; border: none; }
+  .d9 .btn:hover { transform: scale(1.15) rotate(15deg); }
+  .d9 .btn-theme { background: rgba(255,255,255,0.12); }
+  .d9 .btn-info  { background: rgba(130,170,255,0.25); }
+  .d9 .btn-leave { background: rgba(236,196,141,0.28); }
+  .d9 .btn-feedback { background: rgba(173,219,103,0.25); }
+  .d9 .btn-settings { background: rgba(127,219,202,0.25); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 10 — Pulsing Subtle
+     ═══════════════════════════════════════════ */
+  .d10 .btn { width: 50px; height: 50px; border-radius: 50%; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s ease; border: 2px solid; position: relative; }
+  .d10 .btn:hover { transform: scale(1.1); animation: none !important; }
+  .d10 .btn-theme { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); animation: pulse-white 3s ease-in-out infinite; }
+  .d10 .btn-info  { background: rgba(130,170,255,0.12); border-color: rgba(130,170,255,0.4); animation: pulse-blue 3s ease-in-out infinite 0.3s; }
+  .d10 .btn-leave { background: rgba(236,196,141,0.12); border-color: rgba(236,196,141,0.4); animation: pulse-amber 3s ease-in-out infinite 0.6s; }
+  .d10 .btn-feedback { background: rgba(173,219,103,0.12); border-color: rgba(173,219,103,0.4); animation: pulse-green 3s ease-in-out infinite 0.9s; }
+  .d10 .btn-settings { background: rgba(127,219,202,0.12); border-color: rgba(127,219,202,0.4); animation: pulse-teal 3s ease-in-out infinite 1.2s; }
+  @keyframes pulse-white { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.15)} 50%{box-shadow:0 0 0 8px rgba(255,255,255,0)} }
+  @keyframes pulse-blue  { 0%,100%{box-shadow:0 0 0 0 rgba(130,170,255,0.2)} 50%{box-shadow:0 0 0 8px rgba(130,170,255,0)} }
+  @keyframes pulse-amber { 0%,100%{box-shadow:0 0 0 0 rgba(236,196,141,0.2)} 50%{box-shadow:0 0 0 8px rgba(236,196,141,0)} }
+  @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(173,219,103,0.2)} 50%{box-shadow:0 0 0 8px rgba(173,219,103,0)} }
+  @keyframes pulse-teal  { 0%,100%{box-shadow:0 0 0 0 rgba(127,219,202,0.2)} 50%{box-shadow:0 0 0 8px rgba(127,219,202,0)} }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 11 — Monochrome Minimal
+     ═══════════════════════════════════════════ */
+  .d11 .btn { width: 46px; height: 46px; border-radius: 50%; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s ease; border: 1.5px solid rgba(255,255,255,0.1); background: transparent; opacity: 0.5; }
+  .d11 .btn:hover { opacity: 1; border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.06); transform: scale(1.1); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 12 — Bouncing Emojis
+     ═══════════════════════════════════════════ */
+  .d12 .btn { width: 50px; height: 50px; border-radius: 50%; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.25s, border-color 0.25s; border: 2px solid; }
+  .d12 .btn span { display: inline-block; }
+  .d12 .btn-theme { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); }
+  .d12 .btn-theme span { animation: bounce12 2.5s ease-in-out infinite 0s; }
+  .d12 .btn-info  { background: rgba(130,170,255,0.15); border-color: rgba(130,170,255,0.4); }
+  .d12 .btn-info span  { animation: bounce12 2.5s ease-in-out infinite 0.2s; }
+  .d12 .btn-leave { background: rgba(236,196,141,0.15); border-color: rgba(236,196,141,0.4); }
+  .d12 .btn-leave span { animation: bounce12 2.5s ease-in-out infinite 0.4s; }
+  .d12 .btn-feedback { background: rgba(173,219,103,0.15); border-color: rgba(173,219,103,0.4); }
+  .d12 .btn-feedback span { animation: bounce12 2.5s ease-in-out infinite 0.6s; }
+  .d12 .btn-settings { background: rgba(127,219,202,0.15); border-color: rgba(127,219,202,0.4); }
+  .d12 .btn-settings span { animation: bounce12 2.5s ease-in-out infinite 0.8s; }
+  .d12 .btn:hover span { animation: none; transform: scale(1.25); }
+  @keyframes bounce12 { 0%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} 50%{transform:translateY(0)} 70%{transform:translateY(-3px)} }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 13 — Duo-Tone Gradient Circles
+     ═══════════════════════════════════════════ */
+  .d13 .btn { width: 50px; height: 50px; border-radius: 50%; font-size: 1.35rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; border: 2px solid transparent; position: relative; overflow: hidden; }
+  .d13 .btn::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.06) 100%); }
+  .d13 .btn:hover { transform: scale(1.12) rotate(5deg); }
+  .d13 .btn-theme { background: linear-gradient(135deg, rgba(200,214,229,0.2), rgba(99,110,128,0.2)); border-color: rgba(200,214,229,0.25); }
+  .d13 .btn-info  { background: linear-gradient(135deg, rgba(130,170,255,0.3), rgba(199,146,234,0.2)); border-color: rgba(130,170,255,0.3); }
+  .d13 .btn-leave { background: linear-gradient(135deg, rgba(236,196,141,0.3), rgba(255,99,99,0.15)); border-color: rgba(236,196,141,0.3); }
+  .d13 .btn-feedback { background: linear-gradient(135deg, rgba(173,219,103,0.3), rgba(127,219,202,0.2)); border-color: rgba(173,219,103,0.3); }
+  .d13 .btn-settings { background: linear-gradient(135deg, rgba(127,219,202,0.3), rgba(130,170,255,0.2)); border-color: rgba(127,219,202,0.3); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 14 — Rotating Rainbow Border
+     ═══════════════════════════════════════════ */
+  .d14 .btn-wrap { width: 56px; height: 56px; border-radius: 50%; padding: 3px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.25s; }
+  .d14 .btn-wrap:hover { transform: scale(1.12); }
+  .d14 .inner { width: 100%; height: 100%; border-radius: 50%; background: #0f1525; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; }
+  .d14 .btn-theme .btn-wrap { background: conic-gradient(from 0deg, #636e80, #c8d6e5, #636e80); animation: spin14 6s linear infinite; }
+  .d14 .btn-info  .btn-wrap { background: conic-gradient(from 0deg, #82aaff, #c792ea, #82aaff); animation: spin14 5s linear infinite; }
+  .d14 .btn-leave .btn-wrap { background: conic-gradient(from 0deg, #ecc48d, #ff6363, #ecc48d); animation: spin14 5s linear infinite 0.5s; }
+  .d14 .btn-feedback .btn-wrap { background: conic-gradient(from 0deg, #addb67, #7fdbca, #addb67); animation: spin14 5s linear infinite 1s; }
+  .d14 .btn-settings .btn-wrap { background: conic-gradient(from 0deg, #7fdbca, #82aaff, #7fdbca); animation: spin14 5s linear infinite 1.5s; }
+  .d14 .btn-wrap:hover { animation-duration: 1.5s !important; }
+  @keyframes spin14 { to { transform: rotate(360deg); } }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 15 — SVG Icon Style (clean line icons)
+     ═══════════════════════════════════════════ */
+  .d15 .btn { width: 48px; height: 48px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s ease; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); }
+  .d15 .btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); transform: translateY(-2px); }
+  .d15 .btn svg { width: 22px; height: 22px; }
+  .d15 .btn-theme svg { stroke: #c8d6e5; }
+  .d15 .btn-info svg  { stroke: #82aaff; }
+  .d15 .btn-leave svg { stroke: #ecc48d; }
+  .d15 .btn-feedback svg { stroke: #addb67; }
+  .d15 .btn-settings svg { stroke: #7fdbca; }
+  .d15 .btn:hover svg { filter: brightness(1.3); }
+
+  /* ═══════════════════════════════════════════
+     DESIGN 16 — Floating Vertical Bar
+     ═══════════════════════════════════════════ */
+  .d16 .strip-bar {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 28px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(16px);
+  }
+  .d16 .btn { width: 42px; height: 42px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s ease; border: none; background: transparent; }
+  .d16 .btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.15); }
+  .d16 .sep { width: 24px; height: 1px; background: rgba(255,255,255,0.08); }
+
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Floating Action Strip — Design Showcase</h1>
+  <p>All 5 buttons (Theme, Info, Leave, Feedback, Settings) shown in each design. Hover to see interactions.</p>
+</div>
+
+<div class="designs-grid">
+
+  <!-- CURRENT -->
+  <div class="design-card d0" style="--accent:#82aaff;">
+    <span class="design-number">00</span>
+    <div class="design-label">Current Design (Baseline)</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">The existing OAT style. Each button has a unique color tint with a circular shape and subtle border.</div>
+  </div>
+
+  <!-- DESIGN 1 -->
+  <div class="design-card d1" style="--accent:#82aaff;">
+    <span class="design-number">01</span>
+    <div class="design-label">Neon Glow Rings</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">Transparent fill, each button has a neon glow that intensifies on hover. Cyberpunk energy without being noisy.</div>
+  </div>
+
+  <!-- DESIGN 2 -->
+  <div class="design-card d2" style="--accent:#f5a623;">
+    <span class="design-number">02</span>
+    <div class="design-label">Gradient Filled Orbs</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">Bold solid gradients with drop shadows. Desaturated at rest, vibrant on hover. Each button pops.</div>
+  </div>
+
+  <!-- DESIGN 3 -->
+  <div class="design-card d3" style="--accent:#c792ea;">
+    <span class="design-number">03</span>
+    <div class="design-label">Glassmorphism Squares</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">Rounded squares with frosted glass. Different shape = different category. Modern macOS/iOS feel.</div>
+  </div>
+
+  <!-- DESIGN 4 -->
+  <div class="design-card d4" style="--accent:#ecc48d;">
+    <span class="design-number">04</span>
+    <div class="design-label">Pill Labels</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme"><span class="emoji">🌙</span> Theme</button>
+      <button class="btn btn-info"><span class="emoji">ℹ️</span> Info</button>
+      <button class="btn btn-leave"><span class="emoji">🌴</span> Leave</button>
+      <button class="btn btn-feedback"><span class="emoji">💬</span> Chat</button>
+      <button class="btn btn-settings"><span class="emoji">⚙️</span> Setup</button>
+    </div>
+    <div class="design-desc">Pill-shaped with emoji + text label. Zero ambiguity — every button self-documents. Wider footprint.</div>
+  </div>
+
+  <!-- DESIGN 5 -->
+  <div class="design-card d5" style="--accent:#636e80;">
+    <span class="design-number">05</span>
+    <div class="design-label">Neumorphic Soft</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">Raised 3D effect with light/shadow casting. Depresses on click. Tactile and premium. No color differentiation.</div>
+  </div>
+
+  <!-- DESIGN 6 -->
+  <div class="design-card d6" style="--accent:#7fdbca;">
+    <span class="design-number">06</span>
+    <div class="design-label">Dot + Label Stacked</div>
+    <div class="strip-preview">
+      <div class="btn-wrap btn-theme"><div class="dot">🌙</div><span class="lbl">Theme</span></div>
+      <div class="btn-wrap btn-info"><div class="dot">ℹ️</div><span class="lbl">Info</span></div>
+      <div class="btn-wrap btn-leave"><div class="dot">🌴</div><span class="lbl">Leave</span></div>
+      <div class="btn-wrap btn-feedback"><div class="dot">💬</div><span class="lbl">Chat</span></div>
+      <div class="btn-wrap btn-settings"><div class="dot">⚙️</div><span class="lbl">Setup</span></div>
+    </div>
+    <div class="design-desc">Smaller gradient dots with tiny monospace labels underneath. Compact, self-documenting, iOS tab-bar feel.</div>
+  </div>
+
+  <!-- DESIGN 7 -->
+  <div class="design-card d7" style="--accent:#addb67;">
+    <span class="design-number">07</span>
+    <div class="design-label">Morphing Expand</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙<span class="txt">THEME</span></button>
+      <button class="btn btn-info">ℹ️<span class="txt">INFO</span></button>
+      <button class="btn btn-leave">🌴<span class="txt">LEAVE</span></button>
+      <button class="btn btn-feedback">💬<span class="txt">CHAT</span></button>
+      <button class="btn btn-settings">⚙️<span class="txt">SETUP</span></button>
+    </div>
+    <div class="design-desc">Circle at rest, expands into a pill showing label on hover. Best of both worlds — compact + descriptive.</div>
+  </div>
+
+  <!-- DESIGN 8 -->
+  <div class="design-card d8" style="--accent:#82aaff;">
+    <span class="design-number">08</span>
+    <div class="design-label">Concentric Rings</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">Three concentric rings per button. Rings shift on hover like a ripple/radar effect. Elegant and distinctive.</div>
+  </div>
+
+  <!-- DESIGN 9 -->
+  <div class="design-card d9" style="--accent:#ecc48d;">
+    <span class="design-number">09</span>
+    <div class="design-label">Hexagonal</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">Hexagonal clip-path shape. Unique silhouette. Rotates on hover. Game-UI / sci-fi aesthetic.</div>
+  </div>
+
+  <!-- DESIGN 10 -->
+  <div class="design-card d10" style="--accent:#c792ea;">
+    <span class="design-number">10</span>
+    <div class="design-label">Staggered Pulse</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">Same shape as current, but each button pulses with a staggered wave. Living, breathing interface. Pulse stops on hover.</div>
+  </div>
+
+  <!-- DESIGN 11 -->
+  <div class="design-card d11" style="--accent:#636e80;">
+    <span class="design-number">11</span>
+    <div class="design-label">Monochrome Minimal</div>
+    <div class="strip-preview">
+      <button class="btn">🌙</button>
+      <button class="btn">ℹ️</button>
+      <button class="btn">🌴</button>
+      <button class="btn">💬</button>
+      <button class="btn">⚙️</button>
+    </div>
+    <div class="design-desc">All buttons identical — no color coding. Ghost borders, 50% opacity. Full color only on hover. Ultra clean, distraction-free.</div>
+  </div>
+
+  <!-- DESIGN 12 -->
+  <div class="design-card d12" style="--accent:#ff6363;">
+    <span class="design-number">12</span>
+    <div class="design-label">Bouncing Emojis</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme"><span>🌙</span></button>
+      <button class="btn btn-info"><span>ℹ️</span></button>
+      <button class="btn btn-leave"><span>🌴</span></button>
+      <button class="btn btn-feedback"><span>💬</span></button>
+      <button class="btn btn-settings"><span>⚙️</span></button>
+    </div>
+    <div class="design-desc">Wave-like staggered bounce animation across all buttons. Playful and alive. Stops on hover for focus.</div>
+  </div>
+
+  <!-- DESIGN 13 -->
+  <div class="design-card d13" style="--accent:#7fdbca;">
+    <span class="design-number">13</span>
+    <div class="design-label">Duo-Tone Gradients</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme">🌙</button>
+      <button class="btn btn-info">ℹ️</button>
+      <button class="btn btn-leave">🌴</button>
+      <button class="btn btn-feedback">💬</button>
+      <button class="btn btn-settings">⚙️</button>
+    </div>
+    <div class="design-desc">Each button blends two theme colors. Rotates slightly on hover. Rich depth without being loud.</div>
+  </div>
+
+  <!-- DESIGN 14 -->
+  <div class="design-card d14" style="--accent:#c792ea;">
+    <span class="design-number">14</span>
+    <div class="design-label">Rotating Conic Borders</div>
+    <div class="strip-preview">
+      <div class="btn-theme"><div class="btn-wrap"><div class="inner">🌙</div></div></div>
+      <div class="btn-info"><div class="btn-wrap"><div class="inner">ℹ️</div></div></div>
+      <div class="btn-leave"><div class="btn-wrap"><div class="inner">🌴</div></div></div>
+      <div class="btn-feedback"><div class="btn-wrap"><div class="inner">💬</div></div></div>
+      <div class="btn-settings"><div class="btn-wrap"><div class="inner">⚙️</div></div></div>
+    </div>
+    <div class="design-desc">Spinning conic gradient border, each with its own color pair. Eye-catching but might be too flashy for production.</div>
+  </div>
+
+  <!-- DESIGN 15 -->
+  <div class="design-card d15" style="--accent:#82aaff;">
+    <span class="design-number">15</span>
+    <div class="design-label">SVG Line Icons</div>
+    <div class="strip-preview">
+      <button class="btn btn-theme"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      <button class="btn btn-info"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+      <button class="btn btn-leave"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg></button>
+      <button class="btn btn-feedback"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+      <button class="btn btn-settings"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    </div>
+    <div class="design-desc">No emojis — clean SVG line icons in rounded squares. Consistent stroke weight. Professional, icon-library aesthetic.</div>
+  </div>
+
+  <!-- DESIGN 16 -->
+  <div class="design-card d16" style="--accent:#7fdbca;">
+    <span class="design-number">16</span>
+    <div class="design-label">Floating Dock Bar</div>
+    <div class="strip-preview">
+      <div class="strip-bar">
+        <button class="btn">🌙</button>
+        <div class="sep"></div>
+        <button class="btn">ℹ️</button>
+        <button class="btn">🌴</button>
+        <button class="btn">💬</button>
+        <div class="sep"></div>
+        <button class="btn">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">All buttons in a single frosted bar with separators. Like a macOS dock. Grouped, unified, minimal. Buttons are smaller.</div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -77,7 +77,22 @@ const QUARTERS = {
 };
 
 // ── Active quarter ────────────────────────────────────────────────
-let currentQKey = localStorage.getItem('oatCurrentQuarter') || autoDetectQuarter();
+// Auto-advance if the saved quarter has already ended (e.g. Q1 ends July 31 → switches to Q2)
+let currentQKey = (function() {
+    const saved = localStorage.getItem('oatCurrentQuarter');
+    if (saved && QUARTERS[saved]) {
+        const now = new Date();
+        // Compare at midnight to avoid advancing on the last day itself
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (todayMidnight > QUARTERS[saved].end) {
+            const detected = autoDetectQuarter();
+            localStorage.setItem('oatCurrentQuarter', detected);
+            return detected;
+        }
+        return saved;
+    }
+    return autoDetectQuarter();
+})();
 
 function autoDetectQuarter() {
     const today = new Date();
@@ -239,7 +254,7 @@ function autoMarkToday() {
     // Log it
     const logEntry = `${new Date().toLocaleString()} — Auto-marked ${todayStr} (WiFi: ${settings.wifiSSID})`;
     autoMarkLog.unshift(logEntry);
-    if (autoMarkLog.length > 30) autoMarkLog.pop();
+    if (autoMarkLog.length > 120) autoMarkLog.pop();
     localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
 
     showNotification(`🤖 Auto-marked attendance for today (${todayStr}) via office WiFi!`, 'success');
@@ -319,7 +334,7 @@ function rescanToday() {
     const source = wifiConfirmedToday ? 'WiFi confirmed' : 'Manual override (no WiFi)';
     const logEntry = `${new Date().toLocaleString()} — Mark Today: ${todayStr} (${source})`;
     autoMarkLog.unshift(logEntry);
-    if (autoMarkLog.length > 30) autoMarkLog.pop();
+    if (autoMarkLog.length > 120) autoMarkLog.pop();
     localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
     const icon = wifiConfirmedToday ? '📡' : '✅';
     showNotification(`${icon} Marked today (${todayStr}) as office day!`, 'success');
@@ -1494,9 +1509,138 @@ function showOS(os, btn) {
     if (btn) btn.classList.add('active');
 }
 
-// ---- Feedback ----
+// ---- Feedback / Chat Choice Modal ----
 function openFeedback() {
+    openChatModal();
+}
+
+function openChatModal() {
+    const overlay = document.getElementById('chatChoiceOverlay');
+    if (overlay) overlay.style.display = 'flex';
+    const note = document.getElementById('chatChoiceReportNote');
+    if (note) note.style.display = 'none';
+}
+
+function closeChatModal() {
+    const overlay = document.getElementById('chatChoiceOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function chatChoiceOverlayClick(e) {
+    if (e.target === document.getElementById('chatChoiceOverlay')) closeChatModal();
+}
+
+function chatOnTeams() {
+    closeChatModal();
     window.open('https://teams.microsoft.com/l/chat/0/0?users=Gaurav.Tripathi@netapp.com', '_blank');
+}
+
+function reportIssue() {
+    const today = new Date();
+    const q = getQ();
+    const logLines = [];
+
+    // ── Header ────────────────────────────────────────────────────
+    logLines.push('=== OAT Issue Report ===');
+    logLines.push(`Date/Time   : ${today.toISOString()}`);
+    logLines.push(`Browser     : ${navigator.userAgent}`);
+    logLines.push(`Platform    : ${navigator.platform || 'unknown'}`);
+    logLines.push(`Quarter     : ${currentQKey} (${q.display})`);
+    logLines.push(`User        : ${localStorage.getItem('oatUserName') || 'Not set'}`);
+    logLines.push(`Script      : active=${localStorage.getItem('oatScriptActive') ? 'true' : 'false'}`
+                + `, version=${localStorage.getItem('oatScriptVersion') || 'unknown'}`
+                + `, lastRun=${localStorage.getItem('oatScriptActive') || 'never'}`);
+    logLines.push('');
+
+    // ── Settings ─────────────────────────────────────────────────
+    logLines.push('--- Settings ---');
+    logLines.push(localStorage.getItem('oatSettings') || '{}');
+    logLines.push('');
+
+    // ── Office days — full date list ──────────────────────────────
+    const officeDays  = JSON.parse(localStorage.getItem(`officeDays_${currentQKey}`)     || '{}');
+    const autoMarked  = JSON.parse(localStorage.getItem(`autoMarkedDays_${currentQKey}`) || '{}');
+    const officeDates = Object.keys(officeDays).sort();
+    logLines.push(`--- Office Days (${currentQKey}) — ${officeDates.length} days ---`);
+    logLines.push(`All dates   : ${officeDates.join(', ') || '(none)'}`);
+    const autoDateList = Object.keys(autoMarked).sort();
+    logLines.push(`Auto-marked : ${autoDateList.length} → ${autoDateList.join(', ') || '(none)'}`);
+    const manualDates = officeDates.filter(d => !autoMarked[d]);
+    logLines.push(`Manual      : ${manualDates.length} → ${manualDates.join(', ') || '(none)'}`);
+    logLines.push('');
+
+    // ── Leave days ────────────────────────────────────────────────
+    const leaveDays = JSON.parse(localStorage.getItem(`leaveDays_${currentQKey}`) || '{}');
+    const leaveDateList = Object.keys(leaveDays).sort();
+    logLines.push(`--- Leave Days (${currentQKey}) — ${leaveDateList.length} days ---`);
+    logLines.push(leaveDateList.join(', ') || '(none)');
+    logLines.push('');
+
+    // ── Full auto mark log ────────────────────────────────────────
+    const markLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
+    logLines.push(`--- Auto Mark Log (all ${markLog.length} entries) ---`);
+    if (markLog.length === 0) {
+        logLines.push('(empty)');
+    } else {
+        markLog.forEach(e => logLines.push(JSON.stringify(e)));
+    }
+    logLines.push('');
+
+    // ── Unmarked workdays (possible missed office days / WFH) ─────
+    // These are weekdays past-or-today within the quarter that have
+    // no office mark, no leave, and are not holidays.
+    const unmarked = [];
+    const qStart = q.start;
+    const qEnd   = new Date(Math.min(today.getTime(), q.end.getTime()));
+    for (let d = new Date(qStart); d <= qEnd; d.setDate(d.getDate() + 1)) {
+        const dow = d.getDay();
+        if (dow === 0 || dow === 6) continue;                       // skip weekends
+        const ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+        if (isHoliday(ds))    continue;                             // skip holidays
+        if (officeDays[ds])   continue;                             // already marked
+        if (leaveDays[ds])    continue;                             // on leave
+        unmarked.push(ds);
+    }
+    logLines.push(`--- Unmarked Workdays (${currentQKey}) — ${unmarked.length} days (WFH or possible missed) ---`);
+    logLines.push(unmarked.join(', ') || '(none — all workdays accounted for!)');
+    logLines.push('');
+
+    // ── All quarters summary ──────────────────────────────────────
+    logLines.push('--- All Quarters Summary ---');
+    for (const qk of Object.keys(QUARTERS)) {
+        const od = JSON.parse(localStorage.getItem(`officeDays_${qk}`) || '{}');
+        const am = JSON.parse(localStorage.getItem(`autoMarkedDays_${qk}`) || '{}');
+        const ld = JSON.parse(localStorage.getItem(`leaveDays_${qk}`) || '{}');
+        logLines.push(`${qk}: office=${Object.keys(od).length}, auto=${Object.keys(am).length}, leave=${Object.keys(ld).length}`);
+    }
+    logLines.push(`Stored quarter key: ${localStorage.getItem('oatCurrentQuarter') || 'none (auto)'}`);
+
+    const report = logLines.join('\n');
+
+    const showNote = () => {
+        const note = document.getElementById('chatChoiceReportNote');
+        if (note) note.style.display = 'flex';
+    };
+
+    const openTeams = () => {
+        const msg = encodeURIComponent('Hi Gaurav, reporting an issue with OAT.\n\n[Paste diagnostic logs below — already copied to clipboard]\n\nIssue: ');
+        window.open(`https://teams.microsoft.com/l/chat/0/0?users=Gaurav.Tripathi@netapp.com&message=${msg}`, '_blank');
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(report).then(() => {
+            showNote();
+            setTimeout(openTeams, 600);
+        }).catch(() => {
+            window.prompt('Copy these diagnostic logs, then paste in Teams chat:', report);
+            openTeams();
+            closeChatModal();
+        });
+    } else {
+        window.prompt('Copy these diagnostic logs, then paste in Teams chat:', report);
+        openTeams();
+        closeChatModal();
+    }
 }
 
 // ---- Theme Toggle ----
@@ -1988,9 +2132,9 @@ function handleBackfill(dateString) {
     saveLeaveDays();
 
     // Log the backfill
-    const logEntry = `${new Date().toLocaleString()} \u2014 Backfilled ${newCount} days from WiFi logs (${skipCount} already marked)`;
+    const logEntry = `${new Date().toLocaleString()} — Backfilled ${newCount} days from WiFi logs (${skipCount} already marked)`;
     autoMarkLog.unshift(logEntry);
-    if (autoMarkLog.length > 30) autoMarkLog.pop();
+    if (autoMarkLog.length > 120) autoMarkLog.pop();
     localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
 
     if (newCount > 0) {
@@ -2080,7 +2224,5 @@ function showLeavePopup() {
 }
 
 function showChatPopup() {
-    // Open feedback/contact
-    const feedback = `mailto:gtripath@netapp.com?subject=OAT%20Feedback&body=Share%20your%20feedback%20about%20Office%20Attendance%20Tracker...`;
-    window.open(feedback);
+    openChatModal();
 }

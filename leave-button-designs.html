@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OAT — Leave Button Design Showcase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0e1a;
+    color: #c8d6e5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .page-header {
+    text-align: center;
+    padding: 48px 24px 32px;
+    position: relative;
+  }
+  .page-header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ecc48d 0%, #f5a623 50%, #ff6363 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .page-header p {
+    color: #636e80;
+    font-size: 0.95rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .designs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 28px;
+    padding: 24px 40px 80px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .design-card {
+    background: linear-gradient(145deg, rgba(20,26,46,0.95), rgba(14,18,32,0.98));
+    border: 1px solid rgba(130,170,255,0.12);
+    border-radius: 20px;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.35s ease;
+  }
+  .design-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent, #ecc48d), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .design-card:hover {
+    border-color: rgba(236,196,141,0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  }
+  .design-card:hover::before { opacity: 1; }
+
+  .design-number {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(130,170,255,0.4);
+    letter-spacing: 1px;
+  }
+
+  .design-label {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #dfe6e9;
+    text-align: center;
+  }
+
+  .design-desc {
+    font-size: 0.8rem;
+    color: #636e80;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 260px;
+  }
+
+  .design-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    width: 100%;
+  }
+
+  .context-strip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* ── Existing buttons (context) ── */
+  .ctx-btn {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    border: 2px solid;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+  }
+  .ctx-theme { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18); }
+  .ctx-info  { background: rgba(130,170,255,0.24); border-color: rgba(130,170,255,0.5); }
+  .ctx-feedback { background: rgba(173,219,103,0.25); border-color: rgba(173,219,103,0.5); }
+  .ctx-settings { background: rgba(33,199,168,0.2); border-color: rgba(33,199,168,0.6); }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 1 — Classic Emoji Circle
+     ═══════════════════════════════════════════════ */
+  .leave-d1 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: rgba(236,196,141,0.22);
+    border: 2px solid rgba(236,196,141,0.55);
+    color: #ecc48d;
+    font-size: 1.45rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+  }
+  .leave-d1:hover {
+    background: rgba(236,196,141,0.4);
+    transform: scale(1.1);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 2 — Gradient Glow Ring
+     ═══════════════════════════════════════════════ */
+  .leave-d2 {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(245,166,35,0.35), rgba(255,99,99,0.15));
+    border: 2.5px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+  }
+  .leave-d2::before {
+    content: '';
+    position: absolute;
+    inset: -2.5px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, #f5a623, #ff6363, #ecc48d, #f5a623);
+    z-index: -1;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+  }
+  .leave-d2:hover { transform: scale(1.12); }
+  .leave-d2:hover::before { opacity: 1; }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 3 — Pill with Text
+     ═══════════════════════════════════════════════ */
+  .leave-d3 {
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 22px;
+    background: rgba(236,196,141,0.14);
+    border: 2px solid rgba(236,196,141,0.4);
+    color: #ecc48d;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+  }
+  .leave-d3 .d3-icon { font-size: 1.15rem; }
+  .leave-d3:hover {
+    background: rgba(236,196,141,0.3);
+    transform: scale(1.05);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 4 — Pulsing Amber Orb
+     ═══════════════════════════════════════════════ */
+  .leave-d4 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: rgba(245,166,35,0.2);
+    border: 2px solid rgba(245,166,35,0.5);
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.25s ease;
+    animation: d4pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes d4pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245,166,35,0.3); }
+    50% { box-shadow: 0 0 0 10px rgba(245,166,35,0); }
+  }
+  .leave-d4:hover {
+    background: rgba(245,166,35,0.35);
+    transform: scale(1.1);
+    animation: none;
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 5 — Glassmorphism Card
+     ═══════════════════════════════════════════════ */
+  .leave-d5 {
+    width: 50px; height: 50px;
+    border-radius: 14px;
+    background: rgba(236,196,141,0.08);
+    border: 1.5px solid rgba(236,196,141,0.25);
+    backdrop-filter: blur(12px);
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .leave-d5:hover {
+    background: rgba(236,196,141,0.2);
+    border-color: rgba(236,196,141,0.45);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 24px rgba(236,196,141,0.15), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 6 — SVG Calendar Icon
+     ═══════════════════════════════════════════════ */
+  .leave-d6 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: rgba(199,146,234,0.2);
+    border: 2px solid rgba(199,146,234,0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+  }
+  .leave-d6 svg { width: 24px; height: 24px; }
+  .leave-d6:hover {
+    background: rgba(199,146,234,0.38);
+    transform: scale(1.1);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 7 — Stacked Badge with Count
+     ═══════════════════════════════════════════════ */
+  .leave-d7-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+  .leave-d7 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: rgba(255,171,64,0.2);
+    border: 2px solid rgba(255,171,64,0.5);
+    color: #ffab40;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+  }
+  .leave-d7:hover {
+    background: rgba(255,171,64,0.38);
+    transform: scale(1.1);
+  }
+  .leave-d7-badge {
+    position: absolute;
+    top: -5px; right: -5px;
+    min-width: 20px; height: 20px;
+    background: #ff6363;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    font-family: 'JetBrains Mono', monospace;
+    box-shadow: 0 2px 8px rgba(255,99,99,0.4);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 8 — Neon Outline
+     ═══════════════════════════════════════════════ */
+  .leave-d8 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid #f5a623;
+    color: #f5a623;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 8px rgba(245,166,35,0.2), inset 0 0 8px rgba(245,166,35,0.1);
+  }
+  .leave-d8:hover {
+    background: rgba(245,166,35,0.12);
+    box-shadow: 0 0 20px rgba(245,166,35,0.4), inset 0 0 12px rgba(245,166,35,0.15);
+    transform: scale(1.1);
+    text-shadow: 0 0 8px rgba(245,166,35,0.6);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 9 — Split Duo-Tone Circle
+     ═══════════════════════════════════════════════ */
+  .leave-d9 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(236,196,141,0.3) 0%, rgba(127,219,202,0.3) 100%);
+    border: 2px solid rgba(236,196,141,0.4);
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .leave-d9::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, transparent 45%, rgba(255,255,255,0.08) 100%);
+  }
+  .leave-d9:hover {
+    transform: scale(1.12) rotate(5deg);
+    border-color: rgba(127,219,202,0.5);
+    box-shadow: 0 4px 20px rgba(236,196,141,0.2);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 10 — Minimal Underline Text
+     ═══════════════════════════════════════════════ */
+  .leave-d10 {
+    background: none;
+    border: none;
+    color: #ecc48d;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 10px 4px;
+    position: relative;
+    transition: all 0.25s ease;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+  .leave-d10::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 50%;
+    width: 2px; height: 0;
+    background: #ecc48d;
+    transition: height 0.3s ease;
+    transform: translateX(-50%);
+  }
+  .leave-d10:hover { color: #f5a623; }
+  .leave-d10:hover::after { height: 100%; background: #f5a623; }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 11 — Sunset Gradient Fill
+     ═══════════════════════════════════════════════ */
+  .leave-d11 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #f5a623, #ff6363);
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 14px rgba(245,166,35,0.35);
+    filter: saturate(0.85);
+  }
+  .leave-d11:hover {
+    transform: scale(1.12);
+    filter: saturate(1);
+    box-shadow: 0 6px 24px rgba(245,166,35,0.5);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 12 — Rotating Border Animation
+     ═══════════════════════════════════════════════ */
+  .leave-d12-outer {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    padding: 3px;
+    background: conic-gradient(from 0deg, #ecc48d, #c792ea, #82aaff, #7fdbca, #ecc48d);
+    animation: d12spin 4s linear infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.25s ease;
+  }
+  .leave-d12-outer:hover { transform: scale(1.12); animation-duration: 1.5s; }
+  @keyframes d12spin { to { background: conic-gradient(from 360deg, #ecc48d, #c792ea, #82aaff, #7fdbca, #ecc48d); } }
+  .leave-d12-inner {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: #0f1525;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 13 — Hexagonal
+     ═══════════════════════════════════════════════ */
+  .leave-d13 {
+    width: 50px; height: 50px;
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    background: rgba(236,196,141,0.25);
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  .leave-d13:hover {
+    background: rgba(236,196,141,0.45);
+    transform: scale(1.15) rotate(15deg);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 14 — Floating Label + Dot
+     ═══════════════════════════════════════════════ */
+  .leave-d14 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .leave-d14:hover { transform: translateY(-3px); }
+  .leave-d14-dot {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f5a623, #ecc48d);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    box-shadow: 0 3px 12px rgba(245,166,35,0.3);
+    transition: all 0.25s ease;
+  }
+  .leave-d14:hover .leave-d14-dot {
+    box-shadow: 0 5px 20px rgba(245,166,35,0.5);
+    transform: scale(1.1);
+  }
+  .leave-d14-label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #ecc48d;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 15 — Neumorphic Soft Button
+     ═══════════════════════════════════════════════ */
+  .leave-d15 {
+    width: 52px; height: 52px;
+    border-radius: 16px;
+    background: #141a2e;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 6px 6px 16px rgba(0,0,0,0.5), -4px -4px 12px rgba(40,50,80,0.4);
+    transition: all 0.2s ease;
+  }
+  .leave-d15:hover {
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.5), -2px -2px 6px rgba(40,50,80,0.4);
+    transform: scale(0.96);
+  }
+  .leave-d15:active {
+    box-shadow: inset 3px 3px 8px rgba(0,0,0,0.5), inset -2px -2px 6px rgba(40,50,80,0.3);
+  }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 16 — Morphing Icon (CSS only)
+     ═══════════════════════════════════════════════ */
+  .leave-d16 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: rgba(236,196,141,0.18);
+    border: 2px solid rgba(236,196,141,0.45);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .leave-d16 .d16-a { transition: all 0.3s ease; display: inline; }
+  .leave-d16 .d16-b { display: none; font-size: 0.65rem; font-weight: 700; color: #ecc48d; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
+  .leave-d16:hover {
+    border-radius: 25px;
+    width: 80px;
+    background: rgba(236,196,141,0.3);
+  }
+  .leave-d16:hover .d16-a { display: none; }
+  .leave-d16:hover .d16-b { display: inline; }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 17 — Lottie-style Bouncing Emoji
+     ═══════════════════════════════════════════════ */
+  .leave-d17 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: rgba(255,200,87,0.15);
+    border: 2px solid rgba(255,200,87,0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    transition: background 0.25s, border-color 0.25s;
+  }
+  .leave-d17 span {
+    display: inline-block;
+    animation: d17bounce 2s ease-in-out infinite;
+  }
+  @keyframes d17bounce {
+    0%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-5px); }
+    50% { transform: translateY(0); }
+    70% { transform: translateY(-3px); }
+  }
+  .leave-d17:hover {
+    background: rgba(255,200,87,0.3);
+    border-color: rgba(255,200,87,0.6);
+  }
+  .leave-d17:hover span { animation: none; transform: scale(1.2); }
+
+  /* ═══════════════════════════════════════════════
+     DESIGN 18 — Stacked Rings
+     ═══════════════════════════════════════════════ */
+  .leave-d18 {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid rgba(236,196,141,0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  .leave-d18::before, .leave-d18::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 1.5px solid;
+    transition: all 0.35s ease;
+  }
+  .leave-d18::before {
+    inset: -6px;
+    border-color: rgba(236,196,141,0.2);
+  }
+  .leave-d18::after {
+    inset: -12px;
+    border-color: rgba(236,196,141,0.08);
+  }
+  .leave-d18:hover::before { border-color: rgba(236,196,141,0.45); transform: rotate(15deg); }
+  .leave-d18:hover::after { border-color: rgba(236,196,141,0.25); transform: rotate(-10deg); }
+  .leave-d18:hover { transform: scale(1.05); background: rgba(236,196,141,0.1); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Leave Button — Design Options</h1>
+  <p>Pick your favorite. Each button shown in context with the existing OAT floating action strip.</p>
+</div>
+
+<div class="designs-grid">
+
+  <!-- DESIGN 1 -->
+  <div class="design-card" style="--accent: #ecc48d;">
+    <span class="design-number">01</span>
+    <div class="design-label">Classic Emoji Circle</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d1">🌴</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Matches the existing button style perfectly. Amber tint, palm tree emoji. Clean and consistent.</div>
+  </div>
+
+  <!-- DESIGN 2 -->
+  <div class="design-card" style="--accent: #f5a623;">
+    <span class="design-number">02</span>
+    <div class="design-label">Gradient Glow Ring</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d2">🏖️</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Animated conic gradient border. Sunset orange-to-coral. Premium feel, draws the eye.</div>
+  </div>
+
+  <!-- DESIGN 3 -->
+  <div class="design-card" style="--accent: #ecc48d;">
+    <span class="design-number">03</span>
+    <div class="design-label">Pill with Text</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d3"><span class="d3-icon">🌴</span> LEAVE</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Pill-shaped with icon + label. Zero ambiguity. Breaks the circle pattern but feels intentional.</div>
+  </div>
+
+  <!-- DESIGN 4 -->
+  <div class="design-card" style="--accent: #f5a623;">
+    <span class="design-number">04</span>
+    <div class="design-label">Pulsing Amber Orb</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d4">✈️</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Subtle pulse animation draws attention to the new feature. Stops pulsing on hover. Plane emoji for "away".</div>
+  </div>
+
+  <!-- DESIGN 5 -->
+  <div class="design-card" style="--accent: #ecc48d;">
+    <span class="design-number">05</span>
+    <div class="design-label">Glassmorphism Square</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d5">🌴</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Rounded square with frosted glass effect. Stands out from the circular buttons — marks it as different category.</div>
+  </div>
+
+  <!-- DESIGN 6 -->
+  <div class="design-card" style="--accent: #c792ea;">
+    <span class="design-number">06</span>
+    <div class="design-label">SVG Calendar Icon</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d6">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#c792ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+            <line x1="9" y1="14" x2="15" y2="18"/>
+            <line x1="15" y1="14" x2="9" y2="18"/>
+          </svg>
+        </button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Custom SVG — calendar with an X mark. Purple tint. No emoji dependency, crisp at any size.</div>
+  </div>
+
+  <!-- DESIGN 7 -->
+  <div class="design-card" style="--accent: #ffab40;">
+    <span class="design-number">07</span>
+    <div class="design-label">Badge with Leave Count</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <div class="leave-d7-wrap">
+          <button class="leave-d7">🌴</button>
+          <span class="leave-d7-badge">3</span>
+        </div>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Shows leave count as a red notification badge. Functional — user sees count at a glance without opening popup.</div>
+  </div>
+
+  <!-- DESIGN 8 -->
+  <div class="design-card" style="--accent: #f5a623;">
+    <span class="design-number">08</span>
+    <div class="design-label">Neon Outline</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d8">🏝️</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">No fill, just a glowing amber outline. Neon glow intensifies on hover. Cyberpunk vibes.</div>
+  </div>
+
+  <!-- DESIGN 9 -->
+  <div class="design-card" style="--accent: #7fdbca;">
+    <span class="design-number">09</span>
+    <div class="design-label">Duo-Tone Gradient</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d9">🌴</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Amber-to-teal gradient. Bridges the color gap between feedback (green) and the warm leave theme. Rotates on hover.</div>
+  </div>
+
+  <!-- DESIGN 10 -->
+  <div class="design-card" style="--accent: #ecc48d;">
+    <span class="design-number">10</span>
+    <div class="design-label">Vertical Text Label</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d10">LEAVE</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Pure text, no icon. Vertical orientation fits the strip naturally. Underline reveals on hover. Ultra minimal.</div>
+  </div>
+
+  <!-- DESIGN 11 -->
+  <div class="design-card" style="--accent: #ff6363;">
+    <span class="design-number">11</span>
+    <div class="design-label">Sunset Solid Fill</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d11">🌅</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Bold solid gradient fill. Only filled button in the strip — makes it pop as a primary action. Sunset emoji.</div>
+  </div>
+
+  <!-- DESIGN 12 -->
+  <div class="design-card" style="--accent: #c792ea;">
+    <span class="design-number">12</span>
+    <div class="design-label">Rotating Rainbow Ring</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <div class="leave-d12-outer">
+          <div class="leave-d12-inner">🌴</div>
+        </div>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Spinning rainbow border using all OAT theme colors. Eye-catching but might be too flashy for production.</div>
+  </div>
+
+  <!-- DESIGN 13 -->
+  <div class="design-card" style="--accent: #ecc48d;">
+    <span class="design-number">13</span>
+    <div class="design-label">Hexagonal</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d13">🌴</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Hexagonal shape via clip-path. Unique silhouette makes it instantly recognizable. Rotates on hover.</div>
+  </div>
+
+  <!-- DESIGN 14 -->
+  <div class="design-card" style="--accent: #f5a623;">
+    <span class="design-number">14</span>
+    <div class="design-label">Floating Dot + Label</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <div class="leave-d14">
+          <div class="leave-d14-dot">🌴</div>
+          <span class="leave-d14-label">Leave</span>
+        </div>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Smaller filled dot with a tiny label underneath. Compact, self-documenting. Warm gradient fill.</div>
+  </div>
+
+  <!-- DESIGN 15 -->
+  <div class="design-card" style="--accent: #636e80;">
+    <span class="design-number">15</span>
+    <div class="design-label">Neumorphic Soft</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d15">🌴</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Neumorphic soft-press effect. Rounded square, tactile feel. Depresses on click. Sophisticated and subtle.</div>
+  </div>
+
+  <!-- DESIGN 16 -->
+  <div class="design-card" style="--accent: #ecc48d;">
+    <span class="design-number">16</span>
+    <div class="design-label">Morph on Hover</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d16"><span class="d16-a">🌴</span><span class="d16-b">LEAVE</span></button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Circle with emoji at rest. Morphs into a wider pill revealing "LEAVE" text on hover. Best of both worlds.</div>
+  </div>
+
+  <!-- DESIGN 17 -->
+  <div class="design-card" style="--accent: #ffc857;">
+    <span class="design-number">17</span>
+    <div class="design-label">Bouncing Umbrella</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d17"><span>⛱️</span></button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Beach umbrella emoji with a gentle bounce animation. Playful and inviting. Stops bouncing on hover.</div>
+  </div>
+
+  <!-- DESIGN 18 -->
+  <div class="design-card" style="--accent: #ecc48d;">
+    <span class="design-number">18</span>
+    <div class="design-label">Concentric Rings</div>
+    <div class="design-preview">
+      <div class="context-strip">
+        <button class="ctx-btn ctx-theme">🌙</button>
+        <button class="ctx-btn ctx-info">ℹ️</button>
+        <button class="leave-d18">🌴</button>
+        <button class="ctx-btn ctx-feedback">💬</button>
+        <button class="ctx-btn ctx-settings">⚙️</button>
+      </div>
+    </div>
+    <div class="design-desc">Three concentric rings that shift on hover. Radar/ripple effect. Elegant and distinctive.</div>
+  </div>
+
+</div>
+
+</body>
+</html>

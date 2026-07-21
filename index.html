@@ -333,9 +333,9 @@
             <div class="fab-dot fab-dot--leave"><span>🌴</span></div>
             <span class="fab-label fab-label--leave">Leave</span>
         </div>
-        <div class="fab-item" onclick="openFeedback()" title="Chat on Teams">
-            <div class="fab-dot fab-dot--feedback"><span>💬</span></div>
-            <span class="fab-label fab-label--feedback">Chat</span>
+        <div class="fab-item" onclick="openFeedback()" title="Report Issue or Chat">
+            <div class="fab-dot fab-dot--feedback"><span>🐛</span></div>
+            <span class="fab-label fab-label--feedback">Report</span>
         </div>
         <div class="fab-item settings-btn-wrap" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">
             <div class="fab-dot fab-dot--settings"><span>⚙️</span></div>
@@ -708,6 +708,32 @@
       tick();
     })();
     </script>
+
+    <!-- Chat Choice Modal -->
+    <div class="chat-choice-overlay" id="chatChoiceOverlay" style="display:none;" onclick="chatChoiceOverlayClick(event)">
+        <div class="chat-choice-modal" id="chatChoiceModal">
+            <button class="chat-choice-close" onclick="closeChatModal()" title="Close">&times;</button>
+            <div class="chat-choice-icon">💬</div>
+            <h3 class="chat-choice-title">How can we help?</h3>
+            <p class="chat-choice-subtitle">Choose what you'd like to do</p>
+            <div class="chat-choice-buttons">
+                <button class="chat-choice-btn chat-choice-btn--issue" onclick="reportIssue()">
+                    <span class="chat-choice-btn-icon">🐛</span>
+                    <span class="chat-choice-btn-label">Report Issue</span>
+                    <span class="chat-choice-btn-desc">Collect diagnostic logs &amp; open Teams chat</span>
+                </button>
+                <button class="chat-choice-btn chat-choice-btn--chat" onclick="chatOnTeams()">
+                    <span class="chat-choice-btn-icon">💬</span>
+                    <span class="chat-choice-btn-label">Just Chat</span>
+                    <span class="chat-choice-btn-desc">Open Teams to send a message</span>
+                </button>
+            </div>
+            <div class="chat-choice-report-note" id="chatChoiceReportNote" style="display:none;">
+                <span>📋 Diagnostic logs copied to clipboard!</span>
+                <span class="chat-choice-report-hint">Paste them in the Teams chat to help diagnose the issue.</span>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 
