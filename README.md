@@ -1,6 +1,6 @@
 # 📅 OAT — Office Attendance Tracker
 
-Auto-track your Q1 office attendance via office WiFi detection.
+Auto-track your office attendance via office WiFi detection. Covers Q1–Q4 2026–27.
 
 **Live App:** https://tripathigaurav.github.io/OAT
 
@@ -8,13 +8,20 @@ Auto-track your Q1 office attendance via office WiFi detection.
 
 ## Features
 
-- 📆 Visual calendar tracker (April–July 2026, target: 39 days)
-- 🤖 Auto-marks attendance when connected to office WiFi (`corp`)
+- 📆 Visual calendar tracker across **Q1–Q4 2026–27** (auto-switches quarter when one ends)
+- 🤖 Auto-marks attendance when connected to office WiFi (`corp` + NetApp DNS)
 - 🛡️ VPN false-positive protection — requires both WiFi SSID **and** NetApp DNS match
-- 🌙 Dark / light theme toggle
-- 💬 Feedback via email
-- 🔄 Stale setup detection with one-click update prompt
-- 📡 Backfill past days from WiFi logs (Windows)
+- 📝 Mark / unmark days manually on the calendar (with confirmation)
+- 🌴 Leave / PTO tracking via the Leave button — supports single days and date ranges
+- 🔄 Auto-advance to next quarter when the current one ends (no user action needed)
+- 📊 Trends view and Office Data panel per quarter
+- 📶 Backfill past days from WiFi logs *(Windows)*
+- ▶️ Manual WiFi check for today *(Windows)*
+- 🛠️ Works fully in manual mode if no admin rights *(Windows)*
+- 🐛 **Report Issue** button — collects full diagnostic logs and opens Teams chat
+  - Full office day list (auto vs manual), leave days, unmarked workdays
+  - Complete auto-mark log, script version & last-run time, all quarters summary
+- 🔧 Diagnose auto-tracking health from ⚙️ Settings
 
 ---
 
@@ -134,4 +141,4 @@ OAT/
 
 ## Contact
 
-Feedback: 💬 button in the app (opens Outlook to gtripath@netapp.com)
+Use the **🐛 Report** button in the app — choose **Report Issue** to auto-collect diagnostic logs and open a Teams chat, or **Just Chat** to message directly.
