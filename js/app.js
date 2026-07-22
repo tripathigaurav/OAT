@@ -1445,6 +1445,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hide setup-reminder card since script is now confirmed working
         const reminderCard = document.getElementById('settingsSetupReminder');
         if (reminderCard) reminderCard.style.display = 'none';
+
+        // BUG FIX: User may be browsing a different quarter (e.g. Q2 preview).
+        // Always switch to today's actual quarter before auto-marking so
+        // isTodayWorkday() / isInRange() check against the right date range.
+        const todaysQuarter = autoDetectQuarter();
+        if (todaysQuarter !== currentQKey) {
+            switchQuarter(todaysQuarter);
+        }
+
         if (settings.autoMarkEnabled !== false) {
             autoMarkToday();
         }
