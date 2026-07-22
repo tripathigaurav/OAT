@@ -302,6 +302,12 @@ function oatConfirmBackdropClick(e) {
 }
 
 function rescanToday() {
+    // Ensure we're on the quarter today actually belongs to (user may be browsing another)
+    const todaysQuarter = autoDetectQuarter();
+    if (todaysQuarter !== currentQKey) {
+        switchQuarter(todaysQuarter);
+    }
+
     const todayStr = getTodayStr();
     if (!isTodayWorkday()) {
         showNotification('📅 Today is not a working day — nothing to mark.', 'info');
