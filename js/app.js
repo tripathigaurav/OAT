@@ -850,7 +850,7 @@ function renderCalendars() {
             for (let d = new Date(loopStart); d <= qEnd; d.setDate(d.getDate() + 1)) {
                 const dow = d.getDay();
                 const ds  = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
-                if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds]) wdLeft++;
+                if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds] && !checkedDays[ds]) wdLeft++;
             }
         }
         wdLeftEl.textContent = wdLeft;
