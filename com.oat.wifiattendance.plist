@@ -23,6 +23,15 @@
     <key>RunAtLoad</key>
     <true/>
 
+    <!-- Midnight trigger: catches overnight stays — fires at 00:01 on the new day -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>1</integer>
+    </dict>
+
     <!-- Throttle: Don't run more often than every 30 seconds -->
     <key>ThrottleInterval</key>
     <integer>30</integer>

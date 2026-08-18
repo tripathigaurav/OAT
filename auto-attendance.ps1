@@ -320,6 +320,16 @@ Start-Process $TRACKER_URL
 
 Write-Log "Opened attendance tracker with auto-mark. Done!"
 
+# Self-register midnight scheduled task if not already present (handles overnight WiFi stays)
+$taskName = "OAT-WiFiAttendance-Midnight"
+if (-not (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue)) {
+    $action  = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSCommandPath`""
+    $trigger = New-ScheduledTaskTrigger -Daily -At "00:01"
+    $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -StartWhenAvailable
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -RunLevel Limited -Force | Out-Null
+    Write-Log "Registered midnight scheduled task for overnight coverage."
+}
+
 # Clean up old lock files (older than 2 days)
 Get-ChildItem "$env:TEMP\oat-automark-*.lock" -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-2) } |
