@@ -172,12 +172,6 @@ open "$TRACKER_URL"
 
 log_msg "✅ Opened attendance tracker with auto-mark. Done!"
 
-# Self-register midnight cron if not already present (handles overnight WiFi stays)
-if ! crontab -l 2>/dev/null | grep -q "oat-automark"; then
-    (crontab -l 2>/dev/null; echo "1 0 * * * /bin/bash \"$SCRIPT_DIR/auto-attendance.sh\" # oat-automark") | crontab -
-    log_msg "✅ Registered midnight cron job for overnight coverage."
-fi
-
 # Clean up old lock files (older than 2 days)
 find /tmp -name "oat-automark-*.lock" -mtime +2 -delete 2>/dev/null
 

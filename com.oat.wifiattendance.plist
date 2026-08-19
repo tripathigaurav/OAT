@@ -23,7 +23,7 @@
     <key>RunAtLoad</key>
     <true/>
 
-    <!-- Midnight trigger: catches overnight stays — fires at 00:01 on the new day -->
+    <!-- Trigger at 00:01 AM daily to catch attendance when staying connected past midnight -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>

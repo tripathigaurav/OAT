@@ -1766,7 +1766,7 @@ function updateSetupStatus() {
 }
 
 // ---- Stale Setup Detection & Reinstall ----
-function checkForStaleSetup() { return; } // v2.2: auto-prompts disabled — update card shown in settings only
+function checkForStaleSetup() { return; } // auto-prompts disabled — update card shown in settings only
 
 // Show update option quietly inside Settings only (user-initiated)
 // Only shown if script is installed but version is old or unknown
@@ -1800,10 +1800,10 @@ function checkBirthdayToday() {
     const todayStr = getTodayStr(); // YYYY-MM-DD
     const people = getBirthdayPeople(todayStr);
     if (people.length === 0) return;
-    // Show once per day
+    // Show once per day, survives page refresh
     const seenKey = 'oatBdaySeen_' + todayStr;
-    if (sessionStorage.getItem(seenKey)) return;
-    sessionStorage.setItem(seenKey, '1');
+    if (localStorage.getItem(seenKey)) return;
+    localStorage.setItem(seenKey, '1');
     // Slight delay so page loads first
     setTimeout(() => showBirthdayPopup(people), 900);
 }
