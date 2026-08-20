@@ -177,22 +177,8 @@
         </div>
     </div>
 
-    <!-- Update Popup Modal (shown to old users first) -->
-    <div class="update-popup-overlay" id="updatePopupOverlay" style="display:none;">
-        <div class="update-popup-modal">
-            <div class="update-popup-icon">🔄</div>
-            <h2>Update Available!</h2>
-            <p class="update-popup-desc">A new version of OAT is ready with important improvements:</p>
-            <!-- Populated from SCRIPT_CHANGELOG in app.js — do not hardcode
-                 release notes here, they drift out of date. -->
-            <ul class="update-popup-features"></ul>
-            <p class="update-popup-note">It's a quick one-command update — takes less than 10 seconds.</p>
-            <div class="update-popup-actions">
-                <button class="update-popup-btn primary" onclick="updatePopupNow()">🚀 Update Now</button>
-                <button class="update-popup-btn secondary" onclick="updatePopupLater()">Maybe Later</button>
-            </div>
-        </div>
-    </div>
+    <!-- Update prompt removed — the reinstall command lives in Settings ->
+         Auto-Mark Setup for anyone who wants it. -->
 
     <!-- WiFi Auto-Mark Notification -->
     <div class="wifi-notification" id="wifiNotification" style="display:none;">
@@ -319,6 +305,10 @@
             <div class="fab-dot fab-dot--powerbi"><span>📊</span></div>
             <span class="fab-label fab-label--powerbi">Office Data</span>
         </div>
+        <div class="fab-item" onclick="window.open('https://netapp.sharepoint.com/sites/ThriveTogether/SitePages/FAQs.aspx','_blank','noopener')" title="Thrive Together FAQs">
+            <div class="fab-dot fab-dot--faq"><span>❓</span></div>
+            <span class="fab-label fab-label--faq">TT FAQ</span>
+        </div>
         <div class="fab-item" onclick="toggleTheme()" title="Toggle theme" style="display:none;">
             <div class="fab-dot fab-dot--theme" id="themeBtn"><span>🌙</span></div>
             <span class="fab-label fab-label--theme">Theme</span>
@@ -338,7 +328,7 @@
         <div class="fab-item settings-btn-wrap" onclick="toggleSettings()" title="WiFi Auto-Mark Settings">
             <div class="fab-dot fab-dot--settings"><span>⚙️</span></div>
             <span class="fab-label fab-label--settings">Setup</span>
-            <span class="settings-update-dot" id="settingsUpdateDot" style="display:none;" title="Update available">1</span>
+            <span class="settings-update-dot" id="settingsUpdateDot" style="display:none;" title="Setup needs attention">1</span>
         </div>
     </div>
     <div class="info-mini-panel" id="infoMiniPanel" style="display:none;">
@@ -346,26 +336,24 @@
         <ul>
             <li>Track office attendance across Q1–Q4 2026–27</li>
             <li>Auto-mark on office WiFi (<strong>corp</strong> + NetApp DNS)</li>
-            <li>Auto-advance to next quarter when the current one ends</li>
+            <li>Always opens on the current quarter — switches over when one ends</li>
+            <li>Switch quarters from the badge next to the title</li>
             <li>Mark / unmark days manually on the calendar (with confirmation)</li>
+            <li>📡 <strong>Mark Today</strong> — mark today yourself if the WiFi check didn't fire</li>
             <li>Allow marking attendance on weekends <em>(opt-in via ⚙️ Settings)</em></li>
+            <li>Unmark a wrongly auto-marked day <em>(opt-in via ⚙️ Settings)</em></li>
             <li>Track leaves / PTO via the 🌴 button — supports future dates &amp; ranges</li>
-            <li>Run manual WiFi check for today <em>(Windows)</em></li>
-            <li>Backfill past office days from WiFi history <em>(Windows)</em></li>
+            <li>📈 Trends — projected finish date &amp; weekly office visits</li>
+            <li>🎂 Birthday reminders for the team</li>
+            <li>Backfill past office days from WiFi history <em>(Windows, via the script)</em></li>
             <li>Work fully in manual mode if no admin rights <em>(Windows)</em></li>
             <li>🐛 Report button — collects full diagnostic logs &amp; opens Teams chat</li>
-            <li>Switch between quarters &amp; track progress per quarter</li>
             <li>🔧 Diagnose auto-tracking health from ⚙️ Settings</li>
         </ul>
         <div class="developer-credit" style="display:none;"></div>
     </div>
     <div class="settings-panel" id="settingsPanel" style="display:none;">
       <div class="settings-panel-scroll">
-        <!-- Update Available card (shown when setup is stale) -->
-        <div class="settings-update-card" id="settingsUpdateCard" style="display:none;">
-            <span>🔄 Update available for auto-tracking</span>
-            <button class="settings-update-card-btn" onclick="reopenUpdatePopup()">Update Now</button>
-        </div>
         <!-- Setup not confirmed card (shown when onboarded but script never ran) -->
         <div class="settings-setup-reminder" id="settingsSetupReminder" style="display:none;">
             <span>⚠️ Script hasn't run yet — verify your setup</span>
@@ -376,28 +364,30 @@
             📡 Office WiFi: <strong>corp</strong> (NetApp)
         </div>
         <div class="settings-group">
-            <label>
-                <input type="checkbox" id="autoMarkEnabled" />
-                Enable Auto-Mark on WiFi Connect
+            <label class="settings-toggle">
+                <input type="checkbox" id="autoMarkEnabled" onchange="saveSettings(true)" />
+                <span class="settings-toggle-text">Enable Auto-Mark on WiFi Connect</span>
             </label>
         </div>
         <div class="settings-group">
-            <label>
-                <input type="checkbox" id="allowWeekendMark" />
-                Allow marking attendance on weekends
-                <span style="opacity:0.55;font-size:0.8rem;display:block;margin-top:2px;padding-left:20px;">Off by default — enable if you visited office on Sat/Sun</span>
+            <label class="settings-toggle">
+                <input type="checkbox" id="allowWeekendMark" onchange="saveSettings(true)" />
+                <span class="settings-toggle-text">Allow marking attendance on weekends
+                    <span class="settings-toggle-hint">Off by default — enable if you visited office on Sat/Sun</span>
+                </span>
             </label>
         </div>
         <div class="settings-group">
-            <label>
-                <input type="checkbox" id="allowAutoMarkEdit" />
-                Allow editing auto-marked (WiFi verified) days
-                <span style="opacity:0.55;font-size:0.8rem;display:block;margin-top:2px;padding-left:20px;">Off by default — enable to unmark a past day the WiFi check got wrong. Re-marking it counts as a manual mark, not WiFi verified.</span>
+            <label class="settings-toggle">
+                <input type="checkbox" id="allowAutoMarkEdit" onchange="saveSettings(true)" />
+                <span class="settings-toggle-text">Allow editing auto-marked days
+                    <span class="settings-toggle-hint">Off by default — enable to unmark a past day the WiFi check got wrong. Re-marking counts as manual.</span>
+                </span>
             </label>
         </div>
         <div class="settings-actions" style="margin-bottom:12px;">
-            <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
-            <button class="close-settings-btn" onclick="toggleSettings()">Close</button>
+            <span class="settings-saved-note" id="settingsSavedNote"></span>
+            <button class="close-settings-btn" onclick="toggleSettings()">Done</button>
         </div>
         <div class="settings-group">
             <label>

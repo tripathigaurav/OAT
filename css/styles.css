@@ -1520,13 +1520,7 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     border: 2px solid #ADDB67;
 }
 
-.day-cell.checked::after {
-    content: "✅";
-    position: absolute;
-    top: -2px;
-    right: 0px;
-    font-size: 0.6rem;
-}
+
 
 .day-cell.holiday {
     background: rgba(225, 112, 85, 0.4) !important;
@@ -1538,13 +1532,7 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     transform: scale(1.1);
 }
 
-.day-cell.holiday::after {
-    content: "🎉";
-    position: absolute;
-    top: -2px;
-    right: 0px;
-    font-size: 0.6rem;
-}
+
 
 /* ── Birthday cells ── */
 .day-cell.bday {
@@ -1552,15 +1540,7 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     border: 1.5px solid rgba(199, 146, 234, 0.6) !important;
     box-shadow: 0 0 8px rgba(199, 146, 234, 0.2);
 }
-.day-cell.bday::before {
-    content: "🎂";
-    position: absolute;
-    top: -4px;
-    right: -2px;
-    font-size: 0.55rem;
-    line-height: 1;
-    pointer-events: none;
-}
+
 .day-cell.bday:hover {
     transform: scale(1.12);
     box-shadow: 0 0 16px rgba(199, 146, 234, 0.4);
@@ -1685,12 +1665,21 @@ body.light-mode .bday-popup-msg { color: #64748b; }
 .day-cell[data-tip]:hover::before {
     content: attr(data-tip);
     position: absolute;
-    bottom: calc(100% + 6px);
+    /* MUST reset top/right. The birthday cake badge is .day-cell.bday::before
+       with `top:-4px; right:-2px`, and this rule reuses the same pseudo-element.
+       On hover we win `content`/`bottom`/`left` on specificity, but the badge's
+       top/right survive — pinning the box to all four edges of the cell so the
+       tooltip rendered inside the row instead of above it. */
+    top: auto;
+    right: auto;
+    bottom: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(8, 8, 22, 0.95);
+    /* Fully opaque: at 0.95 the day cells behind bled through and the tip
+       read as text smeared over the calendar rather than a floating label. */
+    background: #0b0b1a;
     color: #d6deeb;
-    padding: 5px 10px;
+    padding: 6px 10px;
     border-radius: 6px;
     font-size: 0.72rem;
     /* Wrap instead of nowrap. The month card has a backdrop-filter, which in
@@ -1700,20 +1689,24 @@ body.light-mode .bday-popup-msg { color: #64748b; }
        pre-line honours the newline between the status and birthday lines. */
     white-space: pre-line;
     width: max-content;
-    max-width: 176px;
+    max-width: 168px;
     text-align: center;
-    line-height: 1.35;
+    line-height: 1.3;
     z-index: 100;
     pointer-events: none;
-    border: 1px solid rgba(33, 199, 168, 0.4);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    border: 1px solid rgba(33, 199, 168, 0.45);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.7);
     animation: tipFade 0.15s ease;
 }
 
 .day-cell[data-tip]:hover::after {
     content: '';
     position: absolute;
-    bottom: calc(100% + 2px);
+    /* Same leak: the ✅ 🎉 🤖 🌴 status badges are .day-cell.*::after with
+       `top:-2px; right:0`, so the arrow needs these reset too. */
+    top: auto;
+    right: auto;
+    bottom: calc(100% + 4px);
     left: 50%;
     transform: translateX(-50%);
     border: 5px solid transparent;
@@ -1763,6 +1756,56 @@ body.light-mode .bday-popup-msg { color: #64748b; }
 
 .month-summary div {
     margin: 3px 0;
+}
+
+/* ── Settings toggles ───────────────────────────────────
+   Checkbox in its own column so a wrapping label and its hint both align
+   to the text edge. Previously the hint used padding-left: 20px, which
+   only lined up while the label fitted on one line. */
+/* Selectors are qualified with .settings-group because `.settings-group label`
+   (display:block) and `.settings-group input[type="checkbox"]`
+   (margin-right:8px) both outrank a bare .settings-toggle — the flex layout
+   silently never applied, leaving the checkbox stacked above the label. */
+.settings-group label.settings-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    cursor: pointer;
+    margin-bottom: 0;
+}
+.settings-group label.settings-toggle input[type="checkbox"] {
+    margin: 2px 0 0;
+    flex-shrink: 0;
+}
+.settings-toggle-text {
+    display: block;
+    line-height: 1.45;
+}
+.settings-toggle-hint {
+    display: block;
+    opacity: 0.55;
+    font-size: 0.8rem;
+    margin-top: 3px;
+    line-height: 1.4;
+}
+
+/* ── Day-cell badges ────────────────────────────────────
+   A flex row so multiple badges sit side by side instead of stacking in the
+   same corner. Replaces .day-cell.{checked,auto-checked,holiday,leave}::after
+   and .day-cell.bday::before, which all claimed top-right and collided. */
+.cell-badges {
+    position: absolute;
+    top: -5px;
+    right: -3px;
+    display: flex;
+    flex-direction: row;
+    gap: 1px;
+    line-height: 1;
+    pointer-events: none;
+}
+.cell-badge {
+    font-size: 0.55rem;
+    line-height: 1;
 }
 
 .summary-holidays { color: #F78C6C; }
@@ -1834,13 +1877,7 @@ body.light-mode .month-card[data-month-slot="3"] .summary-workdays { color: #b45
     border: 2px solid #ADDB67;
 }
 
-.day-cell.auto-checked::after {
-    content: "🤖";
-    position: absolute;
-    top: -2px;
-    right: 0px;
-    font-size: 0.6rem;
-}
+
 
 /* WiFi Notification Bar */
 .wifi-notification {
@@ -1926,6 +1963,7 @@ body.light-mode .month-card[data-month-slot="3"] .summary-workdays { color: #b45
     animation: fabBounce 2.5s ease-in-out infinite;
 }
 .fab-dot--powerbi span { animation-delay: 0s; }
+.fab-dot--faq span    { animation-delay: 0.1s; }
 .fab-dot--theme span  { animation-delay: 0.2s; }
 .fab-dot--info span   { animation-delay: 0.4s; }
 .fab-dot--leave span  { animation-delay: 0.6s; }
@@ -1957,6 +1995,13 @@ body.light-mode .month-card[data-month-slot="3"] .summary-workdays { color: #b45
     --fab-glow: rgba(242,200,17,0.2);
 }
 .fab-label--powerbi { color: #f2c811; }
+
+.fab-dot--faq {
+    background: linear-gradient(145deg, rgba(199,146,234,0.3), rgba(199,146,234,0.08));
+    border-color: rgba(199,146,234,0.2);
+    --fab-glow: rgba(199,146,234,0.2);
+}
+.fab-label--faq { color: #c792ea; }
 
 .fab-dot--theme {
     background: linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04));
@@ -2013,6 +2058,12 @@ body.light-mode .fab-dot--powerbi {
     --fab-glow: rgba(180,130,0,0.15);
 }
 body.light-mode .fab-label--powerbi { color: #92650a; }
+body.light-mode .fab-dot--faq {
+    background: linear-gradient(145deg, rgba(124,58,237,0.18), rgba(124,58,237,0.06));
+    border-color: rgba(124,58,237,0.15);
+    --fab-glow: rgba(124,58,237,0.15);
+}
+body.light-mode .fab-label--faq { color: #7c3aed; }
 body.light-mode .fab-dot--info {
     background: linear-gradient(145deg, rgba(99,102,241,0.18), rgba(99,102,241,0.06));
     border-color: rgba(99,102,241,0.15);
@@ -3268,14 +3319,7 @@ body.light-mode .legend-box.leave { background: rgba(217,119,6,0.15); border-col
     color: #ecc48d !important;
     position: relative;
 }
-.day-cell.leave::after {
-    content: '🌴';
-    position: absolute;
-    top: 1px;
-    right: 2px;
-    font-size: 0.5rem;
-    line-height: 1;
-}
+
 body.light-mode .day-cell.leave {
     background: rgba(217,119,6,0.12) !important;
     border-color: rgba(217,119,6,0.4) !important;

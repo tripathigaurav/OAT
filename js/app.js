@@ -1,30 +1,6 @@
 // Configuration
 const REQUIRED_SCRIPT_VERSION = '2.4'; // Latest shipped script version
 
-// Oldest script version still considered correct. The update prompt appears
-// ONLY when the installed script is older than this — bump it for genuine
-// correctness fixes, not for cosmetic changes. Nagging users who won't act
-// just trains them to ignore the banner.
-const MIN_SCRIPT_VERSION = '2.4';
-
-// What changed, per script version. Single source of truth: the update dialog
-// renders the entry for REQUIRED_SCRIPT_VERSION. Two hardcoded feature lists
-// (one in index.html, one rebuilt in reopenUpdatePopup) had drifted to
-// describe two different older releases.
-const SCRIPT_CHANGELOG = {
-    '2.4': [
-        '🛡️ No more false weekend marks when a laptop is left docked on office WiFi',
-        '📶 Windows backfill now matches the exact "corp" SSID, not any name containing it',
-        '📅 Windows quarter &amp; holiday dates now match the app exactly',
-    ],
-    '2.3': [
-        '🍎 Mac: browser opens automatically on office WiFi connect',
-        '🔍 Improved SSID detection — 4-method fallback for macOS Ventura+',
-        '🛡️ Stronger VPN false-positive protection (SSID + DNS both required)',
-        '⚡ Health check confirms your setup is working correctly',
-    ],
-};
-
 // Compare dotted version strings. Non-numeric parts (e.g. the 'legacy'
 // sentinel) count as 0, so they sort older than any real version.
 function cmpVersion(a, b) {
@@ -36,25 +12,6 @@ function cmpVersion(a, b) {
     }
     return 0;
 }
-
-// True when the installed script predates MIN_SCRIPT_VERSION.
-function scriptNeedsUpdate() {
-    const installed = localStorage.getItem('oatScriptVersion');
-    if (!installed) return false;            // never ran — that's the setup reminder's job
-    return cmpVersion(installed, MIN_SCRIPT_VERSION) < 0;
-}
-
-// Dismissal is remembered per target version, so "Maybe Later" sticks across
-// sessions but a genuinely newer fix can still surface.
-function updateDismissedKey() { return 'oatUpdateDismissed_' + MIN_SCRIPT_VERSION; }
-
-function renderUpdateFeatures() {
-    const items = SCRIPT_CHANGELOG[REQUIRED_SCRIPT_VERSION] || [];
-    return items.map(t => `<li>${t}</li>`).join('');
-}
-
-// Quarter we've already fired confetti for (per session)
-let _celebratedQuarter = null;
 
 // ── Team Birthdays (MM-DD, year-agnostic) ────────────────────────
 const BIRTHDAYS = [
@@ -486,7 +443,10 @@ function loadSettingsUI() {
     renderAutoMarkLog();
 }
 
-function saveSettings() {
+// Toggles save on change (quiet = true) so closing the panel — including by
+// clicking outside it — can't silently discard a change. Previously the only
+// caller was the Save button, so a ticked box was lost on Close.
+function saveSettings(quiet) {
     settings.wifiSSID = OFFICE_WIFI_SSID; // Always corp
     settings.autoMarkEnabled = document.getElementById('autoMarkEnabled').checked;
     settings.allowWeekendMark = document.getElementById('allowWeekendMark').checked;
@@ -494,7 +454,17 @@ function saveSettings() {
     if (autoEditEl) settings.allowAutoMarkEdit = autoEditEl.checked;
     localStorage.setItem('oatSettings', JSON.stringify(settings));
     renderCalendars();
-    showNotification('⚙️ Settings saved!', 'success');
+    updateSetupStatus();
+    if (quiet) {
+        const note = document.getElementById('settingsSavedNote');
+        if (note) {
+            note.textContent = '✓ Saved';
+            clearTimeout(window._savedNoteTimer);
+            window._savedNoteTimer = setTimeout(() => { note.textContent = ''; }, 1600);
+        }
+    } else {
+        showNotification('⚙️ Settings saved!', 'success');
+    }
 }
 
 function clearAutoMarkLog() {
@@ -568,7 +538,6 @@ function wipeOATBrowserData() {
     localStorage.removeItem('oatTheme');
     localStorage.removeItem('oatUserName');
     localStorage.removeItem('oatUpdateDismissed');
-    Object.keys(SCRIPT_CHANGELOG).forEach(v => localStorage.removeItem('oatUpdateDismissed_' + v));
     localStorage.removeItem('oatAutoMarkCleaned');
     localStorage.removeItem('oat-nf-dismissed');
     // Birthday "seen" markers accumulate one key per day — collect then remove
@@ -623,7 +592,7 @@ function renderDiagnostic() {
 
     // Script version
     if (scriptVer) {
-        const ok = scriptVer === REQUIRED_SCRIPT_VERSION;
+        const ok = cmpVersion(scriptVer, REQUIRED_SCRIPT_VERSION) >= 0;
         const label = scriptVer === 'legacy'
             ? `Pre-v${REQUIRED_SCRIPT_VERSION} ⚠ (update script)`
             : `v${scriptVer}${ok ? ' ✓ (current)' : ` ⚠ (need v${REQUIRED_SCRIPT_VERSION})`}`;
@@ -934,13 +903,29 @@ function renderCalendars() {
 
             const clickHandler = (!inRange || holiday || (isWeekend && !settings.allowWeekendMark)) ? '' : `onclick="toggleDay('${dateStr}')"`;
             if (bdayPeople.length > 0) cellClass += ' bday';
+
+            // Status + birthday badges as real child elements laid out side by
+            // side. They used to be ::before (🎂) and ::after (✅🤖🎉🌴), both
+            // pinned to the top-right corner — so a birthday that was also an
+            // office day stacked two emoji on top of each other. Using real
+            // elements also frees both pseudo-elements for the tooltip, which
+            // was fighting them for position.
+            const badges = [];
+            if (bdayPeople.length > 0) badges.push('🎂');
+            if (cellClass.indexOf(' holiday') !== -1)           badges.push('🎉');
+            else if (cellClass.indexOf(' auto-checked') !== -1)  badges.push('🤖');
+            else if (cellClass.indexOf(' checked') !== -1)       badges.push('✅');
+            else if (cellClass.indexOf(' leave') !== -1)         badges.push('🌴');
+            const badgeHTML = badges.length
+                ? `<span class="cell-badges">${badges.map(b => `<span class="cell-badge">${b}</span>`).join('')}</span>`
+                : '';
             const bdayTip = bdayPeople.length > 0 ? `🎂 ${bdayPeople.map(b => b.name).join(' & ')}` : '';
             // Newline (rendered via white-space: pre-line) rather than " | " —
             // status on one line, birthday on the next, so it stays narrow.
             const finalTooltip = bdayTip ? (tooltip ? `${tooltip}\n${bdayTip}` : bdayTip) : tooltip;
             const tipAttr = finalTooltip ? `data-tip="${escapeAttr(finalTooltip)}"` : '';
 
-            daysHTML += `<div class="${cellClass}" ${clickHandler} ${tipAttr}>${day}</div>`;
+            daysHTML += `<div class="${cellClass}" ${clickHandler} ${tipAttr}>${day}${badgeHTML}</div>`;
         }
 
         card.dataset.monthSlot = months.indexOf(m);
@@ -1541,6 +1526,42 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// ── Dismissing panels & modals ────────────────────────────────────
+// The leave modal and quarter dropdown already closed on an outside click;
+// Settings and Info didn't, and nothing responded to Escape.
+const OAT_OVERLAYS = '.oat-confirm-overlay, .leave-overlay, .chat-choice-overlay, .onboard-overlay, .bday-popup-overlay';
+
+function closeFlyoutPanels(e) {
+    // Ignore clicks inside a modal layer — those sit above the panels
+    if (e && e.target.closest(OAT_OVERLAYS)) return;
+    // Ignore the launcher buttons, or we'd fight their own toggle handlers
+    if (e && e.target.closest('.fab-item')) return;
+    [['settingsPanel', '#settingsPanel'], ['infoMiniPanel', '#infoMiniPanel']].forEach(([id, sel]) => {
+        const p = document.getElementById(id);
+        if (!p || p.style.display === 'none' || !p.style.display) return;
+        if (e && e.target.closest(sel)) return;   // click landed inside the panel
+        p.style.display = 'none';
+    });
+}
+
+document.addEventListener('click', closeFlyoutPanels);
+
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const shown = el => el && el.style.display === 'flex';
+    // Topmost layer first. Onboarding is deliberately excluded — dismissing it
+    // without finishing would leave setup half-done and re-prompt next visit.
+    const confirmOverlay = document.getElementById('oatConfirmOverlay');
+    if (shown(confirmOverlay)) { oatConfirmCancel(); return; }
+    if (shown(document.getElementById('chatChoiceOverlay'))) { closeChatModal(); return; }
+    const bday = document.getElementById('bdayPopupOverlay');
+    if (shown(bday)) { bday.style.display = 'none'; return; }
+    if (shown(document.getElementById('leaveOverlay'))) { toggleLeavePanel(); return; }
+    const dd = document.getElementById('quarterDropdown');
+    if (dd && dd.classList.contains('open')) { closeQuarterDropdown(); return; }
+    closeFlyoutPanels(null);
+});
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
@@ -1616,14 +1637,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({}, document.title, cleanUrl);
     }
 
-    // Check for backfill trigger via URL parameter (?backfill=2026-05-05,2026-05-06,...)
-    const backfillDates = urlParams.get('backfill');
-    if (backfillDates) {
-        handleBackfill(backfillDates);
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-    }
-
     // Show onboarding for first-time visitors (or ?newuser=true for demo)
     // Use original urlParams (before replaceState cleaned the URL)
     if (!localStorage.getItem('oatOnboarded') || urlParams.get('newuser') === 'true') {
@@ -1632,9 +1645,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update setup status indicator
     updateSetupStatus();
-
-    // Show update option quietly inside Settings (user-initiated, no popup/banner)
-    showSettingsUpdateCard();
 
     // Show setup reminder if onboarded but script never ran
     showSettingsSetupReminder();
@@ -1928,24 +1938,6 @@ function updateSetupStatus() {
 // ---- Stale Setup Detection & Reinstall ----
 function checkForStaleSetup() { return; } // auto-prompts disabled — update card shown in settings only
 
-// Show update option quietly inside Settings only (user-initiated)
-// Only shown if script is installed but version is old or unknown
-function showSettingsUpdateCard() {
-    const scriptActive = localStorage.getItem('oatScriptActive');
-    // No script ever ran — nothing to update
-    if (!scriptActive) return;
-    // Only prompt when the installed script is genuinely too old. The old
-    // check was `scriptVer === REQUIRED_SCRIPT_VERSION`, so ANY mismatch
-    // nagged — including a script newer than the app expected.
-    if (!scriptNeedsUpdate()) return;
-    // Respect a previous "Maybe Later" for this same target version
-    if (localStorage.getItem(updateDismissedKey())) return;
-    const card = document.getElementById('settingsUpdateCard');
-    if (card) card.style.display = 'flex';
-    const dot = document.getElementById('settingsUpdateDot');
-    if (dot) dot.style.display = 'block';
-}
-
 // Show a reminder card in Settings when user onboarded but script never ran
 function showSettingsSetupReminder() {
     const onboarded = localStorage.getItem('oatOnboarded');
@@ -1990,95 +1982,6 @@ function bdayPopupClose(e) {
     if (e.target === document.getElementById('bdayPopupOverlay')) {
         document.getElementById('bdayPopupOverlay').style.display = 'none';
     }
-}
-
-function reopenUpdatePopup() {
-    sessionStorage.removeItem('oatPopupDismissed');
-    const popup = document.getElementById('updatePopupOverlay');
-    if (popup) popup.style.display = 'flex';
-    // Populate the static list from the changelog (it shipped holding an
-    // older release's notes)
-    const staticList = popup && popup.querySelector('.update-popup-features');
-    if (staticList) staticList.innerHTML = renderUpdateFeatures();
-    // Reset modal content in case it was replaced by copied state
-    const modal = popup && popup.querySelector('.update-popup-modal');
-    if (modal && !modal.querySelector('.update-popup-features')) {
-        const scriptActive = localStorage.getItem('oatScriptActive');
-        modal.innerHTML = `
-            <div class="update-popup-icon">🔄</div>
-            <h2>Update Available!</h2>
-            <p class="update-popup-desc">${scriptActive ? 'A new version of OAT is ready with important improvements:' : 'Your auto-tracking needs a quick update to get working:'}</p>
-            <ul class="update-popup-features">${renderUpdateFeatures()}</ul>
-            <p class="update-popup-note">It's a quick one-command update — takes less than 10 seconds.</p>
-            <div class="update-popup-actions">
-                <button class="update-popup-btn primary" onclick="updatePopupNow()">🚀 Update Now</button>
-                <button class="update-popup-btn secondary" onclick="updatePopupLater()">Maybe Later</button>
-            </div>
-        `;
-    }
-}
-
-function updatePopupNow() {
-    const os = detectOS();
-    const cmd = os === 'windows'
-        ? 'powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"'
-        : 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash';
-
-    navigator.clipboard.writeText(cmd).then(() => {
-        showPopupCopiedState(os);
-    }).catch(() => {
-        const ta = document.createElement('textarea');
-        ta.value = cmd;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showPopupCopiedState(os);
-    });
-}
-
-function showPopupCopiedState(os) {
-    const modal = document.querySelector('.update-popup-modal');
-    if (!modal) return;
-
-    const isMac = os !== 'windows';
-    const cmd = isMac
-        ? 'curl -sL https://tripathigaurav.github.io/OAT/update-mac.command | bash'
-        : 'powershell -ExecutionPolicy Bypass -Command "irm https://tripathigaurav.github.io/OAT/install-win.ps1 | iex"';
-
-    modal.innerHTML = `
-        <div class="update-popup-icon">✅</div>
-        <h2>Command Copied!</h2>
-        <div class="patch-cmd-box"><code>${cmd}</code></div>
-        <div class="patch-instructions">
-            ${isMac
-                ? '1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Cmd+Space</span> → type "Terminal"<br>2. Paste &nbsp;<span class="keys">Cmd+V</span> → press <span class="keys">Enter</span>'
-                : '1. Open <strong>Terminal</strong> &nbsp;<span class="keys">Win+X</span> → Terminal or Command Prompt<br>2. Paste &nbsp;<span class="keys">Ctrl+V</span> → press <span class="keys">Enter</span>'
-            }
-        </div>
-        <div class="update-popup-actions" style="margin-top:18px;">
-            <button class="update-popup-btn primary" onclick="updatePopupNow()">📋 Copy Again</button>
-            <button class="update-popup-btn secondary" onclick="updatePopupLater()">Later</button>
-        </div>
-    `;
-}
-
-function updatePopupLater() {
-    const popup = document.getElementById('updatePopupOverlay');
-    if (popup) popup.style.display = 'none';
-    sessionStorage.setItem('oatPopupDismissed', '1');
-    // Persist so it stays dismissed across sessions, not just this tab
-    localStorage.setItem(updateDismissedKey(), new Date().toISOString());
-    const card = document.getElementById('settingsUpdateCard');
-    if (card) card.style.display = 'none';
-    const dot = document.getElementById('settingsUpdateDot');
-    if (dot) dot.style.display = 'none';
-}
-
-function dismissUpdateBanner() {
-    const banner = document.getElementById('updateBanner');
-    if (banner) banner.style.display = 'none';
-    localStorage.setItem('oatUpdateDismissed', new Date().toISOString());
 }
 
 function showOnboarding() {
@@ -2277,71 +2180,6 @@ function onboardDone() {
     const name = localStorage.getItem('oatUserName');
     const greeting = name ? `Welcome ${name}! ` : '';
     showNotification(`\uD83C\uDF89 ${greeting}Setup complete! Your attendance will auto-track when you connect to office WiFi.`, 'success');
-}
-
-// ---- Backfill from WiFi Logs ----
-function handleBackfill(dateString) {
-    const dates = dateString.split(',').map(d => d.trim()).filter(d => d);
-    if (dates.length === 0) return;
-
-    // Backfill data always describes today's quarter. If the user was browsing
-    // another quarter, switch first — otherwise every date fails isInRange()
-    // and the whole backfill is silently discarded.
-    const todaysQuarter = autoDetectQuarter();
-    if (todaysQuarter !== currentQKey) {
-        switchQuarter(todaysQuarter);
-    }
-
-    let newCount = 0;
-    let skipCount = 0;
-    let outOfRange = 0;
-
-    dates.forEach(dateStr => {
-        // Validate date format (YYYY-MM-DD)
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
-
-        const parts = dateStr.split('-');
-        const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        const dayOfWeek = date.getDay();
-
-        // Skip weekends
-        if (dayOfWeek === 0 || dayOfWeek === 6) return;
-        // Skip holidays
-        if (isHoliday(dateStr)) return;
-        // Skip out of range (belongs to a different quarter)
-        if (!isInRange(date)) { outOfRange++; return; }
-
-        // If already WiFi-verified, skip
-        if (autoMarkedDays[dateStr]) {
-            skipCount++;
-            return;
-        }
-
-        checkedDays[dateStr] = true;
-        autoMarkedDays[dateStr] = true;
-        if (leaveDays[dateStr]) delete leaveDays[dateStr];
-        newCount++;
-    });
-
-    localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
-    localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
-    saveLeaveDays();
-
-    // Log the backfill
-    const logEntry = `${new Date().toLocaleString()} — Backfilled ${newCount} days from WiFi logs (${skipCount} already marked)`;
-    autoMarkLog.unshift(logEntry);
-    if (autoMarkLog.length > 120) autoMarkLog.pop();
-    localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
-
-    if (newCount > 0) {
-        showNotification(`📡 Backfilled ${newCount} days from WiFi history!${skipCount > 0 ? ` (${skipCount} already WiFi-verified)` : ''}`, 'success');
-    } else if (skipCount > 0) {
-        showNotification(`✅ All ${skipCount} days from WiFi history already WiFi-verified!`, 'already');
-    } else {
-        showNotification(`\uD83D\uDCCB No valid workdays found in the backfill data.${outOfRange > 0 ? ` (${outOfRange} outside ${currentQKey})` : ''}`, 'info');
-    }
-
-    renderCalendars();
 }
 
 /* ── Canvas confetti burst ────────────────────────────── */
