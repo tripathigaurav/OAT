@@ -643,20 +643,8 @@
       setup();
       window.addEventListener('resize', setup);
 
-      let frame = 0, lastTs = 0, wasLight = false;
-      function tick(now) {
-        if (now - lastTs < 42) { requestAnimationFrame(tick); return; } // ~24 fps
-        lastTs = now;
-
-        // Light mode hides the canvas (the fade colour is a dark navy wash and
-        // would muddy a light page). Idle instead of drawing into nothing.
-        if (document.body.classList.contains('light-mode')) {
-          if (!wasLight) { ctx.clearRect(0, 0, canvas.width, canvas.height); wasLight = true; }
-          requestAnimationFrame(tick);
-          return;
-        }
-        wasLight = false;
-
+      let frame = 0;
+      function tick() {
         frame++;
         ctx.fillStyle = 'rgba(1,22,39,0.07)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -718,7 +706,7 @@
         });
         requestAnimationFrame(tick);
       }
-      tick(0);
+      tick();
     })();
     </script>
 
