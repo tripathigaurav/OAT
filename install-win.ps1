@@ -207,7 +207,8 @@ if ($fullySetup) {
     Write-Host ""
     Write-Host "  You can still use the app:" -ForegroundColor White
     Write-Host "     * Mark days manually on the calendar" -ForegroundColor White
-    Write-Host "     * Run auto-attendance.ps1 --backfill to scan WiFi history" -ForegroundColor White
+    Write-Host "     * Use the Mark Today button in the app" -ForegroundColor White
+    Write-Host "     * Test detection: powershell -ExecutionPolicy Bypass -File `"$OAT_DIR\$PS_SCRIPT`" --dry-run" -ForegroundColor White
 }
 
 Write-Host ""

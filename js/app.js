@@ -488,9 +488,17 @@ function toggleAutoMarkLog() {
 function copyUninstallCommand() {
     const os = detectOS();
     const statusEl = document.getElementById('uninstallStatus');
+    // Windows also clears %USERPROFILE%\Desktop\OAT — the old install-win.bat
+    // installed there, so anyone who used it has a stale copy the current
+    // uninstall would have left behind. Lock files live in %TEMP% / /tmp.
     const cmd = os === 'windows'
-        ? 'Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance" -Confirm:$false -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force "$env:LOCALAPPDATA\\OAT" -ErrorAction SilentlyContinue'
-        : 'launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null; rm -f ~/Library/LaunchAgents/com.oat.wifiattendance.plist; rm -rf ~/.oat';
+        ? 'Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance" -Confirm:$false -ErrorAction SilentlyContinue; '
+          + 'Remove-Item -Recurse -Force "$env:LOCALAPPDATA\\OAT" -ErrorAction SilentlyContinue; '
+          + 'Remove-Item -Recurse -Force "$env:USERPROFILE\\Desktop\\OAT" -ErrorAction SilentlyContinue; '
+          + 'Remove-Item -Force "$env:TEMP\\oat-automark-*.lock" -ErrorAction SilentlyContinue'
+        : 'launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null; '
+          + 'rm -f ~/Library/LaunchAgents/com.oat.wifiattendance.plist; rm -rf ~/.oat; '
+          + 'rm -f /tmp/oat-automark-*.lock';
 
     navigator.clipboard.writeText(cmd).then(() => {
         if (statusEl) {
@@ -618,10 +626,13 @@ function renderDiagnostic() {
         `<div class="diag-rows">${rows.join('')}</div>`;
 
     // ── Reinstall command ──
-    const RAW = 'https://raw.githubusercontent.com/tripathigaurav/OAT/main';
+    // Same host as the documented install command. This used to point at
+    // raw.githubusercontent.com — a second domain for the same file, and the
+    // one more likely to be blocked by a corporate proxy.
+    const RAW = 'https://tripathigaurav.github.io/OAT';
     let cmd = '', hint = '', openLabel = '';
     if (os === 'mac') {
-        cmd = `bash <(curl -fsSL ${RAW}/install-mac.command)`;
+        cmd = `curl -sL ${RAW}/install-mac.command | bash`;
         hint = 'Run in Terminal (Spotlight → Terminal)';
         openLabel = 'Open Terminal';
     } else if (os === 'windows') {

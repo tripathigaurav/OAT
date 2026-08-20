@@ -15,8 +15,9 @@ Auto-track your office attendance via office WiFi detection. Covers Q1–Q4 2026
 - 🌴 Leave / PTO tracking via the Leave button — supports single days and date ranges
 - 🔄 Auto-advance to next quarter when the current one ends (no user action needed)
 - 📊 Trends view and Office Data panel per quarter
-- 📶 Backfill past days from WiFi logs *(Windows)*
-- ▶️ Manual WiFi check for today *(Windows)*
+- 📡 **Mark Today** button — mark today yourself if the WiFi check didn't fire
+- 🔓 Unmark a wrongly auto-marked day *(opt-in via ⚙️ Settings)*
+- 🎂 Birthday reminders for the team
 - 🛠️ Works fully in manual mode if no admin rights *(Windows)*
 - 🐛 **Report Issue** button — collects full diagnostic logs and opens Teams chat
   - Full office day list (auto vs manual), leave days, unmarked workdays
@@ -86,9 +87,13 @@ If WiFi SSID is undetectable (wired ethernet), DNS alone is used as fallback.
 
 If the Scheduled Task can't be registered, the app still works fully in **Manual Mode**:
 
-- ✅ Click **"▶ Run WiFi Check Now"** in Settings → checks TODAY's WiFi and marks attendance
-- ✅ Click **"📜 Scan WiFi History"** in Settings → backfills all past office days from WiFi logs
+- ✅ Click **📡 Mark Today** in the app → marks today as an office day
 - ✅ Manually check/uncheck days on the calendar anytime
+- ✅ Test detection any time:
+  ```
+  powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\OAT\auto-attendance.ps1" --dry-run
+  ```
+  Prints SSID, DNS match and every guard, then says exactly what it would do.
 
 ---
 
@@ -103,8 +108,11 @@ rm -rf ~/.oat ~/Library/LaunchAgents/com.oat.wifiattendance.plist
 ### Windows (PowerShell)
 ```powershell
 schtasks /Delete /TN "OAT-WiFiAttendance" /F
-Remove-Item -Recurse "$env:LOCALAPPDATA\OAT"
+Remove-Item -Recurse -Force "$env:LOCALAPPDATA\OAT" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "$env:USERPROFILE\Desktop\OAT" -ErrorAction SilentlyContinue
+Remove-Item -Force "$env:TEMP\oat-automark-*.lock" -ErrorAction SilentlyContinue
 ```
+> The `Desktop\OAT` path only exists if you used the old `install-win.bat` (now removed).
 
 ---
 
@@ -120,8 +128,7 @@ OAT/
 ├── auto-attendance-task.xml # Windows Scheduled Task definition
 ├── com.oat.wifiattendance.plist # macOS LaunchAgent definition
 ├── install-mac.command     # Mac one-click installer
-├── install-win.ps1         # Windows one-click installer
-└── install-win.bat         # Windows fallback installer (double-click)
+└── install-win.ps1         # Windows one-click installer
 ```
 
 ---
@@ -131,8 +138,9 @@ OAT/
 | Issue | Fix |
 |---|---|
 | `'irm' is not recognized` error on Windows | Use **PowerShell**, not Command Prompt |
-| `running scripts is disabled on this system` | Use the **"Run WiFi Check Now"** button in Settings — copies the command with `-ExecutionPolicy Bypass` pre-applied |
-| Scheduled Task didn't install → manual mode shown | Normal on some corporate machines. App works fully in manual mode — use **"Run WiFi Check Now"** or **"Scan WiFi History"** in Settings |
+| `running scripts is disabled on this system` | Prefix the command with `powershell -ExecutionPolicy Bypass -File ...` |
+| Scheduled Task didn't install → manual mode shown | Normal on some corporate machines. Use **📡 Mark Today** in the app, or mark days on the calendar |
+| Task installed but nothing ever marks | Check the task's path matches where the script actually is:<br>`(Get-ScheduledTask -TaskName OAT-WiFiAttendance).Actions \| Format-List`<br>then `dir "$env:LOCALAPPDATA\OAT"`. Caused by the old `install-win.bat`, now removed — re-run the PowerShell installer |
 | Attendance marked while working from home | Re-run installer — VPN fix requires both SSID `corp` + NetApp DNS to match |
 | LaunchAgent blocked on Mac | Scripts must be in `~/.oat/`, not Desktop (OneDrive/iCloud blocks execution) |
 | OAT site didn't open on WiFi connect (Windows) | Re-run installer — previous versions had a task XML encoding bug (fixed in May 2026) |

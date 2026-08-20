@@ -10,7 +10,7 @@
 #   auto-attendance.ps1 --dry-run        - Test without making changes
 #
 # Setup:
-#   1. Right-click this file → Run with PowerShell (to test)
+#   1. Right-click this file -> Run with PowerShell (to test)
 #   2. Import the scheduled task (see auto-attendance-task.xml)
 #
 # Or run manually: powershell -ExecutionPolicy Bypass -File auto-attendance.ps1
@@ -91,68 +91,113 @@ $dnsMatch = ($dnsDomains | Where-Object { $_ -like "*$OFFICE_DNS_DOMAIN*" }).Cou
 
 Write-Log "WiFi SSID: '$currentWifi' | DNS match: $dnsMatch | SSID match: $ssidMatch"
 
+$skipReason = ""
 if ($ssidMatch -and $dnsMatch) {
     $onOfficeNet = $true
     $detectedVia = "WiFi SSID ($currentWifi) + DNS ($OFFICE_DNS_DOMAIN)"
 } elseif ($ssidMatch -and -not $dnsMatch) {
-    Write-Log "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?). Skipping."
-    exit 0
+    $skipReason = "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?)"
 } elseif ($dnsMatch -and -not $ssidMatch) {
     # SSID empty = WiFi adapter off, ethernet, or corporate GPO hides SSID - trust DNS alone
     if (-not $currentWifi) {
         $onOfficeNet = $true
         $detectedVia = "DNS domain ($OFFICE_DNS_DOMAIN) - WiFi SSID undetectable (ethernet/adapter off?)"
     } else {
-        Write-Log "NetApp DNS found but SSID '$currentWifi' != 'corp' (VPN from home?). Skipping."
-        exit 0
+        $skipReason = "NetApp DNS found but SSID '$currentWifi' != 'corp' (VPN from home?)"
     }
+} else {
+    $skipReason = "Not on office network"
+}
+
+$nowLocal = Get-Date
+# The installer's fallback trigger repeats through the night, so a machine left
+# on office WiFi over the weekend would mark Sat/Sun - and auto-marks are locked
+# in the app. Skip early-morning weekend runs; the WiFi-connect trigger still
+# fires if you genuinely arrive later that day.
+$weekendOvernight = ($nowLocal.Hour -lt 5 -and ($nowLocal.DayOfWeek -eq 'Saturday' -or $nowLocal.DayOfWeek -eq 'Sunday'))
+$alreadyMarked = Test-Path $LOCK_FILE
+
+# --- Dry run -------------------------------------------------------
+# Reported BEFORE any of the exit paths below. This used to sit after the
+# network check and the lock-file check, so --dry-run printed nothing at all
+# unless you happened to be at the office before the day's first trigger -
+# which made a working setup look broken.
+if ($args -contains "--dry-run") {
+    # Values precomputed rather than inlined as $(if(..){".."}) subexpressions:
+    # nested double quotes inside a subexpression inside a string are legal but
+    # easy to break, and this is the one path people rely on when debugging.
+    $ssidLine = "(not detected)"
+    if ($currentWifi) { $ssidLine = $currentWifi }
+    $dnsLine = "(none found)"
+    if ($dnsDomains) { $dnsLine = ($dnsDomains -join ", ") }
+    $netLine = "$onOfficeNet"
+    if ($skipReason) { $netLine = "$onOfficeNet - $skipReason" }
+    $lockLine = "$alreadyMarked"
+    if ($alreadyMarked) { $lockLine = "$alreadyMarked ($LOCK_FILE)" }
+    $today = $nowLocal.ToString("yyyy-MM-dd")
+
+    Write-Host ""
+    Write-Host "=========================================" -ForegroundColor Cyan
+    Write-Host "  OAT DRY RUN - $($nowLocal.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor Cyan
+    Write-Host "=========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  Detection"
+    Write-Host "     WiFi SSID     : $ssidLine"
+    Write-Host "     Expected SSID : $OFFICE_WIFI"
+    Write-Host "     SSID match    : $ssidMatch"
+    Write-Host "     DNS domains   : $dnsLine"
+    Write-Host "     Expected DNS  : $OFFICE_DNS_DOMAIN"
+    Write-Host "     DNS match     : $dnsMatch"
+    Write-Host ""
+    Write-Host "  Guards"
+    Write-Host "     On office net : $netLine"
+    Write-Host "     Already marked: $lockLine"
+    Write-Host "     Weekend night : $weekendOvernight"
+    Write-Host ""
+    Write-Host "  Paths"
+    Write-Host "     Script dir    : $PSScriptRoot"
+    Write-Host "     Log file      : $LOG_FILE"
+    Write-Host "     Tracker URL   : $TRACKER_URL"
+    Write-Host ""
+    if ($onOfficeNet -and -not $alreadyMarked -and -not $weekendOvernight) {
+        Write-Host "  RESULT: would mark $today and open the tracker." -ForegroundColor Green
+    } elseif (-not $onOfficeNet) {
+        Write-Host "  RESULT: would do nothing - $skipReason." -ForegroundColor Yellow
+    } elseif ($alreadyMarked) {
+        Write-Host "  RESULT: would do nothing - already marked today." -ForegroundColor Yellow
+    } else {
+        Write-Host "  RESULT: would do nothing - early-morning weekend run." -ForegroundColor Yellow
+    }
+    Write-Host "=========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Log "Dry run completed."
+    exit 0
 }
 
 if (-not $onOfficeNet) {
-    Write-Log "Not on office network. Skipping."
+    Write-Log "$skipReason. Skipping."
+    # Also print it: a manual run used to produce no output whatsoever, which
+    # is indistinguishable from the script being broken.
+    Write-Host "  OAT: $skipReason - nothing to mark." -ForegroundColor Yellow
     exit 0
 }
 
 Write-Log "Office network detected via: $detectedVia"
 
-# Guard: the installer's fallback trigger repeats through the night, so a machine
-# left on office WiFi over the weekend would mark Sat/Sun - and auto-marks are
-# permanently locked in the app. Skip early-morning weekend runs; the WiFi-connect
-# trigger still fires if you genuinely arrive later that day.
-$nowLocal = Get-Date
-if ($nowLocal.Hour -lt 5 -and ($nowLocal.DayOfWeek -eq 'Saturday' -or $nowLocal.DayOfWeek -eq 'Sunday')) {
+if ($weekendOvernight) {
     Write-Log "Early-morning weekend run (overnight-connected machine?). Skipping to avoid a false weekend mark."
+    Write-Host "  OAT: early-morning weekend run - skipping to avoid a false weekend mark." -ForegroundColor Yellow
     exit 0
 }
 
-# Check if already marked today
-if (Test-Path $LOCK_FILE) {
+if ($alreadyMarked) {
     Write-Log "Already auto-marked today. Lock file exists."
+    Write-Host "  OAT: already marked today." -ForegroundColor Green
     exit 0
 }
 
 Write-Log "Connected to office WiFi. Triggering auto-mark..."
-
-# Dry-run mode
-if ($args -contains "--dry-run") {
-    Write-Host "========================================="
-    Write-Host "  OAT DRY RUN - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-    Write-Host "========================================="
-    Write-Host ""
-    Write-Host "  Network Detection:"
-    Write-Host "     Detected via: $detectedVia"
-    Write-Host "     WiFi SSID:    $(if($currentWifi){$currentWifi}else{'(not detected)'})"
-    Write-Host ""
-    Write-Host "  What would happen:"
-    Write-Host "     Create lock file: $LOCK_FILE"
-    Write-Host "     Open tracker:     $TRACKER_URL"
-    Write-Host "     Auto-mark today:  $(Get-Date -Format 'yyyy-MM-dd')"
-    Write-Host ""
-    Write-Host "  DRY RUN PASSED - Everything looks good!"
-    Write-Host "========================================="
-    Write-Log "Dry run completed successfully."
-    exit 0
-}
+Write-Host "  OAT: office network detected - opening tracker to mark today." -ForegroundColor Green
 
 # Create lock file
 New-Item -Path $LOCK_FILE -ItemType File -Force | Out-Null
