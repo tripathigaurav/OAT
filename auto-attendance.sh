@@ -14,7 +14,7 @@
 # ============================================================
 
 # --- Configuration ---
-SCRIPT_VERSION="2.3"
+SCRIPT_VERSION="2.4"
 OFFICE_WIFI="corp"
 OFFICE_DNS_DOMAIN="wlan.netapp.com"
 TRACKER_URL="https://tripathigaurav.github.io/OAT/?automark=true&scriptver=$SCRIPT_VERSION"
@@ -127,6 +127,18 @@ if [ "$ON_OFFICE_NET" = false ]; then
 fi
 
 log_msg "✅ Office network detected via: $DETECTED_VIA"
+
+# Guard: the 00:01 LaunchAgent trigger exists to catch a workday that starts
+# while you're still connected past midnight. But a laptop left docked on office
+# WiFi over the weekend would trip it on Sat/Sun too — and auto-marks are
+# permanently locked in the app. Skip early-morning weekend runs; the
+# network-change trigger still fires if you genuinely arrive later that day.
+HOUR_NOW=$((10#$(date +%H)))
+DOW_NOW=$(date +%u)   # 1=Mon ... 6=Sat, 7=Sun
+if [ "$HOUR_NOW" -lt 5 ] && [ "$DOW_NOW" -ge 6 ]; then
+    log_msg "Early-morning weekend run (overnight-connected laptop?). Skipping to avoid a false weekend mark."
+    exit 0
+fi
 
 # Check if already marked today (prevent multiple opens)
 if [ -f "$LOCK_FILE" ]; then

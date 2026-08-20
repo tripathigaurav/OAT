@@ -19,7 +19,7 @@
 # ============================================================
 
 # --- Configuration ---
-$SCRIPT_VERSION = "2.3"
+$SCRIPT_VERSION = "2.4"
 $OFFICE_WIFI = "corp"
 $OFFICE_DNS_DOMAIN = "wlan.netapp.com"
 $TRACKER_URL = "https://tripathigaurav.github.io/OAT/?automark=true&scriptver=$SCRIPT_VERSION"
@@ -27,29 +27,46 @@ $TRACKER_BACKFILL_URL = "https://tripathigaurav.github.io/OAT/?backfill="
 $LOG_FILE = "$PSScriptRoot\auto-attendance.log"
 $LOCK_FILE = "$env:TEMP\oat-automark-$(Get-Date -Format 'yyyy-MM-dd').lock"
 
-# OAT Quarter Range - auto-calculated based on current date
-# NetApp quarters: Q1=Aug-Oct, Q2=Nov-Jan, Q3=Feb-Apr, Q4=May-Jul
+# OAT Quarter Ranges - MUST stay in sync with the QUARTERS table in js/app.js.
+# These are the real OAT quarter boundaries, not calendar months. Getting them
+# wrong makes the backfill scanner drop or offer the wrong dates.
+function New-Day { param([string]$s)
+    return [DateTime]::ParseExact($s, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+}
+
+$OAT_QUARTERS = @(
+    @{ Key = 'Q1'; Start = (New-Day '2026-04-27'); End = (New-Day '2026-07-31')
+       Holidays = @('2026-05-01','2026-05-28','2026-07-06') },
+    @{ Key = 'Q2'; Start = (New-Day '2026-08-03'); End = (New-Day '2026-10-30')
+       Holidays = @('2026-08-15','2026-09-04','2026-09-14','2026-10-02','2026-10-21') },
+    @{ Key = 'Q3'; Start = (New-Day '2026-11-02'); End = (New-Day '2027-01-29')
+       Holidays = @('2026-11-10','2026-12-25','2026-12-28','2026-12-29','2026-12-30','2026-12-31') },
+    @{ Key = 'Q4'; Start = (New-Day '2027-02-01'); End = (New-Day '2027-04-30')
+       Holidays = @() }
+)
+
 function Get-OATQuarter {
     param([DateTime]$Date = (Get-Date))
-    $m = $Date.Month
-    if     ($m -ge 8  -and $m -le 10) { return @{ Start = [DateTime]"$($Date.Year)-08-01";  End = [DateTime]"$($Date.Year)-10-31" } }
-    elseif ($m -ge 11)                { return @{ Start = [DateTime]"$($Date.Year)-11-01";  End = [DateTime]"$($Date.Year + 1)-01-31" } }
-    elseif ($m -le 1)                 { return @{ Start = [DateTime]"$($Date.Year - 1)-11-01"; End = [DateTime]"$($Date.Year)-01-31" } }
-    elseif ($m -ge 2 -and $m -le 4)  { return @{ Start = [DateTime]"$($Date.Year)-02-01";  End = [DateTime]"$($Date.Year)-04-30" } }
-    else                              { return @{ Start = [DateTime]"$($Date.Year)-05-01";  End = [DateTime]"$($Date.Year)-07-31" } }
+    $d = $Date.Date
+    foreach ($q in $OAT_QUARTERS) { if ($d -ge $q.Start -and $d -le $q.End) { return $q } }
+    # Between quarters - fall forward to the next one starting
+    foreach ($q in $OAT_QUARTERS) { if ($d -lt $q.Start) { return $q } }
+    return $OAT_QUARTERS[0]
 }
+
 $quarter       = Get-OATQuarter
+$QUARTER_KEY   = $quarter.Key
 $QUARTER_START = $quarter.Start
 $QUARTER_END   = $quarter.End
 
-# Holidays (won't be marked)
-$HOLIDAYS = @("2026-05-01", "2026-05-28")
+# Holidays for the active quarter (won't be marked)
+$HOLIDAYS = $quarter.Holidays
 
 # --- Functions ---
 function Write-Log {
     param([string]$Message)
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    "[$timestamp] $Message" | Out-File -Append -FilePath $LOG_FILE
+    "[$timestamp] $Message" | Out-File -Append -FilePath $LOG_FILE -Encoding utf8
 }
 
 function Get-WiFiSSID {
@@ -99,11 +116,30 @@ function Get-DNSDomains {
 # --- Backfill Functions ---
 function Is-Workday {
     param([DateTime]$Date)
-    $dateStr = $Date.ToString("yyyy-MM-dd")
-    $dow = $Date.DayOfWeek
+    $d = $Date.Date
+    $dateStr = $d.ToString("yyyy-MM-dd")
+    $dow = $d.DayOfWeek
     return ($dow -ne "Saturday" -and $dow -ne "Sunday" -and
-            $Date -ge $QUARTER_START -and $Date -le $QUARTER_END -and
+            $d -ge $QUARTER_START -and $d -le $QUARTER_END -and
             $dateStr -notin $HOLIDAYS)
+}
+
+# Pull the SSID out of a WLAN event message and compare it exactly.
+# Previously this was `$msg -match "corp"`, a substring regex that also matched
+# "corporate-guest", "MyCorpNet", or the word "corp" anywhere in the message -
+# and every false positive became a permanently locked auto-mark in the app.
+function Get-EventSSID {
+    param([string]$Message)
+    if ($Message -match '(?m)^\s*(?:Network\s+)?SSID\s*:\s*(.+)$') { return $matches[1].Trim() }
+    return $null
+}
+
+function Test-OfficeSSID {
+    param([string]$Message)
+    $ssid = Get-EventSSID $Message
+    if ($ssid) { return ($ssid -ieq $OFFICE_WIFI) }
+    # No SSID field (localised Windows) - fall back to a whole-word match
+    return ($Message -match "(?i)\b$([regex]::Escape($OFFICE_WIFI))\b")
 }
 
 function Get-WiFiHistory {
@@ -127,8 +163,8 @@ function Get-WiFiHistory {
             $eventDate = $event.TimeCreated.Date
             $dateStr = $eventDate.ToString("yyyy-MM-dd")
 
-            # Check if this was a connection to office WiFi
-            if ($msg -match $OFFICE_WIFI) {
+            # Check if this was a connection to office WiFi (exact SSID match)
+            if (Test-OfficeSSID $msg) {
                 if ((Is-Workday $eventDate) -and ($dateStr -notin $officeDates)) {
                     $officeDates += $dateStr
                     Write-Host "    Found: $dateStr ($($eventDate.ToString('dddd'))) - Connected to '$OFFICE_WIFI'" -ForegroundColor Green
@@ -159,7 +195,9 @@ function Get-WiFiHistory {
             $eventDate = $event.TimeCreated.Date
             $dateStr = $eventDate.ToString("yyyy-MM-dd")
 
-            if (($msg -match $OFFICE_WIFI -or $msg -match "netapp" -or $msg -match $OFFICE_DNS_DOMAIN) -and
+            # Require an exact office SSID or the office-specific DNS domain.
+            # A bare "netapp" match also hit VPN-from-home network profiles.
+            if (((Test-OfficeSSID $msg) -or ($msg -match [regex]::Escape($OFFICE_DNS_DOMAIN))) -and
                 (Is-Workday $eventDate) -and ($dateStr -notin $officeDates)) {
                 $officeDates += $dateStr
                 Write-Host "    Found: $dateStr ($($eventDate.ToString('dddd'))) - Network profile match" -ForegroundColor Green
@@ -177,7 +215,7 @@ function Run-Backfill {
     Write-Host "========================================================" -ForegroundColor Cyan
     Write-Host "  OAT BACKFILL - WiFi Log Scanner" -ForegroundColor Cyan
     Write-Host "  Scanning WiFi history for past office days..." -ForegroundColor Cyan
-    Write-Host "  Quarter: $($QUARTER_START.ToString('MMM dd')) - $($QUARTER_END.ToString('MMM dd yyyy'))" -ForegroundColor Gray
+    Write-Host "  Quarter: $QUARTER_KEY  $($QUARTER_START.ToString('MMM dd')) - $($QUARTER_END.ToString('MMM dd yyyy'))" -ForegroundColor Gray
     Write-Host "  Office WiFi: '$OFFICE_WIFI'" -ForegroundColor Gray
     Write-Host "========================================================" -ForegroundColor Cyan
 
@@ -282,6 +320,16 @@ if (-not $onOfficeNet) {
 }
 
 Write-Log "Office network detected via: $detectedVia"
+
+# Guard: the installer's fallback trigger repeats through the night, so a machine
+# left on office WiFi over the weekend would mark Sat/Sun - and auto-marks are
+# permanently locked in the app. Skip early-morning weekend runs; the WiFi-connect
+# trigger still fires if you genuinely arrive later that day.
+$nowLocal = Get-Date
+if ($nowLocal.Hour -lt 5 -and ($nowLocal.DayOfWeek -eq 'Saturday' -or $nowLocal.DayOfWeek -eq 'Sunday')) {
+    Write-Log "Early-morning weekend run (overnight-connected machine?). Skipping to avoid a false weekend mark."
+    exit 0
+}
 
 # Check if already marked today
 if (Test-Path $LOCK_FILE) {

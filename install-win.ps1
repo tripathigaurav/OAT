@@ -15,7 +15,7 @@ Write-Host "  ======================================================" -Foregroun
 Write-Host ""
 
 # --- Configuration ---
-$SCRIPT_VERSION = "2.3"
+$SCRIPT_VERSION = "2.4"
 $GITHUB_BASE = "https://tripathigaurav.github.io/OAT"
 # Install to %LOCALAPPDATA%\OAT (local path) - NOT Desktop which may be
 # synced to OneDrive. Windows blocks scheduled tasks from cloud-synced dirs.
