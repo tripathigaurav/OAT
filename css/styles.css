@@ -11,6 +11,9 @@
     z-index: -1;
     pointer-events: none;
 }
+/* The rain's fade wash is a dark navy; over the light gradient it just muddies
+   the page. Hide it in light mode (the draw loop idles to match). */
+body.light-mode #oat-particle-canvas { display: none; }
 
 /* ── Sticky frosted header ──────────────────────────── */
 .oat-header {
@@ -965,7 +968,6 @@ body.light-mode .user-icon { fill: #d97706; }
 
 html {
     background: linear-gradient(135deg, #011627 0%, #0d2137 40%, #01111d 70%, #011627 100%);
-    background-attachment: fixed;
 }
 
 ::selection {
@@ -1691,7 +1693,16 @@ body.light-mode .bday-popup-msg { color: #64748b; }
     padding: 5px 10px;
     border-radius: 6px;
     font-size: 0.72rem;
-    white-space: nowrap;
+    /* Wrap instead of nowrap. The month card has a backdrop-filter, which in
+       Chrome/Safari clips absolutely-positioned descendants to the card's box —
+       so a long single-line tip (e.g. auto-marked + birthday) got sliced off at
+       the card edge. Keeping it inside the card avoids the clip entirely.
+       pre-line honours the newline between the status and birthday lines. */
+    white-space: pre-line;
+    width: max-content;
+    max-width: 176px;
+    text-align: center;
+    line-height: 1.35;
     z-index: 100;
     pointer-events: none;
     border: 1px solid rgba(33, 199, 168, 0.4);
@@ -1711,9 +1722,12 @@ body.light-mode .bday-popup-msg { color: #64748b; }
     pointer-events: none;
 }
 
+/* Opacity only — the old keyframes animated transform: translateX(-50%), which
+   overrode `transform: none` on the edge-anchored .tip-left/.tip-right variants
+   and shunted them sideways for the duration of the fade. */
 @keyframes tipFade {
-    from { opacity: 0; transform: translateX(-50%) translateY(4px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
 /* Edge-aware tooltip: left-edge cells */
@@ -1754,6 +1768,26 @@ body.light-mode .bday-popup-msg { color: #64748b; }
 .summary-holidays { color: #F78C6C; }
 .summary-holidays--none { color: rgba(255,255,255,0.25); }
 body.light-mode .summary-holidays--none { color: rgba(0,0,0,0.25); }
+
+/* Month summary values. These used to be inline styles in app.js, which meant
+   body.light-mode could never override them — the teal/amber read poorly on a
+   light card. Keeping them in CSS lets both themes pick their own shade. */
+.month-summary strong { font-family: 'JetBrains Mono', monospace; }
+.summary-office  { color: #00b894; }
+.summary-leaves  { color: #ecc48d; }
+body.light-mode .summary-office { color: #047857; }
+body.light-mode .summary-leaves { color: #b45309; }
+body.light-mode .summary-holidays { color: #c2410c; }
+
+/* Working-days value takes the month's accent colour, matching .month-title */
+.month-card[data-month-slot="0"] .summary-workdays { color: #82aaff; }
+.month-card[data-month-slot="1"] .summary-workdays { color: #c792ea; }
+.month-card[data-month-slot="2"] .summary-workdays { color: #7fdbca; }
+.month-card[data-month-slot="3"] .summary-workdays { color: #ECC48D; }
+body.light-mode .month-card[data-month-slot="0"] .summary-workdays { color: #0369a1; }
+body.light-mode .month-card[data-month-slot="1"] .summary-workdays { color: #7c3aed; }
+body.light-mode .month-card[data-month-slot="2"] .summary-workdays { color: #0d9488; }
+body.light-mode .month-card[data-month-slot="3"] .summary-workdays { color: #b45309; }
 
 .legend {
     display: flex;

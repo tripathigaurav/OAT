@@ -67,7 +67,7 @@
             <div class="onboard-step" id="onboardStep1">
                 <div class="onboard-icon">📅</div>
                 <h2>Office Attendance Tracker</h2>
-                <p>Track your Q1 office attendance automatically!<br>Would you like to enable <strong>auto-tracking</strong> via office WiFi?</p>
+                <p>Track your <span id="onboardQuarterLabel">Q1</span> office attendance automatically!<br>Would you like to enable <strong>auto-tracking</strong> via office WiFi?</p>
                 <div class="onboard-name-group">
                     <label for="onboardName">Your Name</label>
                     <input type="text" id="onboardName" placeholder="e.g. Gaurav" maxlength="30" />
@@ -278,7 +278,7 @@
         <div class="legend-item"><div class="legend-box saturday"></div> 🟣 Saturday</div>
         <div class="legend-item"><div class="legend-box sunday"></div> 🔴 Sunday</div>
         <div class="legend-item"><div class="legend-box holiday"></div> 🎉 Holiday</div>
-        <span class="legend-date">Apr 27 – Jul 31, 2026</span>
+        <span class="legend-date" id="legendDateRange">Apr 27 – Jul 31, 2026</span>
     </div>
 
     <div class="action-buttons">
@@ -643,14 +643,34 @@
       setup();
       window.addEventListener('resize', setup);
 
-      let frame = 0;
-      function tick() {
+      let frame = 0, lastTs = 0, wasLight = false;
+      const FRAME_MS = 50;   // draw cadence: every 3rd vsync at 60Hz = 20fps
+      function tick(now) {
+        const dt = now - lastTs;
+        if (dt < FRAME_MS) { requestAnimationFrame(tick); return; }
+        lastTs = now;
+
+        // Light mode hides the canvas (the fade colour is a dark navy wash and
+        // would muddy a light page). Idle instead of drawing into nothing.
+        if (document.body.classList.contains('light-mode')) {
+          if (!wasLight) { ctx.clearRect(0, 0, canvas.width, canvas.height); wasLight = true; }
+          requestAnimationFrame(tick);
+          return;
+        }
+        wasLight = false;
+
         frame++;
-        ctx.fillStyle = 'rgba(1,22,39,0.07)';
+        // Scale motion and fade by real elapsed time. Movement used to advance
+        // once per drawn frame, so throttling 60fps -> 20fps ran the rain at a
+        // third of its intended speed and left trails lingering 3x too long.
+        // Clamped so a long stall (tab wake, first frame) can't teleport
+        // every column down the screen.
+        const k = Math.min(dt, 100) / 16.67;
+        ctx.fillStyle = 'rgba(1,22,39,' + Math.min(0.07 * k, 0.35).toFixed(3) + ')';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         cols.forEach(function (col) {
-          if (col.pause > 0) { col.pause--; return; }
+          if (col.pause > 0) { col.pause -= k; return; }
 
           const sil   = silStrength(col.x, col.y);
           const boost = sil > 0.05 ? 1 + sil * 7 : 1;
@@ -688,8 +708,8 @@
           }
           ctx.fillText(rChar(), col.x, col.y);
 
-          col.y += col.fs * col.speed;
-          if (Math.random() < 0.004) col.speed = rnd(0.08, 0.85);
+          col.y += col.fs * col.speed * k;
+          if (Math.random() < 0.004 * k) col.speed = rnd(0.08, 0.85);
 
           if (col.y > canvas.height + col.fs * col.len) {
             const c = rColor();
@@ -706,7 +726,7 @@
         });
         requestAnimationFrame(tick);
       }
-      tick();
+      requestAnimationFrame(tick);
     })();
     </script>
 

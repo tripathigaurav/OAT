@@ -1,5 +1,8 @@
 // Configuration
-const REQUIRED_SCRIPT_VERSION = '2.3'; // Bump this to force update prompts
+const REQUIRED_SCRIPT_VERSION = '2.4'; // Bump this to force update prompts
+
+// Quarter we've already fired confetti for (per session)
+let _celebratedQuarter = null;
 
 // ── Team Birthdays (MM-DD, year-agnostic) ────────────────────────
 const BIRTHDAYS = [
@@ -76,32 +79,56 @@ const QUARTERS = {
     }
 };
 
+// ── Date helpers ──────────────────────────────────────────────────
+// Quarter start/end are midnight Date objects. Any date compared against them
+// MUST be normalised to midnight too, otherwise "10am on the last day of the
+// quarter" reads as being past the quarter end (and auto-mark silently fails).
+function atMidnight(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function todayMid() { return atMidnight(new Date()); }
+
+// Escape a string for safe use inside a double-quoted HTML attribute.
+// Newlines are deliberately preserved — data-tip renders with pre-line.
+function escapeAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // ── Active quarter ────────────────────────────────────────────────
-// Auto-advance if the saved quarter has already ended (e.g. Q1 ends July 31 → switches to Q2)
+// Always land on the quarter that contains today. A saved quarter is only
+// honoured while it still contains today — otherwise peeking at a future
+// quarter (e.g. Q4) would stick permanently and show an empty calendar.
 let currentQKey = (function() {
     const saved = localStorage.getItem('oatCurrentQuarter');
-    if (saved && QUARTERS[saved]) {
-        const now = new Date();
-        // Compare at midnight to avoid advancing on the last day itself
-        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        if (todayMidnight > QUARTERS[saved].end) {
-            const detected = autoDetectQuarter();
-            localStorage.setItem('oatCurrentQuarter', detected);
-            return detected;
-        }
+    const today = todayMid();
+    if (saved && QUARTERS[saved] && today >= QUARTERS[saved].start && today <= QUARTERS[saved].end) {
         return saved;
     }
-    return autoDetectQuarter();
+    const detected = autoDetectQuarter();
+    localStorage.setItem('oatCurrentQuarter', detected);
+    return detected;
 })();
 
 function autoDetectQuarter() {
-    const today = new Date();
+    const today = todayMid();
     for (const [key, q] of Object.entries(QUARTERS)) {
         if (today >= q.start && today <= q.end) return key;
     }
     // Default to the closest future quarter, or Q1 if all past
     const future = Object.entries(QUARTERS).find(([, q]) => today < q.start);
     return future ? future[0] : 'Q1';
+}
+
+// Count only genuine WiFi-verified auto-marks. Older builds wrote `false` into
+// autoMarkedDays for manual marks, so key count alone over-reports.
+function autoMarkCount(map) {
+    const m = map || autoMarkedDays;
+    return Object.keys(m).filter(d => m[d]).length;
+}
+function autoMarkDates(map) {
+    const m = map || autoMarkedDays;
+    return Object.keys(m).filter(d => m[d]).sort();
 }
 
 function getQ() { return QUARTERS[currentQKey]; }
@@ -140,6 +167,23 @@ function qKey(base) { return `${base}_${currentQKey}`; }
     }
 })();
 
+// ── Strip falsy autoMarkedDays entries left behind by older builds ─
+// "Mark Today" without WiFi used to store `false`, which still counted as a key
+// and made manual marks look like locked WiFi auto-marks.
+(function cleanFalsyAutoMarks() {
+    if (localStorage.getItem('oatAutoMarkCleaned') === '1') return;
+    Object.keys(QUARTERS).forEach(qk => {
+        const raw = localStorage.getItem('autoMarkedDays_' + qk);
+        if (!raw) return;
+        let map;
+        try { map = JSON.parse(raw); } catch (e) { return; }
+        let changed = false;
+        Object.keys(map).forEach(d => { if (!map[d]) { delete map[d]; changed = true; } });
+        if (changed) localStorage.setItem('autoMarkedDays_' + qk, JSON.stringify(map));
+    });
+    localStorage.setItem('oatAutoMarkCleaned', '1');
+})();
+
 // State
 let checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || '{}');
 let autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
@@ -160,7 +204,8 @@ function getHolidayName(dateStr) {
 }
 
 function isInRange(date) {
-    return date >= startDate() && date <= endDate();
+    const d = atMidnight(date);
+    return d >= startDate() && d <= endDate();
 }
 
 function formatDate(year, month, day) {
@@ -196,6 +241,10 @@ function switchQuarter(key) {
 function updateQuarterBadge() {
     const badge = document.getElementById('quarterBadge');
     if (badge) badge.textContent = currentQKey + ' ▾';
+    // The legend's date range was static HTML holding Q1's dates, so it kept
+    // claiming "Apr 27 – Jul 31, 2026" no matter which quarter was showing.
+    const range = document.getElementById('legendDateRange');
+    if (range) range.textContent = getQ().display.replace(/^Q\d · /, '');
 }
 
 function toggleQuarterDropdown() {
@@ -328,9 +377,14 @@ function rescanToday() {
         wifiConfirmedToday = activeDate.toDateString() === today.toDateString();
     }
 
-    // Mark today
+    // Mark today. Only record an auto-mark when WiFi actually confirmed it —
+    // storing `false` would make a manual mark look like a locked auto-mark.
     checkedDays[todayStr] = true;
-    autoMarkedDays[todayStr] = wifiConfirmedToday;
+    if (wifiConfirmedToday) {
+        autoMarkedDays[todayStr] = true;
+    } else {
+        delete autoMarkedDays[todayStr];
+    }
     if (leaveDays[todayStr]) {
         delete leaveDays[todayStr];
         saveLeaveDays();
@@ -439,12 +493,17 @@ function wipeOATBrowserData() {
     const ok = confirm('Delete all OAT data from this browser?\n\nThis will remove attendance marks, logs, settings, and onboarding state.');
     if (!ok) return;
 
+    // Legacy (pre multi-quarter) keys
     localStorage.removeItem('officeDays');
     localStorage.removeItem('autoMarkedDays');
-    // Remove quarter-scoped leave keys
+    // Quarter-scoped attendance, auto-mark and leave keys — these hold the
+    // actual data, so missing them meant "delete all" deleted nothing.
     Object.keys(QUARTERS).forEach(qk => {
+        localStorage.removeItem('officeDays_' + qk);
+        localStorage.removeItem('autoMarkedDays_' + qk);
         localStorage.removeItem('leaveDays_' + qk);
     });
+    localStorage.removeItem('oatCurrentQuarter');
     localStorage.removeItem('oatSettings');
     localStorage.removeItem('autoMarkLog');
     localStorage.removeItem('oatOnboarded');
@@ -453,6 +512,16 @@ function wipeOATBrowserData() {
     localStorage.removeItem('oatTheme');
     localStorage.removeItem('oatUserName');
     localStorage.removeItem('oatUpdateDismissed');
+    localStorage.removeItem('oatAutoMarkCleaned');
+    localStorage.removeItem('oat-nf-dismissed');
+    // Birthday "seen" markers accumulate one key per day — collect then remove
+    // (removing while iterating would shift the indices).
+    const bdayKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('oatBdaySeen_') === 0) bdayKeys.push(k);
+    }
+    bdayKeys.forEach(k => localStorage.removeItem(k));
     sessionStorage.removeItem('oatPopupDismissed');
 
     alert('OAT browser data deleted. The page will reload now.');
@@ -476,7 +545,7 @@ function renderDiagnostic() {
     const now            = new Date();
     const daysSinceRun   = lastRun ? Math.floor((now - lastRun) / 86400000) : null;
     const autoEnabled    = settings.autoMarkEnabled !== false;
-    const totalAutoMarks = Object.keys(autoMarkedDays).length;
+    const totalAutoMarks = autoMarkCount();
     const recentLog      = autoMarkLog.slice(0, 3);
 
     // ── Status rows ──
@@ -646,8 +715,9 @@ function toggleDay(dateStr) {
 
 // Reset only manual selections (auto-marked days are preserved)
 function resetAll() {
-    const autoCount = Object.keys(autoMarkedDays).length;
-    const manualCount = Object.keys(checkedDays).length - autoCount;
+    const autoDates = autoMarkDates();
+    const autoCount = autoDates.length;
+    const manualCount = Object.keys(checkedDays).filter(d => !autoMarkedDays[d]).length;
     const leaveCount = Object.keys(leaveDays).length;
     if (manualCount === 0 && leaveCount === 0) {
         showNotification('Nothing to reset — all marked days are WiFi auto-marks (locked).', 'info');
@@ -662,7 +732,7 @@ function resetAll() {
         confirmText: 'Reset', cancelText: 'Cancel', type: 'danger',
         onConfirm: () => {
             const preserved = {};
-            for (const d of Object.keys(autoMarkedDays)) { preserved[d] = true; }
+            for (const d of autoDates) { preserved[d] = true; }
             checkedDays = preserved;
             leaveDays = {};
             localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
@@ -791,17 +861,18 @@ function renderCalendars() {
             const clickHandler = (!inRange || holiday || (isWeekend && !settings.allowWeekendMark)) ? '' : `onclick="toggleDay('${dateStr}')"`;
             if (bdayPeople.length > 0) cellClass += ' bday';
             const bdayTip = bdayPeople.length > 0 ? `🎂 ${bdayPeople.map(b => b.name).join(' & ')}` : '';
-            const finalTooltip = bdayTip ? (tooltip ? `${tooltip} | ${bdayTip}` : bdayTip) : tooltip;
-            const tipAttr = finalTooltip ? `data-tip="${finalTooltip}"` : '';
+            // Newline (rendered via white-space: pre-line) rather than " | " —
+            // status on one line, birthday on the next, so it stays narrow.
+            const finalTooltip = bdayTip ? (tooltip ? `${tooltip}\n${bdayTip}` : bdayTip) : tooltip;
+            const tipAttr = finalTooltip ? `data-tip="${escapeAttr(finalTooltip)}"` : '';
 
             daysHTML += `<div class="${cellClass}" ${clickHandler} ${tipAttr}>${day}</div>`;
         }
 
-        const slotColors = ['#82aaff', '#c792ea', '#7fdbca', '#ecc48d'];
-        const mColor = slotColors[months.indexOf(m)] || '#a5b4fc';
         card.dataset.monthSlot = months.indexOf(m);
+        // Colours live in CSS (not inline) so body.light-mode can override them.
         const leaveHTML = monthLeaveDays > 0
-            ? `<div style="color:#ecc48d">🌴 Leaves: <strong style="font-family:'JetBrains Mono',monospace">${monthLeaveDays}</strong></div>`
+            ? `<div class="summary-leaves">🌴 Leaves: <strong>${monthLeaveDays}</strong></div>`
             : '';
         card.innerHTML = `
             <div class="month-title">${m.name}</div>
@@ -814,10 +885,10 @@ function renderCalendars() {
                 ${daysHTML}
             </div>
             <div class="month-summary">
-                <div>📊 Working Days: <strong style="font-family:'JetBrains Mono',monospace;color:${mColor}">${monthWorkDays}</strong></div>
-                <div style="color:#00b894">✅ Office: <strong style="font-family:'JetBrains Mono',monospace">${monthOfficeDays}</strong></div>
+                <div>📊 Working Days: <strong class="summary-workdays">${monthWorkDays}</strong></div>
+                <div class="summary-office">✅ Office: <strong>${monthOfficeDays}</strong></div>
                 ${leaveHTML}
-                <div class="${monthHolidays > 0 ? 'summary-holidays' : 'summary-holidays summary-holidays--none'}">🎉 Holidays: <strong style="font-family:'JetBrains Mono',monospace">${monthHolidays > 0 ? monthHolidays : '—'}</strong></div>
+                <div class="${monthHolidays > 0 ? 'summary-holidays' : 'summary-holidays summary-holidays--none'}">🎉 Holidays: <strong>${monthHolidays > 0 ? monthHolidays : '—'}</strong></div>
             </div>
         `;
 
@@ -878,12 +949,19 @@ function renderCalendars() {
         confetti.style.display = 'block';
         status.innerHTML = '🏆 <strong>Target Achieved!</strong> You are a rockstar! 🌟';
         status.style.color = '#00b894';
-        launchConfettiCanvas();
+        // Celebrate once per quarter per session — renderCalendars() runs on
+        // every click, and re-launching stacked a new animation loop each time.
+        if (_celebratedQuarter !== currentQKey) {
+            _celebratedQuarter = currentQKey;
+            launchConfettiCanvas();
+        }
     } else if (totalOfficeDays >= TARGET() * 0.75) {
+        _celebratedQuarter = null;
         progressBar.className = 'progress-bar';
         confetti.style.display = 'none';
         renderFlipCounter(status, remaining, '🔥 Almost there!', 'Keep pushing — you\'re so close!', '#fdcb6e');
     } else {
+        _celebratedQuarter = null;
         progressBar.className = 'progress-bar';
         confetti.style.display = 'none';
         renderFlipCounter(status, remaining, 'DAYS TO GO', 'Keep showing up 💪', '#74b9ff');
@@ -1026,6 +1104,14 @@ function drawWeeklyChart() {
 
     ctx.clearRect(0, 0, W, H);
 
+    // Canvas can't inherit body.light-mode, so resolve the palette here —
+    // white label text was invisible against the light theme.
+    const light      = document.body.classList.contains('light-mode');
+    const gridColor  = light ? 'rgba(15,23,42,0.10)' : 'rgba(127,219,202,0.1)';
+    const trackColor = light ? 'rgba(15,23,42,0.08)' : 'rgba(127,219,202,0.12)';
+    const valueColor = light ? 'rgba(15,23,42,0.75)' : 'rgba(255,255,255,0.7)';
+    const labelColor = light ? 'rgba(15,23,42,0.45)' : 'rgba(255,255,255,0.4)';
+
     const qStart = startDate();
     const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
     const qEnd = endDate();
@@ -1036,20 +1122,7 @@ function drawWeeklyChart() {
     let weekStart = new Date(qStart);
     // Align to Monday
     while (weekStart.getDay() !== 1 && weekStart <= endLoop) weekStart.setDate(weekStart.getDate() + 1);
-    if (weekStart > endLoop && weeks.length === 0) {
-        // First partial week
-        let visits = 0, workDays = 0;
-        for (let d = new Date(qStart); d < weekStart && d <= endLoop; d.setDate(d.getDate() + 1)) {
-            const dow = d.getDay();
-            if (dow !== 0 && dow !== 6) {
-                workDays++;
-                const ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
-                if (checkedDays[ds]) visits++;
-            }
-        }
-        if (workDays > 0) weeks.push({ label: 'W1', visits, workDays });
-    }
-    // Count from first partial week
+    // Leading partial week (quarter starting mid-week)
     let partialVisits = 0, partialWd = 0;
     for (let d = new Date(qStart); d < weekStart && d <= endLoop; d.setDate(d.getDate() + 1)) {
         const dow = d.getDay();
@@ -1089,7 +1162,7 @@ function drawWeeklyChart() {
     const gap = (chartW - barW * weeks.length) / (weeks.length + 1);
 
     // Draw horizontal grid lines
-    ctx.strokeStyle = 'rgba(127,219,202,0.1)';
+    ctx.strokeStyle = gridColor;
     ctx.lineWidth = 0.5;
     for (let i = 1; i <= 4; i++) {
         const y = padding.top + chartH - (chartH * (i / 4));
@@ -1103,7 +1176,7 @@ function drawWeeklyChart() {
         const yBase = padding.top + chartH;
 
         // Background bar (total workdays) — dim
-        ctx.fillStyle = 'rgba(127,219,202,0.12)';
+        ctx.fillStyle = trackColor;
         const r = Math.min(3, barW / 4);
         fillRoundRect(ctx, x, yBase - workH, barW, workH, r);
 
@@ -1118,13 +1191,13 @@ function drawWeeklyChart() {
         fillRoundRect(ctx, x, yBase - visitH, barW, visitH, r);
 
         // Visit count on top of bar
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillStyle = valueColor;
         ctx.font = '600 10px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(w.visits, x + barW / 2, yBase - visitH - 3);
 
         // Week label below
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillStyle = labelColor;
         ctx.font = '500 9px Inter, sans-serif';
         ctx.fillText(w.label, x + barW / 2, yBase + 14);
     });
@@ -1252,7 +1325,7 @@ function renderLeaveCalendar() {
             const onClick = clickable
                 ? `onclick="toggleLeaveDate('${dateStr}', event)"`
                 : '';
-            const tipAttr = tooltip ? `title="${tooltip}"` : '';
+            const tipAttr = tooltip ? `title="${escapeAttr(tooltip)}"` : '';
 
             daysHTML += `<div class="${cls}" ${onClick} ${tipAttr}>${day}</div>`;
         }
@@ -1501,16 +1574,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show birthday popup if today is someone's birthday (once per day)
     checkBirthdayToday();
 
-    // Tooltip edge detection — prevent clipping at calendar left/right edges
+    // Tooltip edge detection — anchor the tip inside its month card.
+    // Measuring against the viewport wasn't enough: the card has a
+    // backdrop-filter, which clips absolutely-positioned children to the card,
+    // so a mid-card cell (e.g. Aug 19) could still get its tooltip sliced off.
     document.addEventListener('mouseover', function(e) {
         const cell = e.target.closest('.day-cell[data-tip]');
         if (!cell) return;
         cell.classList.remove('tip-left', 'tip-right');
         const rect = cell.getBoundingClientRect();
-        const tipEstWidth = 220;
-        if (rect.left - tipEstWidth / 2 < 8) {
+        const card = cell.closest('.month-card');
+        const cardRect = card ? card.getBoundingClientRect() : null;
+        // Bound by whichever is tighter: the card or the viewport.
+        const leftBound  = Math.max(8, cardRect ? cardRect.left + 8 : 8);
+        const rightBound = Math.min(window.innerWidth - 8, cardRect ? cardRect.right - 8 : window.innerWidth - 8);
+        const halfTip = 88; // half of the tooltip's 176px max-width
+        const centre = rect.left + rect.width / 2;
+        if (centre - halfTip < leftBound) {
             cell.classList.add('tip-left');
-        } else if (rect.right + tipEstWidth / 2 > window.innerWidth - 8) {
+        } else if (centre + halfTip > rightBound) {
             cell.classList.add('tip-right');
         }
     });
@@ -1578,7 +1660,7 @@ function reportIssue() {
     const officeDates = Object.keys(officeDays).sort();
     logLines.push(`--- Office Days (${currentQKey}) — ${officeDates.length} days ---`);
     logLines.push(`All dates   : ${officeDates.join(', ') || '(none)'}`);
-    const autoDateList = Object.keys(autoMarked).sort();
+    const autoDateList = Object.keys(autoMarked).filter(d => autoMarked[d]).sort();
     logLines.push(`Auto-marked : ${autoDateList.length} → ${autoDateList.join(', ') || '(none)'}`);
     const manualDates = officeDates.filter(d => !autoMarked[d]);
     logLines.push(`Manual      : ${manualDates.length} → ${manualDates.join(', ') || '(none)'}`);
@@ -1626,7 +1708,7 @@ function reportIssue() {
         const od = JSON.parse(localStorage.getItem(`officeDays_${qk}`) || '{}');
         const am = JSON.parse(localStorage.getItem(`autoMarkedDays_${qk}`) || '{}');
         const ld = JSON.parse(localStorage.getItem(`leaveDays_${qk}`) || '{}');
-        logLines.push(`${qk}: office=${Object.keys(od).length}, auto=${Object.keys(am).length}, leave=${Object.keys(ld).length}`);
+        logLines.push(`${qk}: office=${Object.keys(od).length}, auto=${Object.keys(am).filter(d => am[d]).length}, leave=${Object.keys(ld).length}`);
     }
     logLines.push(`Stored quarter key: ${localStorage.getItem('oatCurrentQuarter') || 'none (auto)'}`);
 
@@ -1677,6 +1759,10 @@ function toggleTheme() {
     const icon = btn && (btn.querySelector('span') || btn);
     if (icon) icon.textContent = isLight ? '☀️' : '🌙';
     localStorage.setItem('oatTheme', isLight ? 'light' : 'dark');
+    // The trends chart is canvas-drawn, so it can't restyle itself via CSS —
+    // repaint it with the new theme's palette.
+    const trendsPanel = document.getElementById('trendsPanel');
+    if (trendsPanel && trendsPanel.classList.contains('open')) drawWeeklyChart();
 }
 
 // ---- Onboarding Flow ----
@@ -1710,21 +1796,21 @@ function detectOS() {
 function isSetupAlreadyDone() {
     // Check multiple signals that suggest the script is already installed
     const scriptActive = localStorage.getItem('oatScriptActive');
-    const hasAutoMarks = Object.keys(autoMarkedDays).length > 0;
+    const hasAutoMarks = autoMarkCount() > 0;
     const hasAutoLog = autoMarkLog.length > 0;
     return !!(scriptActive || hasAutoMarks || hasAutoLog);
 }
 
 function getSetupStatusText() {
     const scriptActive = localStorage.getItem('oatScriptActive');
-    const autoMarkCount = Object.keys(autoMarkedDays).length;
+    const autoCount = autoMarkCount();
 
     if (scriptActive) {
         const lastRun = new Date(scriptActive);
         return `Last auto-mark trigger: ${lastRun.toLocaleDateString()} ${lastRun.toLocaleTimeString()}`;
     }
-    if (autoMarkCount > 0) {
-        return `${autoMarkCount} day(s) auto-marked so far`;
+    if (autoCount > 0) {
+        return `${autoCount} day(s) auto-marked so far`;
     }
     return '';
 }
@@ -1919,6 +2005,11 @@ function showOnboarding() {
     document.getElementById('onboardOverlay').style.display = 'flex';
     document.getElementById('onboardStep2').style.display = 'none';
 
+    // Copy said "Track your Q1 office attendance" as static text — wrong for
+    // anyone onboarding in Q2 or later.
+    const qLabel = document.getElementById('onboardQuarterLabel');
+    if (qLabel) qLabel.textContent = currentQKey;
+
     if (alreadySetup) {
         // Setup already detected — show "already active" version
         document.getElementById('onboardStep1').style.display = 'none';
@@ -2111,8 +2202,17 @@ function handleBackfill(dateString) {
     const dates = dateString.split(',').map(d => d.trim()).filter(d => d);
     if (dates.length === 0) return;
 
+    // Backfill data always describes today's quarter. If the user was browsing
+    // another quarter, switch first — otherwise every date fails isInRange()
+    // and the whole backfill is silently discarded.
+    const todaysQuarter = autoDetectQuarter();
+    if (todaysQuarter !== currentQKey) {
+        switchQuarter(todaysQuarter);
+    }
+
     let newCount = 0;
     let skipCount = 0;
+    let outOfRange = 0;
 
     dates.forEach(dateStr => {
         // Validate date format (YYYY-MM-DD)
@@ -2126,8 +2226,8 @@ function handleBackfill(dateString) {
         if (dayOfWeek === 0 || dayOfWeek === 6) return;
         // Skip holidays
         if (isHoliday(dateStr)) return;
-        // Skip out of range
-        if (!isInRange(date)) return;
+        // Skip out of range (belongs to a different quarter)
+        if (!isInRange(date)) { outOfRange++; return; }
 
         // If already WiFi-verified, skip
         if (autoMarkedDays[dateStr]) {
@@ -2135,7 +2235,6 @@ function handleBackfill(dateString) {
             return;
         }
 
-        const wasManual = checkedDays[dateStr] && !autoMarkedDays[dateStr];
         checkedDays[dateStr] = true;
         autoMarkedDays[dateStr] = true;
         if (leaveDays[dateStr]) delete leaveDays[dateStr];
@@ -2157,7 +2256,7 @@ function handleBackfill(dateString) {
     } else if (skipCount > 0) {
         showNotification(`✅ All ${skipCount} days from WiFi history already WiFi-verified!`, 'already');
     } else {
-        showNotification('\uD83D\uDCCB No valid workdays found in the backfill data.', 'info');
+        showNotification(`\uD83D\uDCCB No valid workdays found in the backfill data.${outOfRange > 0 ? ` (${outOfRange} outside ${currentQKey})` : ''}`, 'info');
     }
 
     renderCalendars();
@@ -2210,34 +2309,3 @@ function launchConfettiCanvas() {
     setTimeout(() => { canvas.style.display = 'none'; cancelAnimationFrame(frame); }, 4000);
 }
 
-// ── Sidebar Popup Functions ──────────────────────────────────────────
-function showOfficeDataPopup() {
-    // Scroll to calendars smoothly
-    const calendars = document.getElementById('calendars');
-    if (calendars) {
-        calendars.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-}
-
-function showInfoPopup() {
-    // Toggle settings/info panel visibility
-    const settings = document.getElementById('settingsPanel');
-    if (settings) {
-        if (settings.style.display === 'none' || !settings.style.display) {
-            settings.style.display = 'block';
-            settings.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-            settings.style.display = 'none';
-        }
-    }
-}
-
-function showLeavePopup() {
-    // Show leave modal
-    const overlay = document.getElementById('leaveOverlay');
-    if (overlay) overlay.style.display = 'flex';
-}
-
-function showChatPopup() {
-    openChatModal();
-}
