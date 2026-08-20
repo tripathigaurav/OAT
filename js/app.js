@@ -1,5 +1,57 @@
 // Configuration
-const REQUIRED_SCRIPT_VERSION = '2.4'; // Bump this to force update prompts
+const REQUIRED_SCRIPT_VERSION = '2.4'; // Latest shipped script version
+
+// Oldest script version still considered correct. The update prompt appears
+// ONLY when the installed script is older than this — bump it for genuine
+// correctness fixes, not for cosmetic changes. Nagging users who won't act
+// just trains them to ignore the banner.
+const MIN_SCRIPT_VERSION = '2.4';
+
+// What changed, per script version. Single source of truth: the update dialog
+// renders the entry for REQUIRED_SCRIPT_VERSION. Two hardcoded feature lists
+// (one in index.html, one rebuilt in reopenUpdatePopup) had drifted to
+// describe two different older releases.
+const SCRIPT_CHANGELOG = {
+    '2.4': [
+        '🛡️ No more false weekend marks when a laptop is left docked on office WiFi',
+        '📶 Windows backfill now matches the exact "corp" SSID, not any name containing it',
+        '📅 Windows quarter &amp; holiday dates now match the app exactly',
+    ],
+    '2.3': [
+        '🍎 Mac: browser opens automatically on office WiFi connect',
+        '🔍 Improved SSID detection — 4-method fallback for macOS Ventura+',
+        '🛡️ Stronger VPN false-positive protection (SSID + DNS both required)',
+        '⚡ Health check confirms your setup is working correctly',
+    ],
+};
+
+// Compare dotted version strings. Non-numeric parts (e.g. the 'legacy'
+// sentinel) count as 0, so they sort older than any real version.
+function cmpVersion(a, b) {
+    const pa = String(a).split('.').map(n => parseInt(n, 10) || 0);
+    const pb = String(b).split('.').map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const d = (pa[i] || 0) - (pb[i] || 0);
+        if (d !== 0) return d < 0 ? -1 : 1;
+    }
+    return 0;
+}
+
+// True when the installed script predates MIN_SCRIPT_VERSION.
+function scriptNeedsUpdate() {
+    const installed = localStorage.getItem('oatScriptVersion');
+    if (!installed) return false;            // never ran — that's the setup reminder's job
+    return cmpVersion(installed, MIN_SCRIPT_VERSION) < 0;
+}
+
+// Dismissal is remembered per target version, so "Maybe Later" sticks across
+// sessions but a genuinely newer fix can still surface.
+function updateDismissedKey() { return 'oatUpdateDismissed_' + MIN_SCRIPT_VERSION; }
+
+function renderUpdateFeatures() {
+    const items = SCRIPT_CHANGELOG[REQUIRED_SCRIPT_VERSION] || [];
+    return items.map(t => `<li>${t}</li>`).join('');
+}
 
 // Quarter we've already fired confetti for (per session)
 let _celebratedQuarter = null;
@@ -512,6 +564,7 @@ function wipeOATBrowserData() {
     localStorage.removeItem('oatTheme');
     localStorage.removeItem('oatUserName');
     localStorage.removeItem('oatUpdateDismissed');
+    Object.keys(SCRIPT_CHANGELOG).forEach(v => localStorage.removeItem('oatUpdateDismissed_' + v));
     localStorage.removeItem('oatAutoMarkCleaned');
     localStorage.removeItem('oat-nf-dismissed');
     // Birthday "seen" markers accumulate one key per day — collect then remove
@@ -1858,11 +1911,14 @@ function checkForStaleSetup() { return; } // auto-prompts disabled — update ca
 // Only shown if script is installed but version is old or unknown
 function showSettingsUpdateCard() {
     const scriptActive = localStorage.getItem('oatScriptActive');
-    const scriptVer = localStorage.getItem('oatScriptVersion');
     // No script ever ran — nothing to update
     if (!scriptActive) return;
-    // Script is already on the required version — hide the card
-    if (scriptVer === REQUIRED_SCRIPT_VERSION) return;
+    // Only prompt when the installed script is genuinely too old. The old
+    // check was `scriptVer === REQUIRED_SCRIPT_VERSION`, so ANY mismatch
+    // nagged — including a script newer than the app expected.
+    if (!scriptNeedsUpdate()) return;
+    // Respect a previous "Maybe Later" for this same target version
+    if (localStorage.getItem(updateDismissedKey())) return;
     const card = document.getElementById('settingsUpdateCard');
     if (card) card.style.display = 'flex';
     const dot = document.getElementById('settingsUpdateDot');
@@ -1919,6 +1975,10 @@ function reopenUpdatePopup() {
     sessionStorage.removeItem('oatPopupDismissed');
     const popup = document.getElementById('updatePopupOverlay');
     if (popup) popup.style.display = 'flex';
+    // Populate the static list from the changelog (it shipped holding an
+    // older release's notes)
+    const staticList = popup && popup.querySelector('.update-popup-features');
+    if (staticList) staticList.innerHTML = renderUpdateFeatures();
     // Reset modal content in case it was replaced by copied state
     const modal = popup && popup.querySelector('.update-popup-modal');
     if (modal && !modal.querySelector('.update-popup-features')) {
@@ -1927,12 +1987,7 @@ function reopenUpdatePopup() {
             <div class="update-popup-icon">🔄</div>
             <h2>Update Available!</h2>
             <p class="update-popup-desc">${scriptActive ? 'A new version of OAT is ready with important improvements:' : 'Your auto-tracking needs a quick update to get working:'}</p>
-            <ul class="update-popup-features">
-                <li>🍎 Mac: Browser now opens automatically on office WiFi connect</li>
-                <li>🔍 Improved SSID detection — 4-method fallback for macOS Ventura+</li>
-                <li>🛡️ Stronger VPN false-positive protection (SSID + DNS both required)</li>
-                <li>⚡ Health check confirms your setup is working correctly</li>
-            </ul>
+            <ul class="update-popup-features">${renderUpdateFeatures()}</ul>
             <p class="update-popup-note">It's a quick one-command update — takes less than 10 seconds.</p>
             <div class="update-popup-actions">
                 <button class="update-popup-btn primary" onclick="updatePopupNow()">🚀 Update Now</button>
@@ -1991,6 +2046,12 @@ function updatePopupLater() {
     const popup = document.getElementById('updatePopupOverlay');
     if (popup) popup.style.display = 'none';
     sessionStorage.setItem('oatPopupDismissed', '1');
+    // Persist so it stays dismissed across sessions, not just this tab
+    localStorage.setItem(updateDismissedKey(), new Date().toISOString());
+    const card = document.getElementById('settingsUpdateCard');
+    if (card) card.style.display = 'none';
+    const dot = document.getElementById('settingsUpdateDot');
+    if (dot) dot.style.display = 'none';
 }
 
 function dismissUpdateBanner() {

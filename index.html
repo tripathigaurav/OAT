@@ -183,11 +183,9 @@
             <div class="update-popup-icon">🔄</div>
             <h2>Update Available!</h2>
             <p class="update-popup-desc">A new version of OAT is ready with important improvements:</p>
-            <ul class="update-popup-features">
-                <li>🛡️ Fixed auto-tracking on cloud-synced folders (OneDrive/iCloud)</li>
-                <li>⚡ Faster &amp; more reliable WiFi detection</li>
-                <li>📂 Scripts now install to a safe local path</li>
-            </ul>
+            <!-- Populated from SCRIPT_CHANGELOG in app.js — do not hardcode
+                 release notes here, they drift out of date. -->
+            <ul class="update-popup-features"></ul>
             <p class="update-popup-note">It's a quick one-command update — takes less than 10 seconds.</p>
             <div class="update-popup-actions">
                 <button class="update-popup-btn primary" onclick="updatePopupNow()">🚀 Update Now</button>
