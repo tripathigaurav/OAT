@@ -388,6 +388,13 @@
                 <span style="opacity:0.55;font-size:0.8rem;display:block;margin-top:2px;padding-left:20px;">Off by default — enable if you visited office on Sat/Sun</span>
             </label>
         </div>
+        <div class="settings-group">
+            <label>
+                <input type="checkbox" id="allowAutoMarkEdit" />
+                Allow editing auto-marked (WiFi verified) days
+                <span style="opacity:0.55;font-size:0.8rem;display:block;margin-top:2px;padding-left:20px;">Off by default — enable to unmark a past day the WiFi check got wrong. Re-marking it counts as a manual mark, not WiFi verified.</span>
+            </label>
+        </div>
         <div class="settings-actions" style="margin-bottom:12px;">
             <button class="save-settings-btn" onclick="saveSettings()">💾 Save Settings</button>
             <button class="close-settings-btn" onclick="toggleSettings()">Close</button>

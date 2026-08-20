@@ -475,6 +475,8 @@ function toggleInfoMini() {
 function loadSettingsUI() {
     document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
     document.getElementById('allowWeekendMark').checked = settings.allowWeekendMark === true;
+    const autoEditEl = document.getElementById('allowAutoMarkEdit');
+    if (autoEditEl) autoEditEl.checked = settings.allowAutoMarkEdit === true;
 
     const logEl = document.getElementById('autoMarkLog');
     const logBtn = document.getElementById('checkAutoLogBtn');
@@ -488,6 +490,8 @@ function saveSettings() {
     settings.wifiSSID = OFFICE_WIFI_SSID; // Always corp
     settings.autoMarkEnabled = document.getElementById('autoMarkEnabled').checked;
     settings.allowWeekendMark = document.getElementById('allowWeekendMark').checked;
+    const autoEditEl = document.getElementById('allowAutoMarkEdit');
+    if (autoEditEl) settings.allowAutoMarkEdit = autoEditEl.checked;
     localStorage.setItem('oatSettings', JSON.stringify(settings));
     renderCalendars();
     showNotification('⚙️ Settings saved!', 'success');
@@ -734,19 +738,30 @@ function toggleDay(dateStr) {
         return;
     }
     if (checkedDays[dateStr]) {
-        if (autoMarkedDays[dateStr]) {
-            showNotification('🔒 This day was auto-marked via office WiFi and cannot be removed.', 'info');
+        const wasAuto = !!autoMarkedDays[dateStr];
+        if (wasAuto && settings.allowAutoMarkEdit !== true) {
+            showNotification('🔒 This day was auto-marked via office WiFi. Enable "Allow editing auto-marked days" in ⚙️ Settings to change it.', 'info');
             return;
         }
         showConfirm({
-            icon: '🗑️',
-            title: 'Remove Attendance?',
-            body: `Remove your office day mark for ${dateStr}?`,
+            icon: wasAuto ? '🔓' : '🗑️',
+            title: wasAuto ? 'Remove WiFi-Verified Day?' : 'Remove Attendance?',
+            body: wasAuto
+                ? `${dateStr} was auto-marked because your laptop was on office WiFi. Removing it drops the WiFi verification — marking it again will count as a manual mark.`
+                : `Remove your office day mark for ${dateStr}?`,
             confirmText: 'Remove', cancelText: 'Keep', type: 'danger',
             onConfirm: () => {
                 delete checkedDays[dateStr];
+                // Clear the auto flag too, or the day stays locked while unmarked
+                if (wasAuto) delete autoMarkedDays[dateStr];
                 localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
                 localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
+                if (wasAuto) {
+                    const logEntry = `${new Date().toLocaleString()} — Removed auto-mark for ${dateStr} (manual override)`;
+                    autoMarkLog.unshift(logEntry);
+                    if (autoMarkLog.length > 120) autoMarkLog.pop();
+                    localStorage.setItem('autoMarkLog', JSON.stringify(autoMarkLog));
+                }
                 renderCalendars();
             }
         });
@@ -805,6 +820,12 @@ function renderCalendars() {
     let totalWorkDays = 0;
     let totalOfficeDays = 0;
     let totalLeaveDays = 0;
+
+    // Auto-marks are locked unless the user opts into editing them
+    const autoEditable = settings.allowAutoMarkEdit === true;
+    const autoTip = autoEditable
+        ? '🤖 Auto-marked (WiFi verified) — click to remove'
+        : '🔒 Auto-marked (WiFi verified)';
 
     months.forEach(m => {
         const card = document.createElement('div');
@@ -890,7 +911,7 @@ function renderCalendars() {
                 tooltip = `🎉 ${getHolidayName(dateStr)}`;
             } else if (isSaturday || isSunday) {
                 if (checked) {
-                    tooltip = autoMarkedDays[dateStr] ? '🔒 Auto-marked (WiFi verified)' : '✅ Weekend office day (click to remove)';
+                    tooltip = autoMarkedDays[dateStr] ? autoTip : '✅ Weekend office day (click to remove)';
                 } else if (settings.allowWeekendMark && inRange) {
                     const _tdn = new Date(); _tdn.setHours(0,0,0,0);
                     tooltip = date > _tdn ? '' : 'Weekend — click to mark';
@@ -903,7 +924,7 @@ function renderCalendars() {
                 if (date > today2) {
                     tooltip = onLeave ? '🌴 Leave/PTO (planned)' : '';
                 } else if (checked) {
-                    tooltip = autoMarkedDays[dateStr] ? '🔒 Auto-marked (WiFi verified)' : '✅ Office day (click to remove)';
+                    tooltip = autoMarkedDays[dateStr] ? autoTip : '✅ Office day (click to remove)';
                 } else if (onLeave) {
                     tooltip = '🌴 Leave/PTO';
                 } else {
