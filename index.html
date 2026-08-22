@@ -188,14 +188,10 @@
 
     <!-- remove old individual summary spans now handled by pill ribbon -->
     <div class="summary-bar">
-        <div class="summary-row" style="display:none;">
-            <span class="total-days">📊 Total Working Days: <strong id="totalWorkDaysOld">0</strong></span>
-            <span class="office-days">✅ Office Days: <strong id="totalOfficeDaysOld">0</strong></span>
-        </div>
-        <div class="summary-row" style="display:none;">
-            <span class="target-days">🎯 Target: <strong>39 Days</strong></span>
-            <span class="remaining-days">⏳ Remaining: <strong id="remainingDaysOld">39</strong></span>
-        </div>
+        <!-- Legacy display:none summary rows removed — superseded by the stats
+             ribbon below, and they carried a hardcoded "Target: 39 Days" that
+             was wrong for Q3 (target 36). -->
+
         <!-- Stats card row -->
         <div class="stats-ribbon" id="statsRibbon">
             <div class="stat-card" id="pillWorkDays">
@@ -282,7 +278,7 @@
                     <span class="credit-name">Gaurav Tripathi</span>
                 </div>
                 <div class="credit-badges">
-                    <span class="credit-badge">&#9679; v2.4</span>
+                    <span class="credit-badge" id="appVersionBadge">&#9679; v2.4</span>
                     <span class="credit-badge">&#128187; NetApp</span>
                 </div>
             </div>
@@ -334,7 +330,7 @@
     <div class="info-mini-panel" id="infoMiniPanel" style="display:none;">
         <h4>What OAT can do</h4>
         <ul>
-            <li>Track office attendance across Q1–Q4 2026–27</li>
+            <li id="infoQuarterSpan">Track office attendance across Q1–Q4 2026–27</li>
             <li>Auto-mark on office WiFi (<strong>corp</strong> + NetApp DNS)</li>
             <li>Always opens on the current quarter — switches over when one ends</li>
             <li>Switch quarters from the badge next to the title</li>

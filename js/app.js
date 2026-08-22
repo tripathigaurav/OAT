@@ -247,6 +247,21 @@ function switchQuarter(key) {
     renderCalendars();
 }
 
+// Values that describe the app itself rather than the data. Kept in JS so they
+// can't rot in the markup — the footer badge said "v2.4" as a literal, and the
+// Info panel hardcoded "Q1–Q4 2026–27", which both go stale on the next bump.
+function renderStaticFacts() {
+    const keys = Object.keys(QUARTERS);
+    const firstKey = keys[0], lastKey = keys[keys.length - 1];
+    const y1 = QUARTERS[firstKey].start.getFullYear();
+    const y2 = QUARTERS[lastKey].end.getFullYear();
+    const span = y1 === y2 ? String(y1) : `${y1}–${String(y2).slice(-2)}`;
+    const info = document.getElementById('infoQuarterSpan');
+    if (info) info.textContent = `Track office attendance across ${firstKey}–${lastKey} ${span}`;
+    const ver = document.getElementById('appVersionBadge');
+    if (ver) ver.textContent = '● v' + REQUIRED_SCRIPT_VERSION;
+}
+
 function updateQuarterBadge() {
     const badge = document.getElementById('quarterBadge');
     if (badge) badge.textContent = currentQKey + ' ▾';
@@ -495,7 +510,8 @@ function copyUninstallCommand() {
         ? 'Unregister-ScheduledTask -TaskName "OAT-WiFiAttendance" -Confirm:$false -ErrorAction SilentlyContinue; '
           + 'Remove-Item -Recurse -Force "$env:LOCALAPPDATA\\OAT" -ErrorAction SilentlyContinue; '
           + 'Remove-Item -Recurse -Force "$env:USERPROFILE\\Desktop\\OAT" -ErrorAction SilentlyContinue; '
-          + 'Remove-Item -Force "$env:TEMP\\oat-automark-*.lock" -ErrorAction SilentlyContinue'
+          + 'Remove-Item -Force "$env:TEMP\\oat-automark-*.lock" -ErrorAction SilentlyContinue; '
+          + 'Remove-Item -Force "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\OAT-WiFiAttendance.cmd" -ErrorAction SilentlyContinue'
         : 'launchctl unload ~/Library/LaunchAgents/com.oat.wifiattendance.plist 2>/dev/null; '
           + 'rm -f ~/Library/LaunchAgents/com.oat.wifiattendance.plist; rm -rf ~/.oat; '
           + 'rm -f /tmp/oat-automark-*.lock';
@@ -969,10 +985,11 @@ function renderCalendars() {
     const remaining = Math.max(0, TARGET() - totalOfficeDays);
     const percentage = Math.min(100, Math.round((totalOfficeDays / TARGET()) * 100));
 
-    // Update both pill IDs and any legacy IDs
-    ['totalWorkDays', 'totalWorkDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = totalWorkDays; });
-    ['totalOfficeDays', 'totalOfficeDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = totalOfficeDays; });
-    ['remainingDays', 'remainingDaysOld'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = remaining; });
+    // Legacy *Old ids removed along with their hidden markup
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setText('totalWorkDays', totalWorkDays);
+    setText('totalOfficeDays', totalOfficeDays);
+    setText('remainingDays', remaining);
     const leaveEl = document.getElementById('totalLeaveDays');
     if (leaveEl) leaveEl.textContent = totalLeaveDays;
     // Update target pill
@@ -1061,16 +1078,23 @@ function calculatePrediction(officeDays) {
     if (todayMid > qEnd)   return { text: 'Q ended',   status: 'risk',    overallRate: null, recentRate: null, wdNeeded: null, projDate: null };
     if (todayMid < qStart) return { text: '—',         status: 'waiting', overallRate: null, recentRate: null, wdNeeded: null, projDate: null };
 
-    // Working days elapsed so far (qStart → today inclusive)
-    let wdElapsed = 0;
+    // Working days elapsed so far (qStart → today inclusive), and how many of
+    // them were office days. The numerator must be weekday-only: `officeDays`
+    // includes weekend marks, so pairing it with a weekday denominator gave an
+    // attendance rate above 1.0 (two marked Saturdays → 15/14 = 1.07) which
+    // then under-estimated the days needed and reported an optimistic date.
+    let wdElapsed = 0, wdOffice = 0;
     for (let d = new Date(qStart); d <= todayMid; d.setDate(d.getDate() + 1)) {
         const dow = d.getDay(), ds = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
-        if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds]) wdElapsed++;
+        if (dow !== 0 && dow !== 6 && !isHoliday(ds) && !leaveDays[ds]) {
+            wdElapsed++;
+            if (checkedDays[ds]) wdOffice++;
+        }
     }
 
     if (wdElapsed < 3 || officeDays === 0) return { text: '—', status: 'waiting', overallRate: null, recentRate: null, wdNeeded: null, projDate: null };
 
-    const overallRate = officeDays / wdElapsed;
+    const overallRate = wdOffice / wdElapsed;
 
     // Recent velocity: last 14 calendar days
     const twoWeeksAgo = new Date(todayMid); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
@@ -1576,6 +1600,7 @@ document.addEventListener('keydown', function(e) {
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    renderStaticFacts();
     updateQuarterBadge();
     renderCalendars();
     renderNewFeatureBanner();

@@ -29,6 +29,15 @@ function Write-Log {
     param([string]$Message)
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     "[$timestamp] $Message" | Out-File -Append -FilePath $LOG_FILE -Encoding utf8
+    # Keep the log bounded. Watch mode (see oat-watcher.ps1) calls this every
+    # 15 minutes, which would otherwise grow the file without limit. Checking
+    # the size first avoids reading the contents on every single call.
+    try {
+        if ((Get-Item $LOG_FILE -ErrorAction Stop).Length -gt 200KB) {
+            $keep = Get-Content $LOG_FILE -Tail 400
+            $keep | Set-Content $LOG_FILE -Encoding utf8
+        }
+    } catch { }
 }
 
 function Get-WiFiSSID {
