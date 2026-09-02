@@ -128,11 +128,16 @@ fi
 
 log_msg "✅ Office network detected via: $DETECTED_VIA"
 
-# Guard: the 00:01 LaunchAgent trigger exists to catch a workday that starts
-# while you're still connected past midnight. But a laptop left docked on office
-# WiFi over the weekend would trip it on Sat/Sun too — and auto-marks are
-# permanently locked in the app. Skip early-morning weekend runs; the
-# network-change trigger still fires if you genuinely arrive later that day.
+# The app decides whether a weekend counts — it owns the "Allow marking
+# attendance on weekends" setting. This script only detects the network and
+# opens the tracker; if the setting is off the app declines and explains why.
+# Blanket-skipping weekends here would override that setting instead of
+# honouring it, and the setting could then never produce real automation.
+#
+# The one case the app cannot judge is a laptop left docked on office WiFi
+# overnight: the 00:01 trigger fires on the new day while nobody is there. So
+# skip only the early hours of a weekend. A genuine Saturday visit later that
+# day still triggers on network change.
 HOUR_NOW=$((10#$(date +%H)))
 DOW_NOW=$(date +%u)   # 1=Mon ... 6=Sat, 7=Sun
 if [ "$HOUR_NOW" -lt 5 ] && [ "$DOW_NOW" -ge 6 ]; then

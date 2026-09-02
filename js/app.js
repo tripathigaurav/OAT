@@ -226,12 +226,29 @@ function getTodayStr() {
     return formatDate(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
+// True when the weekend toggle is off and today is Sat/Sun.
+function isWeekendBlocked() {
+    const dow = new Date().getDay();
+    return (dow === 0 || dow === 6) && settings.allowWeekendMark !== true;
+}
+
 function isTodayWorkday() {
     const today = new Date();
     const todayStr = getTodayStr();
-    // Weekends are valid for auto-mark (WiFi detected = always register)
-    // The allowWeekendMark toggle only controls manual calendar clicks
+    // The weekend toggle governs BOTH paths. It used to apply only to manual
+    // calendar clicks while auto-mark ignored it entirely, so a laptop on
+    // office WiFi at the weekend was marked regardless of the setting — the
+    // opposite of what "Allow marking attendance on weekends" promises.
+    if (isWeekendBlocked()) return false;
     return isInRange(today) && !isHoliday(todayStr);
+}
+
+// Shared wording so both auto-mark and Mark Today explain a weekend skip
+// rather than the vague "not a working day".
+function notWorkdayMessage() {
+    return isWeekendBlocked()
+        ? '📅 Weekend — not marked. Turn on "Allow marking attendance on weekends" in ⚙️ Settings if you were in the office.'
+        : '📅 Today is not a working day — nothing to mark.';
 }
 
 // ---- Quarter Switcher ────────────────────────────────────────────
@@ -300,7 +317,7 @@ function autoMarkToday() {
     const todayStr = getTodayStr();
 
     if (!isTodayWorkday()) {
-        showNotification('📅 Today is not a working day — no auto-mark needed.', 'info');
+        showNotification(notWorkdayMessage(), 'info');
         return;
     }
 
@@ -383,7 +400,7 @@ function rescanToday() {
 
     const todayStr = getTodayStr();
     if (!isTodayWorkday()) {
-        showNotification('📅 Today is not a working day — nothing to mark.', 'info');
+        showNotification(notWorkdayMessage(), 'info');
         return;
     }
     if (checkedDays[todayStr]) {
@@ -928,7 +945,11 @@ function renderCalendars() {
                 }
             }
 
-            const clickHandler = (!inRange || holiday || (isWeekend && !settings.allowWeekendMark)) ? '' : `onclick="toggleDay('${dateStr}')"`;
+            // Weekend cells stay clickable even when the toggle is off, so
+            // toggleDay() can explain why nothing happened. Previously the
+            // onclick was omitted entirely and a click was a silent no-op —
+            // the "enable it in Settings" message was unreachable from the UI.
+            const clickHandler = (!inRange || holiday) ? '' : `onclick="toggleDay('${dateStr}')"`;
             if (bdayPeople.length > 0) cellClass += ' bday';
 
             // Status + birthday badges as real child elements laid out side by

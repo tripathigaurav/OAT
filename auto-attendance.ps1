@@ -119,10 +119,15 @@ if ($ssidMatch -and $dnsMatch) {
 }
 
 $nowLocal = Get-Date
-# The installer's fallback trigger repeats through the night, so a machine left
-# on office WiFi over the weekend would mark Sat/Sun - and auto-marks are locked
-# in the app. Skip early-morning weekend runs; the WiFi-connect trigger still
-# fires if you genuinely arrive later that day.
+# The app decides whether a weekend counts - it owns the "Allow marking
+# attendance on weekends" setting. This script only detects the network and
+# opens the tracker; if the setting is off the app declines and explains why.
+# Blanket-skipping weekends here would override that setting instead of
+# honouring it, and the setting could then never produce real automation.
+#
+# The one case the app cannot judge is a machine left on office WiFi overnight:
+# the fallback watcher polls straight through, so it would fire on the new day
+# while nobody is there. So skip only the early hours of a weekend.
 $weekendOvernight = ($nowLocal.Hour -lt 5 -and ($nowLocal.DayOfWeek -eq 'Saturday' -or $nowLocal.DayOfWeek -eq 'Sunday'))
 $alreadyMarked = Test-Path $LOCK_FILE
 
