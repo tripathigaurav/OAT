@@ -15,7 +15,7 @@ Write-Host "  ======================================================" -Foregroun
 Write-Host ""
 
 # --- Configuration ---
-$SCRIPT_VERSION = "2.4"
+$SCRIPT_VERSION = "2.5"
 $GITHUB_BASE = "https://tripathigaurav.github.io/OAT"
 # Install to %LOCALAPPDATA%\OAT (local path) - NOT Desktop which may be
 # synced to OneDrive. Windows blocks scheduled tasks from cloud-synced dirs.
@@ -321,12 +321,18 @@ Write-Host ""
 Write-Host "  [5/5] Installation Summary..."
 $task = Get-ScheduledTask -TaskName "OAT-WiFiAttendance" -ErrorAction SilentlyContinue
 
+# Three outcomes, not two. This used to be an if/else on $task alone, so a
+# machine that fell back to the session watcher - a working, automatic setup -
+# was told "Running in manual mode" here and "Session watcher: ACTIVE" eight
+# lines later, which reads like the installer contradicting itself.
+$fullySetup = $false
 if ($task) {
     Write-Host "        Scheduled Task is registered!" -ForegroundColor Green
     $fullySetup = $true
+} elseif ($startupInstalled) {
+    Write-Host "        Session watcher is running (Scheduled Tasks blocked here)" -ForegroundColor Green
 } else {
     Write-Host "        Running in manual mode" -ForegroundColor Yellow
-    $fullySetup = $false
 }
 Write-Host ""
 

@@ -17,7 +17,7 @@
 # ============================================================
 
 # --- Configuration ---
-$SCRIPT_VERSION = "2.4"
+$SCRIPT_VERSION = "2.5"
 $OFFICE_WIFI = "corp"
 $OFFICE_DNS_DOMAIN = "wlan.netapp.com"
 $TRACKER_URL = "https://tripathigaurav.github.io/OAT/?automark=true&scriptver=$SCRIPT_VERSION"
@@ -53,67 +53,177 @@ function Get-WiFiSSID {
 }
 
 function Get-DNSDomains {
-    $found = @()
+    # Returns TWO lists, deliberately kept apart, because they are not
+    # equally trustworthy as evidence of where the machine physically is:
+    #
+    #   Connection - the per-adapter "connection-specific DNS suffix". Handed
+    #                out by DHCP by the network you are actually attached to,
+    #                so it appears when you join that network and disappears
+    #                when you leave. This is the only real location signal.
+    #
+    #   Static     - the DNS suffix search list (DNSDomainSuffixSearchOrder,
+    #                Get-DnsClientGlobalSetting). Normally pushed by group
+    #                policy and therefore IDENTICAL at the office, at home and
+    #                on a plane. It says what the machine knows how to resolve,
+    #                not where it is.
+    #
+    # These used to be pooled into one flat list that the caller substring
+    # matched. On any machine whose GPO happens to list an office suffix that
+    # made the office check permanently true - it would mark attendance every
+    # day from anywhere, which is the exact failure this script exists to avoid.
+    # Static is now collected for display in --dry-run only.
+    $conn   = @()
+    $static = @()
 
-    # Method 1: Per-adapter DNS suffix (most reliable for corporate DHCP)
+    # Source 1: WMI per-adapter config (most reliable when available)
     try {
         $adapters = Get-WmiObject Win32_NetworkAdapterConfiguration -Filter "IPEnabled=True" -ErrorAction Stop
         foreach ($a in $adapters) {
-            if ($a.DNSDomain)          { $found += $a.DNSDomain }
-            if ($a.DNSDomainSuffixSearchOrder) { $found += $a.DNSDomainSuffixSearchOrder }
+            if ($a.DNSDomain)                  { $conn   += $a.DNSDomain }
+            if ($a.DNSDomainSuffixSearchOrder) { $static += $a.DNSDomainSuffixSearchOrder }
         }
     } catch {}
 
-    # Method 2: Global DNS suffix search list
+    # Source 2: modern DNS client cmdlet, connection suffix per interface
     try {
-        $global = Get-DnsClientGlobalSetting -ErrorAction Stop
-        if ($global.SuffixSearchList) { $found += $global.SuffixSearchList }
+        foreach ($i in (Get-DnsClient -ErrorAction Stop)) {
+            if ($i.ConnectionSpecificSuffix) { $conn += $i.ConnectionSpecificSuffix }
+        }
     } catch {}
 
-    # Method 3: ipconfig /all - catches anything missed above
+    # Source 3: global suffix search list - static, display only
     try {
-        $lines = ipconfig /all 2>$null
-        foreach ($line in $lines) {
-            if ($line -match '(DNS Suffix Search List|Connection-specific DNS Suffix)\s*[:.]+\s*(.+)') {
-                $val = $matches[2].Trim()
-                if ($val) { $found += $val }
+        $global = Get-DnsClientGlobalSetting -ErrorAction Stop
+        if ($global.SuffixSearchList) { $static += $global.SuffixSearchList }
+    } catch {}
+
+    # Source 4: ipconfig /all, in case the cmdlets above are blocked by policy.
+    # The value sits behind a dotted leader ("Suffix . . . . . : netapp.com").
+    # The old pattern used '\s*[:.]+\s*' as the separator, which stopped at the
+    # FIRST dot and swallowed the rest of the leader into the captured value -
+    # that is where the junk entries (". . . . . : netapp.com", ":") in the
+    # --dry-run output came from. '[\s.]*:' consumes the whole leader instead.
+    # The search list is also the one block ipconfig wraps: only the FIRST
+    # suffix sits on the labelled line, the rest arrive as unlabelled indented
+    # continuations, so a naive per-line match captures one entry and drops
+    # the others. That matters most on exactly the machines this source exists
+    # for (cmdlets blocked by policy), where a missed continuation would leave
+    # $staticOnly false and hide the group-policy explanation below.
+    try {
+        $inList = $false
+        foreach ($line in (ipconfig /all 2>$null)) {
+            if ($line -match 'Connection-specific DNS Suffix[\s.]*:\s*(.+)') {
+                $inList = $false
+                $val = $matches[1].Trim()
+                if ($val) { $conn += $val }
+            } elseif ($line -match 'DNS Suffix Search List[\s.]*:\s*(.+)') {
+                $inList = $true
+                $val = $matches[1].Trim()
+                if ($val) { $static += $val }
+            } elseif ($inList -and $line -match '^\s+(\S+)\s*$') {
+                # A lone indented token = continuation of the search list.
+                # Safe: every labelled line carries a colon and several tokens,
+                # and section headers start at column 0.
+                $static += $matches[1]
+            } elseif ($line -match '\S') {
+                $inList = $false
             }
         }
     } catch {}
 
-    return $found | Where-Object { $_ } | Select-Object -Unique
+    # Lower-cased before de-duplicating: WMI, Get-DnsClient and ipconfig do not
+    # agree on casing, and Select-Object -Unique is case-SENSITIVE on PS 5.1
+    # (-CaseInsensitive is 7.1+), so the raw lists would show near-duplicates.
+    return [pscustomobject]@{
+        Connection = @($conn   | Where-Object { $_ } | ForEach-Object { $_.ToLowerInvariant() } | Select-Object -Unique)
+        Static     = @($static | Where-Object { $_ } | ForEach-Object { $_.ToLowerInvariant() } | Select-Object -Unique)
+    }
 }
 
 # --- Main Logic ---
-# Require BOTH WiFi SSID = 'corp' AND DNS domain = 'wlan.netapp.com'
-# This prevents false triggers from:
-#   - VPN from home (DNS matches but SSID is home WiFi)
-#   - Home WiFi renamed to 'corp' (SSID matches but no NetApp DNS)
+# Prefer BOTH signals: WiFi SSID = 'corp' AND the DHCP-assigned DNS suffix
+# 'wlan.netapp.com'. Together they rule out:
+#   - VPN from home        (suffix may match, SSID is the home network)
+#   - Home WiFi named corp (SSID matches, no NetApp DHCP suffix)
+#
+# The SSID is not always readable though - docked on ethernet, WLAN service
+# stopped, or a GPO that blocks netsh - and on those machines it is empty every
+# single time. So an unreadable SSID falls back to the DHCP suffix alone, which
+# is legitimate location evidence because DHCP only hands it out on that
+# network. What is NOT evidence is the DNS suffix SEARCH LIST: group policy
+# pushes it everywhere, so it matches at home too. Keeping those two apart is
+# the whole point of Get-DNSDomains returning two lists.
 
 $onOfficeNet = $false
 $detectedVia = ""
 
 $currentWifi = Get-WiFiSSID
-$dnsDomains = Get-DNSDomains
+$dns = Get-DNSDomains
 $ssidMatch = $currentWifi -and ($currentWifi -ieq $OFFICE_WIFI)
-$dnsMatch = ($dnsDomains | Where-Object { $_ -like "*$OFFICE_DNS_DOMAIN*" }).Count -gt 0
 
-Write-Log "WiFi SSID: '$currentWifi' | DNS match: $dnsMatch | SSID match: $ssidMatch"
+# Two tiers of DNS evidence, strongest first.
+#
+# Tier 1 - the connection-specific suffix. DHCP hands it out per network, so
+# its presence is proof of attachment and it vanishes on leaving. Always trusted.
+#
+# Tier 2 - the suffix search list. Group policy can pin this identically
+# everywhere, which is why it must never be the ONLY thing consulted. But field
+# evidence from a managed NetApp laptop shows '$OFFICE_DNS_DOMAIN' genuinely
+# appearing and disappearing with the network there, while the broader
+# 'netapp.com' and 'eng.netapp.com' persisted off-site - which is exactly why
+# OFFICE_DNS_DOMAIN is a WLAN-specific subdomain and not the bare company
+# domain. Rejecting tier 2 outright would therefore trade a false-mark risk for
+# a WORSE failure: silently never marking again, which nobody notices for days.
+#
+# So tier 2 still counts, but it is recorded as a weak detection in the log so
+# that any false mark is traceable to it. Set this to $false to demand tier 1.
+$ALLOW_SEARCH_LIST_FALLBACK = $true
+
+$dnsStrong = @($dns.Connection | Where-Object { $_ -like "*$OFFICE_DNS_DOMAIN*" }).Count -gt 0
+$dnsWeak   = (-not $dnsStrong) -and
+             @($dns.Static | Where-Object { $_ -like "*$OFFICE_DNS_DOMAIN*" }).Count -gt 0
+
+$dnsMatch   = $dnsStrong -or ($dnsWeak -and $ALLOW_SEARCH_LIST_FALLBACK)
+$staticOnly = $dnsWeak -and -not $ALLOW_SEARCH_LIST_FALLBACK
+
+$dnsVia = ""
+if ($dnsStrong)     { $dnsVia = "DHCP-assigned suffix" }
+elseif ($dnsMatch)  { $dnsVia = "DNS search list - WEAK signal" }
+
+Write-Log "WiFi SSID: '$currentWifi' | SSID match: $ssidMatch | DNS strong: $dnsStrong | DNS weak: $dnsWeak | DNS match: $dnsMatch"
+if ($dnsWeak -and $dnsMatch) {
+    Write-Log "NOTE: '$OFFICE_DNS_DOMAIN' was found only in the DNS suffix search list, not in a DHCP-assigned suffix. Treating it as office presence, but if attendance is ever marked on a day you were not in the office, this is the line to blame."
+}
 
 $skipReason = ""
 if ($ssidMatch -and $dnsMatch) {
     $onOfficeNet = $true
-    $detectedVia = "WiFi SSID ($currentWifi) + DNS ($OFFICE_DNS_DOMAIN)"
+    $detectedVia = "WiFi SSID ($currentWifi) + $OFFICE_DNS_DOMAIN via $dnsVia"
 } elseif ($ssidMatch -and -not $dnsMatch) {
-    $skipReason = "SSID matches 'corp' but NetApp DNS not found (home WiFi named corp?)"
+    # $staticOnly is reported here rather than given its own branch further
+    # down: this test would catch the combination first and swallow it, but
+    # moving the $staticOnly branch above this one would hijack the genuine
+    # "home WiFi happens to be named corp" case, which is the common one on a
+    # policy-managed laptop. So append the detail instead of reordering.
+    $skipReason = "SSID matches '$OFFICE_WIFI' but no NetApp DHCP DNS suffix (home WiFi named '$OFFICE_WIFI'?)"
+    if ($staticOnly) {
+        $skipReason += " - '$OFFICE_DNS_DOMAIN' is present only in the policy-pushed search list, which looks identical everywhere"
+    }
 } elseif ($dnsMatch -and -not $ssidMatch) {
-    # SSID empty = WiFi adapter off, ethernet, or corporate GPO hides SSID - trust DNS alone
+    # SSID empty = adapter off, docked on ethernet, WLAN service stopped, or a
+    # GPO that blocks netsh. The DHCP-assigned suffix is still location proof
+    # on its own, so this branch is safe now that the static search list is no
+    # longer folded into $dnsMatch.
     if (-not $currentWifi) {
         $onOfficeNet = $true
-        $detectedVia = "DNS domain ($OFFICE_DNS_DOMAIN) - WiFi SSID undetectable (ethernet/adapter off?)"
+        $detectedVia = "$OFFICE_DNS_DOMAIN via $dnsVia - SSID unreadable (ethernet/adapter off/GPO)"
     } else {
-        $skipReason = "NetApp DNS found but SSID '$currentWifi' != 'corp' (VPN from home?)"
+        $skipReason = "'$OFFICE_DNS_DOMAIN' found ($dnsVia) but SSID '$currentWifi' != '$OFFICE_WIFI'"
     }
+} elseif ($staticOnly) {
+    # The give-away for the bug this replaced: the office suffix is present,
+    # but only in the policy-pushed search list, which looks the same at home.
+    $skipReason = "'$OFFICE_DNS_DOMAIN' appears only in the DNS suffix search list (group policy), which is the same everywhere - not proof of being at the office"
 } else {
     $skipReason = "Not on office network"
 }
@@ -143,7 +253,9 @@ if ($args -contains "--dry-run") {
     $ssidLine = "(not detected)"
     if ($currentWifi) { $ssidLine = $currentWifi }
     $dnsLine = "(none found)"
-    if ($dnsDomains) { $dnsLine = ($dnsDomains -join ", ") }
+    if ($dns.Connection) { $dnsLine = ($dns.Connection -join ", ") }
+    $staticLine = "(none found)"
+    if ($dns.Static) { $staticLine = ($dns.Static -join ", ") }
     $netLine = "$onOfficeNet"
     if ($skipReason) { $netLine = "$onOfficeNet - $skipReason" }
     $lockLine = "$alreadyMarked"
@@ -159,9 +271,13 @@ if ($args -contains "--dry-run") {
     Write-Host "     WiFi SSID     : $ssidLine"
     Write-Host "     Expected SSID : $OFFICE_WIFI"
     Write-Host "     SSID match    : $ssidMatch"
-    Write-Host "     DNS domains   : $dnsLine"
     Write-Host "     Expected DNS  : $OFFICE_DNS_DOMAIN"
+    Write-Host "     DHCP suffix   : $dnsLine" -ForegroundColor White
+    Write-Host "                     ^ tier 1: assigned by the network you are on - strongest proof" -ForegroundColor DarkGray
+    Write-Host "     Search list   : $staticLine" -ForegroundColor DarkGray
+    Write-Host "                     ^ tier 2: group policy can pin this everywhere - weak proof" -ForegroundColor DarkGray
     Write-Host "     DNS match     : $dnsMatch"
+    if ($dnsVia) { Write-Host "     Matched via   : $dnsVia" }
     Write-Host ""
     Write-Host "  Guards"
     Write-Host "     On office net : $netLine"
@@ -213,12 +329,29 @@ if ($alreadyMarked) {
 Write-Log "Connected to office WiFi. Triggering auto-mark..."
 Write-Host "  OAT: office network detected - opening tracker to mark today." -ForegroundColor Green
 
-# Create lock file
+# Open the tracker FIRST and claim the day only if the browser actually
+# launched. The lock used to be written before this call, so a launch that
+# failed - no default browser association, a policy block, Start-Process
+# throwing - burned the whole day silently: the lock said "already marked",
+# nothing retried, and the next check was tomorrow.
+#
+# Caveat worth knowing: this proves the browser was LAUNCHED, not that the page
+# finished marking. The page owns that step, so a browser that opens but never
+# loads the tracker still consumes the day. Closing that gap needs the page to
+# report back (e.g. writing a receipt file the script can look for), which is a
+# bigger change than this fix.
+$opened = $false
+try {
+    Start-Process $TRACKER_URL -ErrorAction Stop
+    $opened = $true
+} catch {
+    Write-Log "Could not open the tracker: $($_.Exception.Message). Leaving today unlocked so the next check retries."
+    Write-Host "  OAT: could not open the browser - will retry on the next check." -ForegroundColor Red
+}
+
+if (-not $opened) { exit 0 }
+
 New-Item -Path $LOCK_FILE -ItemType File -Force | Out-Null
-
-# Open tracker in default browser
-Start-Process $TRACKER_URL
-
 Write-Log "Opened attendance tracker with auto-mark. Done!"
 
 # Clean up old lock files (older than 2 days)
