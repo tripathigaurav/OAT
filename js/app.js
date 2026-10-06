@@ -198,9 +198,37 @@ let checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || 
 let autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
 let leaveDays      = JSON.parse(localStorage.getItem(qKey('leaveDays'))     || '{}');
 const OFFICE_WIFI_SSID = 'corp'; // Fixed — NetApp office WiFi
-let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"autoMarkEnabled":true,"allowOffDayMark":true}');
+const DEFAULT_SETTINGS = { autoMarkEnabled: true, allowOffDayMark: true };
+let settings = JSON.parse(localStorage.getItem('oatSettings') || JSON.stringify(DEFAULT_SETTINGS));
 settings.wifiSSID = OFFICE_WIFI_SSID; // Always enforce corp, regardless of saved value
 let autoMarkLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
+
+// ── Multi-tab safety ──────────────────────────────────────────────
+// Every tab keeps its own in-memory copy of this state and writes the WHOLE
+// object back. The WiFi script opens a fresh tab each day and yesterday's is
+// usually still open, so any click in the old tab used to overwrite storage
+// with its stale copy — silently erasing whatever the newer tab had marked
+// (reproduced: Tuesday's auto-mark vanished after a click in Monday's tab).
+// Two defences:
+//   1. reloadState() at the start of every mutation, so a write is always
+//      built on what is actually stored rather than on what this tab saw when
+//      it loaded. This alone guarantees no data loss.
+//   2. a 'storage' listener (below), so an old tab refreshes the moment
+//      another tab writes and the user is looking at current data.
+function readJSON(key, fallback) {
+    try {
+        const v = localStorage.getItem(key);
+        return v ? JSON.parse(v) : fallback;
+    } catch (e) {
+        return fallback;
+    }
+}
+function reloadState() {
+    checkedDays    = readJSON(qKey('officeDays'), {});
+    autoMarkedDays = readJSON(qKey('autoMarkedDays'), {});
+    leaveDays      = readJSON(qKey('leaveDays'), {});
+    autoMarkLog    = readJSON('autoMarkLog', []);
+}
 
 // Utility functions
 function isHoliday(dateStr) {
@@ -328,6 +356,7 @@ document.addEventListener('click', function(e) {
 
 // ---- Auto-Mark Logic ----
 function autoMarkToday() {
+    reloadState();   // another tab may have written since this one loaded
     const todayStr = getTodayStr();
 
     if (!isTodayWorkday()) {
@@ -421,6 +450,7 @@ function rescanToday() {
     if (todaysQuarter !== currentQKey) {
         switchQuarter(todaysQuarter);
     }
+    reloadState();   // another tab may have written since this one loaded
 
     const todayStr = getTodayStr();
     if (!isTodayWorkday()) {
@@ -485,12 +515,20 @@ function toggleInfoMini() {
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
 
-function loadSettingsUI() {
-    document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
+// Reflect `settings` in the checkboxes. Split out of loadSettingsUI so a
+// change made in another tab can update the toggles without also resetting
+// the log view the user may have open.
+function syncSettingsCheckboxes() {
+    const am = document.getElementById('autoMarkEnabled');
+    if (am) am.checked = settings.autoMarkEnabled !== false;
     const offDayEl = document.getElementById('allowOffDayMark');
     if (offDayEl) offDayEl.checked = offDaysAllowed();
     const autoEditEl = document.getElementById('allowAutoMarkEdit');
     if (autoEditEl) autoEditEl.checked = settings.allowAutoMarkEdit === true;
+}
+
+function loadSettingsUI() {
+    syncSettingsCheckboxes();
 
     const logEl = document.getElementById('autoMarkLog');
     const logBtn = document.getElementById('checkAutoLogBtn');
@@ -747,6 +785,7 @@ function renderAutoMarkLog() {
 
 // Toggle day selection
 function toggleDay(dateStr) {
+    reloadState();   // another tab may have written since this one loaded
     // Block future dates
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -769,6 +808,7 @@ function toggleDay(dateStr) {
             body: `${dateStr} is marked as leave. Remove it to mark attendance instead.`,
             confirmText: 'Remove Leave', cancelText: 'Keep', type: 'warn',
             onConfirm: () => {
+                reloadState();   // dialog may have sat open while another tab wrote
                 delete leaveDays[dateStr];
                 saveLeaveDays();
                 renderCalendars();
@@ -791,6 +831,7 @@ function toggleDay(dateStr) {
                 : `Remove your office day mark for ${dateStr}?`,
             confirmText: 'Remove', cancelText: 'Keep', type: 'danger',
             onConfirm: () => {
+                reloadState();   // dialog may have sat open while another tab wrote
                 delete checkedDays[dateStr];
                 // Clear the auto flag too, or the day stays locked while unmarked
                 if (wasAuto) delete autoMarkedDays[dateStr];
@@ -812,6 +853,7 @@ function toggleDay(dateStr) {
             body: `Mark ${dateStr} as an office day?`,
             confirmText: 'Mark It', cancelText: 'Cancel', type: 'success',
             onConfirm: () => {
+                reloadState();   // dialog may have sat open while another tab wrote
                 checkedDays[dateStr] = true;
                 localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
                 localStorage.setItem(qKey('autoMarkedDays'), JSON.stringify(autoMarkedDays));
@@ -823,6 +865,7 @@ function toggleDay(dateStr) {
 
 // Reset only manual selections (auto-marked days are preserved)
 function resetAll() {
+    reloadState();   // another tab may have written since this one loaded
     const autoDates = autoMarkDates();
     const autoCount = autoDates.length;
     const manualCount = Object.keys(checkedDays).filter(d => !autoMarkedDays[d]).length;
@@ -839,6 +882,7 @@ function resetAll() {
         body: `Clear ${manualCount} manually marked day(s)${extra}.${preservedNote}`,
         confirmText: 'Reset', cancelText: 'Cancel', type: 'danger',
         onConfirm: () => {
+            reloadState();   // dialog may have sat open while another tab wrote
             const preserved = {};
             for (const d of autoDates) { preserved[d] = true; }
             checkedDays = preserved;
@@ -1575,6 +1619,7 @@ function saveLeaveDays() {
 }
 
 function addSelectedLeaves() {
+    reloadState();   // another tab may have written since this one loaded
     if (_leaveSelection.size === 0) {
         showNotification('Select dates first, then click Add Leave.', 'info');
         return;
@@ -1599,6 +1644,7 @@ function addSelectedLeaves() {
 }
 
 function removeSelectedLeaves() {
+    reloadState();   // another tab may have written since this one loaded
     if (_leaveSelection.size === 0) {
         showNotification('Select dates first, then click Remove Leave.', 'info');
         return;
@@ -1663,6 +1709,29 @@ document.addEventListener('keydown', function(e) {
     const dd = document.getElementById('quarterDropdown');
     if (dd && dd.classList.contains('open')) { closeQuarterDropdown(); return; }
     closeFlyoutPanels(null);
+});
+
+// ── Live refresh when another tab writes ─────────────────────────
+// The browser fires 'storage' in every OTHER tab of this origin when one tab
+// changes localStorage. Picking that up keeps an old tab showing current data,
+// so the user isn't clicking on a stale calendar. (Correctness on write does
+// not depend on this — reloadState() already handles that — it's what makes
+// the screen match.)
+window.addEventListener('storage', function (e) {
+    const watched = [qKey('officeDays'), qKey('autoMarkedDays'), qKey('leaveDays'),
+                     'autoMarkLog', 'oatSettings'];
+    // e.key is null when another tab called localStorage.clear()
+    if (e.key !== null && watched.indexOf(e.key) === -1) return;
+    reloadState();
+    if (e.key === null || e.key === 'oatSettings') {
+        settings = readJSON('oatSettings', Object.assign({}, DEFAULT_SETTINGS));
+        settings.wifiSSID = OFFICE_WIFI_SSID;
+        syncSettingsCheckboxes();
+    }
+    renderCalendars();
+    const lo = document.getElementById('leaveOverlay');
+    if (lo && lo.style.display === 'flex') renderLeaveCalendar();
+    updateSetupStatus();
 });
 
 // Initialize on DOM ready
