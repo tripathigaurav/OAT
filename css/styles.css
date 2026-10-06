@@ -1527,6 +1527,17 @@ body.light-mode .flip-subtext strong { color: #1a5fa8; }
     border: 2px solid #F78C6C;
     cursor: default;
 }
+/* A holiday you came in on: keep the holiday fill so it still reads as a
+   holiday, but take the attended green border. Without an explicit rule the
+   result depended on source order — .checked sits above .holiday and
+   .auto-checked below it, so auto-marked holidays went green while manual
+   ones stayed orange. */
+.day-cell.holiday.checked,
+.day-cell.holiday.auto-checked {
+    background: rgba(225, 112, 85, 0.4) !important;
+    border: 2px solid #ADDB67;
+}
+.day-cell.holiday[onclick] { cursor: pointer; }
 
 .day-cell.holiday:hover {
     transform: scale(1.1);

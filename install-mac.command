@@ -20,7 +20,7 @@ echo "  ======================================================"
 echo ""
 
 # --- Configuration ---
-SCRIPT_VERSION="2.4"
+SCRIPT_VERSION="2.5"
 GITHUB_BASE="https://tripathigaurav.github.io/OAT"
 # Install to ~/.oat/ (local path) — NOT ~/Desktop which may be
 # synced to OneDrive/iCloud. macOS blocks LaunchAgents from

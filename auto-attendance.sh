@@ -187,15 +187,15 @@ else
 fi
 
 # The app decides whether a weekend counts — it owns the "Allow marking
-# attendance on weekends" setting. This script only detects the network and
+# attendance on weekends & holidays" setting. This script only detects the network and
 # opens the tracker; if the setting is off the app declines and explains why.
 # Blanket-skipping weekends here would override that setting instead of
 # honouring it, and the setting could then never produce real automation.
 #
-# The one case the app cannot judge is a laptop left docked on office WiFi
-# overnight: the 00:01 trigger fires on the new day while nobody is there. So
-# skip only the early hours of a weekend. A genuine Saturday visit later that
-# day still triggers on network change.
+# The app also refuses off-day auto-marks before 05:00 (it knows the holiday
+# list; this script does not). This weekend check is belt-and-braces that also
+# saves opening a pointless browser tab at 00:01. A genuine Saturday visit
+# later that day still triggers on network change.
 HOUR_NOW=$((10#$(date +%H)))
 DOW_NOW=$(date +%u)   # 1=Mon ... 6=Sat, 7=Sun
 WEEKEND_OVERNIGHT=false

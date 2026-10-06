@@ -230,7 +230,7 @@ if ($ssidMatch -and $dnsMatch) {
 
 $nowLocal = Get-Date
 # The app decides whether a weekend counts - it owns the "Allow marking
-# attendance on weekends" setting. This script only detects the network and
+# attendance on weekends & holidays" setting. This script only detects the network and
 # opens the tracker; if the setting is off the app declines and explains why.
 # Blanket-skipping weekends here would override that setting instead of
 # honouring it, and the setting could then never produce real automation.

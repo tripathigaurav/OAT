@@ -1,5 +1,5 @@
 // Configuration
-const REQUIRED_SCRIPT_VERSION = '2.4'; // Latest shipped script version
+const REQUIRED_SCRIPT_VERSION = '2.5'; // Latest shipped script version
 
 // Compare dotted version strings. Non-numeric parts (e.g. the 'legacy'
 // sentinel) count as 0, so they sort older than any real version.
@@ -198,7 +198,7 @@ let checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || 
 let autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
 let leaveDays      = JSON.parse(localStorage.getItem(qKey('leaveDays'))     || '{}');
 const OFFICE_WIFI_SSID = 'corp'; // Fixed — NetApp office WiFi
-let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"autoMarkEnabled":true,"allowWeekendMark":false}');
+let settings = JSON.parse(localStorage.getItem('oatSettings') || '{"autoMarkEnabled":true,"allowOffDayMark":true}');
 settings.wifiSSID = OFFICE_WIFI_SSID; // Always enforce corp, regardless of saved value
 let autoMarkLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
 
@@ -226,29 +226,43 @@ function getTodayStr() {
     return formatDate(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
-// True when the weekend toggle is off and today is Sat/Sun.
-function isWeekendBlocked() {
-    const dow = new Date().getDay();
-    return (dow === 0 || dow === 6) && settings.allowWeekendMark !== true;
+// ── Off-days: weekends and holidays ───────────────────────────────
+// One setting governs both. It is ON by default so a genuine visit on a
+// Saturday or a holiday is never silently dropped; turning it off blocks every
+// route (WiFi auto-mark, Mark Today, calendar click).
+//
+// Stored under a new key, allowOffDayMark, because the meaning changed: the
+// old allowWeekendMark covered weekends only and defaulted OFF. A missing key
+// reads as ON, which is what gives existing users the new default.
+function offDaysAllowed() { return settings.allowOffDayMark !== false; }
+
+function isWeekendStr(dateStr) {
+    const dow = new Date(dateStr + 'T00:00:00').getDay();
+    return dow === 0 || dow === 6;
+}
+function isOffDay(dateStr)        { return isWeekendStr(dateStr) || isHoliday(dateStr); }
+function isOffDayBlocked(dateStr) { return isOffDay(dateStr) && !offDaysAllowed(); }
+function offDayLabel(dateStr) {
+    return isHoliday(dateStr) ? `Holiday (${getHolidayName(dateStr)})` : 'Weekend';
 }
 
 function isTodayWorkday() {
     const today = new Date();
     const todayStr = getTodayStr();
-    // The weekend toggle governs BOTH paths. It used to apply only to manual
-    // calendar clicks while auto-mark ignored it entirely, so a laptop on
-    // office WiFi at the weekend was marked regardless of the setting — the
-    // opposite of what "Allow marking attendance on weekends" promises.
-    if (isWeekendBlocked()) return false;
-    return isInRange(today) && !isHoliday(todayStr);
+    // The off-day toggle governs BOTH paths. It once applied only to manual
+    // calendar clicks while auto-mark ignored it, so weekends were marked
+    // regardless of the setting — the opposite of what the label promises.
+    if (!isInRange(today)) return false;
+    return !isOffDayBlocked(todayStr);
 }
 
-// Shared wording so both auto-mark and Mark Today explain a weekend skip
-// rather than the vague "not a working day".
+// Shared wording so auto-mark and Mark Today both say WHY a day was skipped.
 function notWorkdayMessage() {
-    return isWeekendBlocked()
-        ? '📅 Weekend — not marked. Turn on "Allow marking attendance on weekends" in ⚙️ Settings if you were in the office.'
-        : '📅 Today is not a working day — nothing to mark.';
+    const t = getTodayStr();
+    if (isOffDayBlocked(t)) {
+        return `📅 ${offDayLabel(t)} — not marked. Turn on "Allow marking attendance on weekends & holidays" in ⚙️ Settings if you were in the office.`;
+    }
+    return '📅 Today is outside the current quarter — nothing to mark.';
 }
 
 // ---- Quarter Switcher ────────────────────────────────────────────
@@ -318,6 +332,16 @@ function autoMarkToday() {
 
     if (!isTodayWorkday()) {
         showNotification(notWorkdayMessage(), 'info');
+        return;
+    }
+
+    // Overnight guard, automatic path only. A machine left on office WiFi
+    // fires at 00:01 (Mac midnight trigger) or on the next poll (Windows
+    // watcher) — on a weekend or holiday nobody was there. The scripts can't
+    // know the holiday list, so the app owns this. Pressing Mark Today at 2am
+    // is a deliberate act and is not blocked.
+    if (isOffDay(todayStr) && new Date().getHours() < 5) {
+        showNotification(`🌙 Early-morning ${isHoliday(todayStr) ? 'holiday' : 'weekend'} — not auto-marked (laptop left on office WiFi overnight?). Use 📡 Mark Today if you're really in.`, 'info');
         return;
     }
 
@@ -463,7 +487,8 @@ function toggleInfoMini() {
 
 function loadSettingsUI() {
     document.getElementById('autoMarkEnabled').checked = settings.autoMarkEnabled !== false;
-    document.getElementById('allowWeekendMark').checked = settings.allowWeekendMark === true;
+    const offDayEl = document.getElementById('allowOffDayMark');
+    if (offDayEl) offDayEl.checked = offDaysAllowed();
     const autoEditEl = document.getElementById('allowAutoMarkEdit');
     if (autoEditEl) autoEditEl.checked = settings.allowAutoMarkEdit === true;
 
@@ -481,7 +506,9 @@ function loadSettingsUI() {
 function saveSettings(quiet) {
     settings.wifiSSID = OFFICE_WIFI_SSID; // Always corp
     settings.autoMarkEnabled = document.getElementById('autoMarkEnabled').checked;
-    settings.allowWeekendMark = document.getElementById('allowWeekendMark').checked;
+    const offDayEl = document.getElementById('allowOffDayMark');
+    if (offDayEl) settings.allowOffDayMark = offDayEl.checked;
+    delete settings.allowWeekendMark;   // superseded; don't leave a stale key around
     const autoEditEl = document.getElementById('allowAutoMarkEdit');
     if (autoEditEl) settings.allowAutoMarkEdit = autoEditEl.checked;
     localStorage.setItem('oatSettings', JSON.stringify(settings));
@@ -728,10 +755,10 @@ function toggleDay(dateStr) {
         showNotification('⛔ Cannot mark future dates. Come back on that day!', 'info');
         return;
     }
-    // Block weekends unless setting is enabled
-    const dow = clickedDate.getDay();
-    if ((dow === 0 || dow === 6) && !settings.allowWeekendMark) {
-        showNotification('⛔ Weekend marking is disabled. Enable it in ⚙️ Settings.', 'info');
+    // Block weekends and holidays unless the off-day setting is on
+    if (isOffDayBlocked(dateStr)) {
+        const what = isHoliday(dateStr) ? 'Holiday' : 'Weekend';
+        showNotification(`⛔ ${what} marking is off. Turn on "Allow marking attendance on weekends & holidays" in ⚙️ Settings.`, 'info');
         return;
     }
     // If day is on leave, first ask to remove leave
@@ -880,6 +907,13 @@ function renderCalendars() {
             } else if (holiday) {
                 cellClass += ' holiday';
                 monthHolidays++;
+                // A holiday you came in on counts like any office day.
+                // Previously a marked holiday rendered as a plain holiday and
+                // was silently left out of the total.
+                if (checked) {
+                    cellClass += autoMarkedDays[dateStr] ? ' auto-checked' : ' checked';
+                    monthOfficeDays++; totalOfficeDays++;
+                }
             } else if (isSaturday) {
                 cellClass += ' saturday';
                 if (inRange && checked) {
@@ -921,11 +955,19 @@ function renderCalendars() {
             // Build tooltip
             let tooltip = '';
             if (holiday) {
-                tooltip = `🎉 ${getHolidayName(dateStr)}`;
+                const hn = `🎉 ${getHolidayName(dateStr)}`;
+                const _t0 = new Date(); _t0.setHours(0, 0, 0, 0);
+                if (checked) {
+                    tooltip = `${hn}\n${autoMarkedDays[dateStr] ? autoTip : '✅ Came in on a holiday (click to remove)'}`;
+                } else if (offDaysAllowed() && inRange && date <= _t0) {
+                    tooltip = `${hn}\nCame in? Click to mark`;
+                } else {
+                    tooltip = hn;
+                }
             } else if (isSaturday || isSunday) {
                 if (checked) {
                     tooltip = autoMarkedDays[dateStr] ? autoTip : '✅ Weekend office day (click to remove)';
-                } else if (settings.allowWeekendMark && inRange) {
+                } else if (offDaysAllowed() && inRange) {
                     const _tdn = new Date(); _tdn.setHours(0,0,0,0);
                     tooltip = date > _tdn ? '' : 'Weekend — click to mark';
                 } else {
@@ -949,7 +991,10 @@ function renderCalendars() {
             // toggleDay() can explain why nothing happened. Previously the
             // onclick was omitted entirely and a click was a silent no-op —
             // the "enable it in Settings" message was unreachable from the UI.
-            const clickHandler = (!inRange || holiday) ? '' : `onclick="toggleDay('${dateStr}')"`;
+            // Holidays are clickable now too: with off-days allowed they can be
+            // marked, and when not, toggleDay() explains why instead of a click
+            // silently doing nothing.
+            const clickHandler = !inRange ? '' : `onclick="toggleDay('${dateStr}')"`;
             if (bdayPeople.length > 0) cellClass += ' bday';
 
             // Status + birthday badges as real child elements laid out side by
@@ -960,8 +1005,10 @@ function renderCalendars() {
             // was fighting them for position.
             const badges = [];
             if (bdayPeople.length > 0) badges.push('🎂');
-            if (cellClass.indexOf(' holiday') !== -1)           badges.push('🎉');
-            else if (cellClass.indexOf(' auto-checked') !== -1)  badges.push('🤖');
+            // Holiday badge is independent of status, so a holiday you came in
+            // on shows both 🎉 and ✅/🤖 side by side.
+            if (cellClass.indexOf(' holiday') !== -1)            badges.push('🎉');
+            if (cellClass.indexOf(' auto-checked') !== -1)       badges.push('🤖');
             else if (cellClass.indexOf(' checked') !== -1)       badges.push('✅');
             else if (cellClass.indexOf(' leave') !== -1)         badges.push('🌴');
             const badgeHTML = badges.length

@@ -336,7 +336,7 @@
             <li>Switch quarters from the badge next to the title</li>
             <li>Mark / unmark days manually on the calendar (with confirmation)</li>
             <li>📡 <strong>Mark Today</strong> — mark today yourself if the WiFi check didn't fire</li>
-            <li>Allow marking attendance on weekends <em>(opt-in via ⚙️ Settings)</em></li>
+            <li>Weekend &amp; holiday visits count too <em>(on by default — ⚙️ Settings)</em></li>
             <li>Unmark a wrongly auto-marked day <em>(opt-in via ⚙️ Settings)</em></li>
             <li>Track leaves / PTO via the 🌴 button — supports future dates &amp; ranges</li>
             <li>📈 Trends — projected finish date &amp; weekly office visits</li>
@@ -366,9 +366,9 @@
         </div>
         <div class="settings-group">
             <label class="settings-toggle">
-                <input type="checkbox" id="allowWeekendMark" onchange="saveSettings(true)" />
-                <span class="settings-toggle-text">Allow marking attendance on weekends
-                    <span class="settings-toggle-hint">Off by default. Turn it on if you sometimes work weekends — then Sat/Sun are auto-marked on office WiFi, and you can tick past weekends on the calendar.</span>
+                <input type="checkbox" id="allowOffDayMark" onchange="saveSettings(true)" />
+                <span class="settings-toggle-text">Allow marking attendance on weekends &amp; holidays
+                    <span class="settings-toggle-hint">On by default, so a visit on a Saturday or a holiday is never missed — it's auto-marked on office WiFi and you can tick past ones on the calendar. Turn off to block weekends and holidays entirely.</span>
                 </span>
             </label>
         </div>

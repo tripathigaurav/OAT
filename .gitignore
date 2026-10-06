@@ -4,3 +4,8 @@ auto-attendance.log
 *.lock
 *.bak
 .env
+
+# Removed in de43834: installed to the OneDrive Desktop and pointed the
+# scheduled task at a path that did not exist. OneDrive keeps restoring it
+# locally, so never let it be committed back.
+install-win.bat
