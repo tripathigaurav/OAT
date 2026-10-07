@@ -295,6 +295,12 @@ function offDayLabel(dateStr) {
     return isHoliday(dateStr) ? `Holiday (${getHolidayName(dateStr)})` : 'Weekend';
 }
 
+// A weekend or holiday before 05:00: almost certainly a laptop left docked on
+// office WiFi overnight rather than someone in the office.
+function isOvernightOffDay() {
+    return isOffDay(getTodayStr()) && new Date().getHours() < 5;
+}
+
 function isTodayWorkday() {
     const today = new Date();
     const todayStr = getTodayStr();
@@ -388,7 +394,7 @@ function autoMarkToday() {
     // watcher) — on a weekend or holiday nobody was there. The scripts can't
     // know the holiday list, so the app owns this. Pressing Mark Today at 2am
     // is a deliberate act and is not blocked.
-    if (isOffDay(todayStr) && new Date().getHours() < 5) {
+    if (isOvernightOffDay()) {
         showNotification(`🌙 Early-morning ${isHoliday(todayStr) ? 'holiday' : 'weekend'} — not auto-marked (laptop left on office WiFi overnight?). Use 📡 Mark Today if you're really in.`, 'info');
         return;
     }
@@ -423,6 +429,12 @@ function autoMarkToday() {
     renderCalendars();
 }
 
+// The pending auto-dismiss for the notification bar. Each new message must
+// cancel the previous timer: otherwise an earlier message's 8-second timer
+// fired early and hid the NEWER message — e.g. a Mark Today confirmation could
+// vanish a second after appearing.
+let _notifTimer = null;
+
 function showNotification(message, type) {
     const notif = document.getElementById('wifiNotification');
     const text = document.getElementById('wifiNotifText');
@@ -430,8 +442,8 @@ function showNotification(message, type) {
         text.textContent = message;
         notif.className = `wifi-notification ${type}`;
         notif.style.display = 'flex';
-        // Auto-dismiss after 8 seconds
-        setTimeout(() => { notif.style.display = 'none'; }, 8000);
+        clearTimeout(_notifTimer);
+        _notifTimer = setTimeout(() => { notif.style.display = 'none'; }, 8000);
     }
 }
 
@@ -482,14 +494,10 @@ function rescanToday() {
         return;
     }
 
-    // Check if WiFi script confirmed office connection today
-    const scriptActive = localStorage.getItem('oatScriptActive');
-    let wifiConfirmedToday = false;
-    if (scriptActive) {
-        const activeDate = new Date(scriptActive);
-        const today = new Date();
-        wifiConfirmedToday = activeDate.toDateString() === today.toDateString();
-    }
+    // Verified only if the app ACCEPTED a WiFi detection today. This used to be
+    // "the script ran today" (oatScriptActive), which counted runs the app had
+    // refused — so a manual press from home got the locked 🤖 verified badge.
+    const wifiConfirmedToday = localStorage.getItem('oatWifiConfirmedDate') === todayStr;
 
     // Mark today. Only record an auto-mark when WiFi actually confirmed it —
     // storing `false` would make a manual mark look like a locked auto-mark.
@@ -560,15 +568,28 @@ function loadSettingsUI() {
 // Toggles save on change (quiet = true) so closing the panel — including by
 // clicking outside it — can't silently discard a change. Previously the only
 // caller was the Save button, so a ticked box was lost on Close.
-function saveSettings(quiet) {
+// Checkbox id -> settings field
+const SETTING_FIELDS = { autoMarkEnabled: 'autoMarkEnabled', allowOffDayMark: 'allowOffDayMark',
+                         allowAutoMarkEdit: 'allowAutoMarkEdit' };
+
+function saveSettings(quiet, changedEl) {
+    // Start from what is STORED, not this tab's copy, and change only the toggle
+    // that was clicked. Writing this tab's whole copy back (the old behaviour)
+    // overwrote a different toggle changed in another tab that this tab never
+    // heard about — same failure as the attendance multi-tab bug.
+    settings = readJSON('oatSettings', Object.assign({}, DEFAULT_SETTINGS));
     settings.wifiSSID = OFFICE_WIFI_SSID; // Always corp
-    settings.autoMarkEnabled = document.getElementById('autoMarkEnabled').checked;
-    const offDayEl = document.getElementById('allowOffDayMark');
-    if (offDayEl) settings.allowOffDayMark = offDayEl.checked;
-    delete settings.allowWeekendMark;   // superseded; don't leave a stale key around
-    const autoEditEl = document.getElementById('allowAutoMarkEdit');
-    if (autoEditEl) settings.allowAutoMarkEdit = autoEditEl.checked;
+    delete settings.allowWeekendMark;     // superseded; don't leave a stale key around
+    if (changedEl && SETTING_FIELDS[changedEl.id]) {
+        settings[SETTING_FIELDS[changedEl.id]] = changedEl.checked;
+    } else {
+        for (const id of Object.keys(SETTING_FIELDS)) {
+            const el = document.getElementById(id);
+            if (el) settings[SETTING_FIELDS[id]] = el.checked;
+        }
+    }
     localStorage.setItem('oatSettings', JSON.stringify(settings));
+    syncSettingsCheckboxes();   // show the merged result, incl. other tabs' changes
     renderCalendars();
     updateSetupStatus();
     if (quiet) {
@@ -659,6 +680,7 @@ function wipeOATBrowserData() {
     localStorage.removeItem('autoMarkLog');
     localStorage.removeItem('oatOnboarded');
     localStorage.removeItem('oatScriptActive');
+    localStorage.removeItem('oatWifiConfirmedDate');
     localStorage.removeItem('oatScriptVersion');
     localStorage.removeItem('oatTheme');
     localStorage.removeItem('oatUserName');
@@ -1736,21 +1758,43 @@ document.addEventListener('keydown', function(e) {
 // so the user isn't clicking on a stale calendar. (Correctness on write does
 // not depend on this — reloadState() already handles that — it's what makes
 // the screen match.)
+function stateSignature() {
+    return JSON.stringify([checkedDays, autoMarkedDays, leaveDays, autoMarkLog, settings]);
+}
+
+// Re-read everything shared and repaint, but only when something actually
+// changed — so a tab coming back into view doesn't flicker or redo work.
+function refreshFromStorage() {
+    const before = stateSignature();
+    reloadState();
+    settings = readJSON('oatSettings', Object.assign({}, DEFAULT_SETTINGS));
+    settings.wifiSSID = OFFICE_WIFI_SSID;
+    if (stateSignature() === before) return false;
+    syncSettingsCheckboxes();
+    renderCalendars();
+    const lo = document.getElementById('leaveOverlay');
+    if (lo && lo.style.display === 'flex') renderLeaveCalendar();
+    updateSetupStatus();
+    return true;
+}
+
 window.addEventListener('storage', function (e) {
     const watched = [qKey('officeDays'), qKey('autoMarkedDays'), qKey('leaveDays'),
                      'autoMarkLog', 'oatSettings'];
     // e.key is null when another tab called localStorage.clear()
     if (e.key !== null && watched.indexOf(e.key) === -1) return;
-    reloadState();
-    if (e.key === null || e.key === 'oatSettings') {
-        settings = readJSON('oatSettings', Object.assign({}, DEFAULT_SETTINGS));
-        settings.wifiSSID = OFFICE_WIFI_SSID;
-        syncSettingsCheckboxes();
-    }
-    renderCalendars();
-    const lo = document.getElementById('leaveOverlay');
-    if (lo && lo.style.display === 'flex') renderLeaveCalendar();
-    updateSetupStatus();
+    refreshFromStorage();
+});
+
+// A tab can miss storage events entirely: Chrome freezes background tabs, and a
+// page restored with Back/Forward comes out of the back-forward cache without
+// replaying them. Writes were already safe (reloadState), but the calendar could
+// show stale data. Re-sync whenever the page becomes visible or is restored.
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') refreshFromStorage();
+});
+window.addEventListener('pageshow', function (e) {
+    if (e.persisted) refreshFromStorage();
 });
 
 // Initialize on DOM ready
@@ -1805,6 +1849,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (urlParams.get('automark') === 'true') {
         // Record that the background script is working
         localStorage.setItem('oatScriptActive', new Date().toISOString());
+        // Record WiFi confirmation separately from "the script ran". Mark Today
+        // uses it to decide whether a manual press counts as WiFi verified. An
+        // overnight off-day run — which autoMarkToday refuses as a laptop left
+        // docked — must not count, or a press from home later that day was
+        // recorded as verified and locked against editing.
+        if (!isOvernightOffDay()) localStorage.setItem('oatWifiConfirmedDate', getTodayStr());
         // Save script version so update card doesn't show after a successful run
         const sv = urlParams.get('scriptver');
         localStorage.setItem('oatScriptVersion', sv || 'legacy');

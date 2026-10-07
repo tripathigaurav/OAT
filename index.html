@@ -360,13 +360,13 @@
         </div>
         <div class="settings-group">
             <label class="settings-toggle">
-                <input type="checkbox" id="autoMarkEnabled" onchange="saveSettings(true)" />
+                <input type="checkbox" id="autoMarkEnabled" onchange="saveSettings(true, this)" />
                 <span class="settings-toggle-text">Enable Auto-Mark on WiFi Connect</span>
             </label>
         </div>
         <div class="settings-group">
             <label class="settings-toggle">
-                <input type="checkbox" id="allowOffDayMark" onchange="saveSettings(true)" />
+                <input type="checkbox" id="allowOffDayMark" onchange="saveSettings(true, this)" />
                 <span class="settings-toggle-text">Allow marking attendance on weekends &amp; holidays
                     <span class="settings-toggle-hint">On by default, so a visit on a Saturday or a holiday is never missed — it's auto-marked on office WiFi and you can tick past ones on the calendar. Turn off to block weekends and holidays entirely.</span>
                 </span>
@@ -374,7 +374,7 @@
         </div>
         <div class="settings-group">
             <label class="settings-toggle">
-                <input type="checkbox" id="allowAutoMarkEdit" onchange="saveSettings(true)" />
+                <input type="checkbox" id="allowAutoMarkEdit" onchange="saveSettings(true, this)" />
                 <span class="settings-toggle-text">Allow editing auto-marked days
                     <span class="settings-toggle-hint">Off by default — enable to unmark a past day the WiFi check got wrong. Re-marking counts as manual.</span>
                 </span>
