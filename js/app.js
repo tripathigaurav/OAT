@@ -1,6 +1,13 @@
 // Configuration
 const REQUIRED_SCRIPT_VERSION = '2.5'; // Latest shipped script version
 
+// Quarter we've already fired confetti for (per session). MUST stay declared:
+// renderCalendars() reads it once the total reaches the target, and when this
+// line went missing (lost in 7fe17ba) the read threw — aborting page start-up
+// before the ?automark=true handler ran, so WiFi auto-marking silently stopped
+// for everyone who had already hit their target.
+let _celebratedQuarter = null;
+
 // Compare dotted version strings. Non-numeric parts (e.g. the 'legacy'
 // sentinel) count as 0, so they sort older than any real version.
 function cmpVersion(a, b) {
@@ -194,14 +201,18 @@ function qKey(base) { return `${base}_${currentQKey}`; }
 })();
 
 // State
-let checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || '{}');
-let autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
-let leaveDays      = JSON.parse(localStorage.getItem(qKey('leaveDays'))     || '{}');
+// Start-up reads go through readJSON() (defined below; function declarations
+// hoist). A raw JSON.parse here threw on any corrupt stored value and killed
+// start-up outright — the same symptom as a missing variable: the page loads,
+// the ?automark=true handler never runs, nothing is marked.
+let checkedDays    = readJSON(qKey('officeDays'), {});
+let autoMarkedDays = readJSON(qKey('autoMarkedDays'), {});
+let leaveDays      = readJSON(qKey('leaveDays'), {});
 const OFFICE_WIFI_SSID = 'corp'; // Fixed — NetApp office WiFi
 const DEFAULT_SETTINGS = { autoMarkEnabled: true, allowOffDayMark: true };
-let settings = JSON.parse(localStorage.getItem('oatSettings') || JSON.stringify(DEFAULT_SETTINGS));
+let settings = readJSON('oatSettings', Object.assign({}, DEFAULT_SETTINGS));
 settings.wifiSSID = OFFICE_WIFI_SSID; // Always enforce corp, regardless of saved value
-let autoMarkLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
+let autoMarkLog = readJSON('autoMarkLog', []);
 
 // ── Multi-tab safety ──────────────────────────────────────────────
 // Every tab keeps its own in-memory copy of this state and writes the WHOLE
@@ -218,8 +229,18 @@ let autoMarkLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
 function readJSON(key, fallback) {
     try {
         const v = localStorage.getItem(key);
-        return v ? JSON.parse(v) : fallback;
+        if (!v) return fallback;
+        const parsed = JSON.parse(v);
+        // Valid JSON of the wrong shape is as fatal as invalid JSON: a stored
+        // null breaks `settings.wifiSSID`, an object breaks autoMarkLog.unshift.
+        if (parsed === null || typeof parsed !== 'object' ||
+            Array.isArray(parsed) !== Array.isArray(fallback)) {
+            console.warn('OAT: stored value for "' + key + '" has the wrong shape; using an empty default.');
+            return fallback;
+        }
+        return parsed;
     } catch (e) {
+        console.warn('OAT: stored value for "' + key + '" is unreadable; using an empty default.', e);
         return fallback;
     }
 }
@@ -298,9 +319,7 @@ function switchQuarter(key) {
     if (!QUARTERS[key]) return;
     currentQKey = key;
     localStorage.setItem('oatCurrentQuarter', key);
-    checkedDays    = JSON.parse(localStorage.getItem(qKey('officeDays'))     || '{}');
-    autoMarkedDays = JSON.parse(localStorage.getItem(qKey('autoMarkedDays')) || '{}');
-    leaveDays      = JSON.parse(localStorage.getItem(qKey('leaveDays'))     || '{}');
+    reloadState();
     updateQuarterBadge();
     closeQuarterDropdown();
     renderCalendars();
@@ -1912,8 +1931,8 @@ function reportIssue() {
     logLines.push('');
 
     // ── Office days — full date list ──────────────────────────────
-    const officeDays  = JSON.parse(localStorage.getItem(`officeDays_${currentQKey}`)     || '{}');
-    const autoMarked  = JSON.parse(localStorage.getItem(`autoMarkedDays_${currentQKey}`) || '{}');
+    const officeDays  = readJSON(`officeDays_${currentQKey}`, {});
+    const autoMarked  = readJSON(`autoMarkedDays_${currentQKey}`, {});
     const officeDates = Object.keys(officeDays).sort();
     logLines.push(`--- Office Days (${currentQKey}) — ${officeDates.length} days ---`);
     logLines.push(`All dates   : ${officeDates.join(', ') || '(none)'}`);
@@ -1924,14 +1943,14 @@ function reportIssue() {
     logLines.push('');
 
     // ── Leave days ────────────────────────────────────────────────
-    const leaveDays = JSON.parse(localStorage.getItem(`leaveDays_${currentQKey}`) || '{}');
+    const leaveDays = readJSON(`leaveDays_${currentQKey}`, {});
     const leaveDateList = Object.keys(leaveDays).sort();
     logLines.push(`--- Leave Days (${currentQKey}) — ${leaveDateList.length} days ---`);
     logLines.push(leaveDateList.join(', ') || '(none)');
     logLines.push('');
 
     // ── Full auto mark log ────────────────────────────────────────
-    const markLog = JSON.parse(localStorage.getItem('autoMarkLog') || '[]');
+    const markLog = readJSON('autoMarkLog', []);
     logLines.push(`--- Auto Mark Log (all ${markLog.length} entries) ---`);
     if (markLog.length === 0) {
         logLines.push('(empty)');
@@ -1962,9 +1981,9 @@ function reportIssue() {
     // ── All quarters summary ──────────────────────────────────────
     logLines.push('--- All Quarters Summary ---');
     for (const qk of Object.keys(QUARTERS)) {
-        const od = JSON.parse(localStorage.getItem(`officeDays_${qk}`) || '{}');
-        const am = JSON.parse(localStorage.getItem(`autoMarkedDays_${qk}`) || '{}');
-        const ld = JSON.parse(localStorage.getItem(`leaveDays_${qk}`) || '{}');
+        const od = readJSON(`officeDays_${qk}`, {});
+        const am = readJSON(`autoMarkedDays_${qk}`, {});
+        const ld = readJSON(`leaveDays_${qk}`, {});
         logLines.push(`${qk}: office=${Object.keys(od).length}, auto=${Object.keys(am).filter(d => am[d]).length}, leave=${Object.keys(ld).length}`);
     }
     logLines.push(`Stored quarter key: ${localStorage.getItem('oatCurrentQuarter') || 'none (auto)'}`);
