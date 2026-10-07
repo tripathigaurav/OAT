@@ -3955,3 +3955,75 @@ body.light-mode .chat-choice-btn--issue:hover { background: rgba(247,140,108,0.0
 body.light-mode .chat-choice-btn--chat:hover  { background: rgba(99,102,241,0.07); }
 body.light-mode .chat-choice-btn-label { color: #1e293b; }
 body.light-mode .chat-choice-btn-desc  { color: #64748b; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Layout fixes from the UI audit (measured at 1440, 1280, 1024, 768
+   and 390 px wide). Kept together so they can be reviewed as one unit.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Horizontal space the fixed button rail occupies: its 20px offset from
+   the edge + ~80px for the widest label ("OFFICE DATA") + a 12px gap.
+   Measured rail: 73px wide, left edge at viewport-width minus 93px. */
+:root { --oat-rail-space: 112px; }
+
+/* 1. Settings and Info panels sat partly UNDER the rail — Settings by 67px
+      at every screen size, hiding 5–27 items including the Done button,
+      Diagnose and the Windows tab (and clicks on their right-hand ends hit
+      a rail button). Anchor both just left of the rail, and never wider
+      than the space that leaves. */
+.settings-panel {
+    right: var(--oat-rail-space);
+    width: min(380px, calc(100vw - var(--oat-rail-space) - 16px));
+}
+.info-mini-panel {
+    right: var(--oat-rail-space);
+    width: min(300px, calc(100vw - var(--oat-rail-space) - 16px));
+}
+
+/* 2. The month strip used justify-content:center with overflow-x:auto. When
+      the three 330px cards don't fit, centred content overflows to the LEFT
+      too, and that part can never be scrolled into view — August lost 26px
+      at 1024px wide, 154px at 768, 340px on a phone. Auto margins centre
+      when there is room and collapse to zero when there isn't, so the strip
+      always starts at August. (Not `justify-content: safe center`: older
+      Safari ignores it.) */
+.calendars { justify-content: flex-start; }
+.calendars > :first-child { margin-left: auto; }
+.calendars > :last-child  { margin-right: auto; }
+/* …and a card may shrink on a screen narrower than itself */
+.month-card { max-width: 100%; }
+
+/* 3. Between ~1024 and ~1215px wide, October's weekend columns (and on
+      narrower screens other content) sat under the fixed rail, so clicking
+      those days hit a rail button. Reserve the rail's width wherever content
+      could otherwise reach it. Above 1260px the centred content never does. */
+@media (max-width: 1260px) {
+    body { padding-right: var(--oat-rail-space); }
+}
+
+/* 4. Phones. The header's left spacer and right block each had
+      min-width:160px — 320px fixed before the title got any — which pushed
+      the header to 478px. A 390px phone then laid the whole page out at 498px
+      and zoomed it out to ~78%, and the title wrapped to three lines. Drop
+      the spacer and put the status badge under the title instead. */
+@media (max-width: 700px) {
+    .oat-header-inner { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
+    .oat-header-left-spacer { display: none; }
+    .oat-header-right { min-width: 0; width: 100%; justify-content: center; order: 2; }
+    /* compact rail: labels may wrap to two lines, so it is narrower */
+    :root { --oat-rail-space: 76px; }
+    .fab-dot { width: 40px; height: 40px; font-size: 1.1rem; }
+    .fab-label { max-width: 52px; white-space: normal; text-align: center; line-height: 1.15; }
+}
+
+/* 5. Click targets that were too small to hit reliably: the ✏️ edit-name
+      button was 14×18px, Check Log / Clear Log were 18px tall. */
+.edit-name-btn {
+    padding: 4px 6px;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.check-log-btn, .clear-log-btn { padding: 5px 8px; }
