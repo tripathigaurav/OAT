@@ -83,6 +83,7 @@ const QUARTERS = {
             { date: '2026-12-29', name: 'Global Shutdown' },
             { date: '2026-12-30', name: 'Global Shutdown' },
             { date: '2026-12-31', name: 'Global Shutdown' },
+            { date: '2027-01-26', name: 'Republic Day' },
         ]
     },
     Q4: {
