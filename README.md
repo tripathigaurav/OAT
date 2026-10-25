@@ -79,7 +79,9 @@ This prevents false positives from:
 - **VPN from home** — NetApp DNS is pushed via VPN but SSID stays as home WiFi → ❌ blocked
 - **Home WiFi renamed `corp`** — SSID matches but no NetApp DNS → ❌ blocked
 
-If WiFi SSID is undetectable (wired ethernet), DNS alone is used as fallback.
+If WiFi SSID is undetectable (wired ethernet, or Location access off on Windows 11 24H2+), only a DHCP-assigned `wlan.netapp.com` suffix on an adapter that is **connected right now** counts. VPN/virtual adapters, disconnected adapters and the policy-pushed DNS search list are ignored for this fallback (Windows v2.6).
+
+Detection tests (mocked networking, safe to run anywhere with PowerShell): `pwsh tests/test-detection.ps1`
 
 ---
 
@@ -141,7 +143,7 @@ OAT/
 | `running scripts is disabled on this system` | Prefix the command with `powershell -ExecutionPolicy Bypass -File ...` |
 | Scheduled Task didn't install → manual mode shown | Normal on some corporate machines. Use **📡 Mark Today** in the app, or mark days on the calendar |
 | Task installed but nothing ever marks | Check the task's path matches where the script actually is:<br>`(Get-ScheduledTask -TaskName OAT-WiFiAttendance).Actions \| Format-List`<br>then `dir "$env:LOCALAPPDATA\OAT"`. Caused by the old `install-win.bat`, now removed — re-run the PowerShell installer |
-| Attendance marked while working from home | Re-run installer — VPN fix requires both SSID `corp` + NetApp DNS to match |
+| Attendance marked while working from home | Re-run installer (Windows v2.6, Oct 2026). v2.5 could mark from home when the SSID was unreadable (e.g. Location off) and `wlan.netapp.com` was only in the DNS search list, on a VPN adapter, or left over on an unplugged dock adapter |
 | LaunchAgent blocked on Mac | Scripts must be in `~/.oat/`, not Desktop (OneDrive/iCloud blocks execution) |
 | OAT site didn't open on WiFi connect (Windows) | Re-run installer — previous versions had a task XML encoding bug (fixed in May 2026) |
 
