@@ -4028,3 +4028,33 @@ body.light-mode .chat-choice-btn-desc  { color: #64748b; }
     justify-content: center;
 }
 .check-log-btn, .clear-log-btn { padding: 5px 8px; }
+
+/* ── Leave modal: one Confirm instead of Add/Remove ── */
+.leave-day--removing {
+    background: rgba(255,99,99,0.08);
+    border: 1.5px dashed rgba(255,99,99,0.6);
+    color: #ff6363;
+    text-decoration: line-through;
+    font-weight: 700;
+}
+body.light-mode .leave-day--removing {
+    background: rgba(225,29,72,0.05);
+    border-color: rgba(225,29,72,0.5);
+    color: #e11d48;
+}
+.leave-legend-dot--removing { background: rgba(255,99,99,0.12); border: 1.5px dashed rgba(255,99,99,0.7); }
+body.light-mode .leave-legend-dot--removing { background: rgba(225,29,72,0.06); border-color: rgba(225,29,72,0.5); }
+.leave-action-btn.reset {
+    background: transparent;
+    border-color: rgba(200,214,229,0.25);
+    color: rgba(200,214,229,0.75);
+}
+.leave-action-btn.reset:hover { border-color: rgba(200,214,229,0.5); color: #c8d6e5; }
+body.light-mode .leave-action-btn.reset { border-color: rgba(100,116,139,0.3); color: #475569; }
+.leave-action-btn:disabled,
+.leave-action-btn:disabled:hover {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}

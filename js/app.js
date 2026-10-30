@@ -1510,23 +1510,38 @@ function dismissNewFeature() {
 }
 
 // ── Leave / PTO Manager ──────────────────────────────────────────
-let _leaveSelection = new Set();
+// Clicking a date flips it in a draft (available <-> leave); nothing is saved
+// until Confirm. The draft is kept as changes against the saved leave, so a
+// re-render after another tab writes keeps the user's pending clicks.
+// (Was: select dates, then pick Add Leave or Remove — two buttons for what is
+// really one toggle.)
+let _leaveAdd = new Set();      // not on leave now, will be after Confirm
+let _leaveRemove = new Set();   // on leave now, will not be after Confirm
 let _leaveShiftAnchor = null;
+
+function leaveDraftCount() { return _leaveAdd.size + _leaveRemove.size; }
+
+function clearLeaveDraft() {
+    _leaveAdd.clear();
+    _leaveRemove.clear();
+    _leaveShiftAnchor = null;
+}
 
 function toggleLeavePanel() {
     const overlay = document.getElementById('leaveOverlay');
     const infoPanel = document.getElementById('infoMiniPanel');
     const settingsPanel = document.getElementById('settingsPanel');
-    if (infoPanel) infoPanel.style.display = 'none';
-    if (settingsPanel) settingsPanel.style.display = 'none';
 
     const isOpen = overlay.style.display === 'flex';
-    overlay.style.display = isOpen ? 'none' : 'flex';
-    if (!isOpen) {
-        _leaveSelection.clear();
-        _leaveShiftAnchor = null;
-        renderLeaveCalendar();
+    if (isOpen && leaveDraftCount() > 0) {
+        const n = leaveDraftCount();
+        if (!confirm(`Discard ${n} unsaved leave change${n > 1 ? 's' : ''}?`)) return;
     }
+    if (infoPanel) infoPanel.style.display = 'none';
+    if (settingsPanel) settingsPanel.style.display = 'none';
+    overlay.style.display = isOpen ? 'none' : 'flex';
+    clearLeaveDraft();
+    if (!isOpen) renderLeaveCalendar();
 }
 
 function renderLeaveCalendar() {
@@ -1535,6 +1550,11 @@ function renderLeaveCalendar() {
     container.innerHTML = '';
 
     document.getElementById('leaveQuarterLabel').textContent = q.display;
+
+    // Drop draft entries another tab has made moot (leave already added or
+    // removed there, or the day became an office day).
+    _leaveAdd.forEach(d => { if (leaveDays[d] || checkedDays[d]) _leaveAdd.delete(d); });
+    _leaveRemove.forEach(d => { if (!leaveDays[d]) _leaveRemove.delete(d); });
 
     const months = getMonthsForQuarter(q);
     months.forEach(m => {
@@ -1559,7 +1579,8 @@ function renderLeaveCalendar() {
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const hasLeave = leaveDays[dateStr];
             const hasOffice = checkedDays[dateStr];
-            const isSelected = _leaveSelection.has(dateStr);
+            const isAdding = _leaveAdd.has(dateStr);
+            const isRemoving = _leaveRemove.has(dateStr);
 
             let cls = 'leave-day';
             let clickable = true;
@@ -1580,12 +1601,18 @@ function renderLeaveCalendar() {
                 cls += ' leave-day--has-office';
                 clickable = false;
                 tooltip = autoMarkedDays[dateStr] ? 'Office (WiFi verified)' : 'Office day';
+            } else if (isRemoving) {
+                cls += ' leave-day--removing';
+                tooltip = 'Leave will be removed on Confirm (click to keep)';
             } else if (hasLeave) {
                 cls += ' leave-day--has-leave';
-                tooltip = 'On leave';
+                tooltip = 'On leave (click to remove)';
+            } else if (isAdding) {
+                cls += ' leave-day--selected';
+                tooltip = 'Leave will be added on Confirm (click to undo)';
+            } else {
+                tooltip = 'Click to add leave';
             }
-
-            if (isSelected) cls += ' leave-day--selected';
 
             const onClick = clickable
                 ? `onclick="toggleLeaveDate('${dateStr}', event)"`
@@ -1609,28 +1636,37 @@ function renderLeaveCalendar() {
     updateLeaveSummary();
 }
 
+// Will this date be on leave once the draft is confirmed?
+function leaveInDraft(dateStr) {
+    return leaveDays[dateStr] ? !_leaveRemove.has(dateStr) : _leaveAdd.has(dateStr);
+}
+
+function setLeaveDraft(dateStr, on) {
+    if (checkedDays[dateStr]) return;   // office days can't be leave
+    _leaveAdd.delete(dateStr);
+    _leaveRemove.delete(dateStr);
+    if (on && !leaveDays[dateStr]) _leaveAdd.add(dateStr);
+    if (!on && leaveDays[dateStr]) _leaveRemove.add(dateStr);
+}
+
 function toggleLeaveDate(dateStr, event) {
-    if (event && event.shiftKey && _leaveShiftAnchor) {
+    // Shift-click: every date from the last click to this one takes the state
+    // the last click set (so a range can add leave or clear it).
+    if (event && event.shiftKey && _leaveShiftAnchor && _leaveShiftAnchor !== dateStr) {
         const allDates = getSelectableLeaveDates();
         const anchorIdx = allDates.indexOf(_leaveShiftAnchor);
         const targetIdx = allDates.indexOf(dateStr);
         if (anchorIdx !== -1 && targetIdx !== -1) {
+            const on = leaveInDraft(_leaveShiftAnchor);
             const [from, to] = anchorIdx < targetIdx ? [anchorIdx, targetIdx] : [targetIdx, anchorIdx];
-            for (let i = from; i <= to; i++) {
-                _leaveSelection.add(allDates[i]);
-            }
+            for (let i = from; i <= to; i++) setLeaveDraft(allDates[i], on);
             renderLeaveCalendar();
             return;
         }
     }
 
     _leaveShiftAnchor = dateStr;
-
-    if (_leaveSelection.has(dateStr)) {
-        _leaveSelection.delete(dateStr);
-    } else {
-        _leaveSelection.add(dateStr);
-    }
+    setLeaveDraft(dateStr, !leaveInDraft(dateStr));
     renderLeaveCalendar();
 }
 
@@ -1652,9 +1688,18 @@ function getSelectableLeaveDates() {
 }
 
 function updateLeaveSelectionBar() {
-    const count = _leaveSelection.size;
+    const a = _leaveAdd.size, r = _leaveRemove.size;
     const el = document.getElementById('leaveSelectionCount');
-    if (el) el.textContent = count === 0 ? 'No dates selected' : `${count} date${count > 1 ? 's' : ''} selected`;
+    if (el) {
+        const parts = [];
+        if (a) parts.push(`+${a} leave to add`);
+        if (r) parts.push(`−${r} to remove`);
+        el.textContent = parts.length ? parts.join(' · ') : 'No changes';
+    }
+    const confirmBtn = document.getElementById('leaveConfirmBtn');
+    const resetBtn = document.getElementById('leaveResetBtn');
+    if (confirmBtn) confirmBtn.disabled = (a + r) === 0;
+    if (resetBtn) resetBtn.style.display = (a + r) === 0 ? 'none' : '';
 }
 
 function updateLeaveSummary() {
@@ -1677,54 +1722,33 @@ function saveLeaveDays() {
     localStorage.setItem(qKey('leaveDays'), JSON.stringify(leaveDays));
 }
 
-function addSelectedLeaves() {
+function confirmLeaveChanges() {
     reloadState();   // another tab may have written since this one loaded
-    if (_leaveSelection.size === 0) {
-        showNotification('Select dates first, then click Add Leave.', 'info');
+    let added = 0, removed = 0;
+    _leaveAdd.forEach(d => {
+        if (!checkedDays[d] && !leaveDays[d]) { leaveDays[d] = true; added++; }
+    });
+    _leaveRemove.forEach(d => {
+        if (leaveDays[d]) { delete leaveDays[d]; removed++; }
+    });
+    clearLeaveDraft();
+    if (added + removed === 0) {
+        renderLeaveCalendar();
+        showNotification('No leave changes to save.', 'info');
         return;
     }
-    let added = 0;
-    _leaveSelection.forEach(dateStr => {
-        if (!checkedDays[dateStr] && !leaveDays[dateStr]) {
-            leaveDays[dateStr] = true;
-            added++;
-        }
-    });
     saveLeaveDays();
-    _leaveSelection.clear();
-    _leaveShiftAnchor = null;
-    renderLeaveCalendar();
     renderCalendars();
-    if (added > 0) {
-        showNotification(`🌴 Added ${added} leave day${added > 1 ? 's' : ''}!`, 'success');
-    } else {
-        showNotification('No new leave days to add (already marked or office days).', 'info');
-    }
+    document.getElementById('leaveOverlay').style.display = 'none';
+    const parts = [];
+    if (added) parts.push(`${added} added`);
+    if (removed) parts.push(`${removed} removed`);
+    showNotification(`🌴 Leave saved: ${parts.join(', ')}.`, 'success');
 }
 
-function removeSelectedLeaves() {
-    reloadState();   // another tab may have written since this one loaded
-    if (_leaveSelection.size === 0) {
-        showNotification('Select dates first, then click Remove Leave.', 'info');
-        return;
-    }
-    let removed = 0;
-    _leaveSelection.forEach(dateStr => {
-        if (leaveDays[dateStr]) {
-            delete leaveDays[dateStr];
-            removed++;
-        }
-    });
-    saveLeaveDays();
-    _leaveSelection.clear();
-    _leaveShiftAnchor = null;
+function resetLeaveChanges() {
+    clearLeaveDraft();
     renderLeaveCalendar();
-    renderCalendars();
-    if (removed > 0) {
-        showNotification(`Removed ${removed} leave day${removed > 1 ? 's' : ''}.`, 'success');
-    } else {
-        showNotification('None of the selected dates had leave to remove.', 'info');
-    }
 }
 
 // Close leave panel on overlay click

@@ -477,20 +477,21 @@
             <div class="leave-modal-body">
                 <div class="leave-legend">
                     <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--available"></span>Available</span>
-                    <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--selected"></span>Selected</span>
                     <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--leave"></span>On Leave</span>
+                    <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--selected"></span>Adding</span>
+                    <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--removing"></span>Removing</span>
                     <span class="leave-legend-item"><span class="leave-legend-dot leave-legend-dot--office"></span>Office Day</span>
                 </div>
-                <p class="leave-hint">Click dates to select &middot; Shift-click for range selection</p>
+                <p class="leave-hint">Click a date to add or remove leave &middot; Shift-click for a range &middot; Confirm to save</p>
                 <div class="leave-months" id="leaveMonths"></div>
                 <div class="leave-selection-bar" id="leaveSelectionBar">
-                    <span class="leave-selection-count" id="leaveSelectionCount">0 selected</span>
+                    <span class="leave-selection-count" id="leaveSelectionCount">No changes</span>
                     <div class="leave-action-btns">
-                        <button class="leave-action-btn add" onclick="addSelectedLeaves()">
-                            <span class="leave-btn-icon">＋</span> Add Leave
+                        <button class="leave-action-btn reset" id="leaveResetBtn" onclick="resetLeaveChanges()" style="display:none">
+                            Reset
                         </button>
-                        <button class="leave-action-btn remove" onclick="removeSelectedLeaves()">
-                            <span class="leave-btn-icon">−</span> Remove
+                        <button class="leave-action-btn add" id="leaveConfirmBtn" onclick="confirmLeaveChanges()" disabled>
+                            <span class="leave-btn-icon">✓</span> Confirm
                         </button>
                     </div>
                 </div>
