@@ -1114,6 +1114,14 @@ function renderCalendars() {
         const leaveHTML = monthLeaveDays > 0
             ? `<div class="summary-leaves">🌴 Leaves: <strong>${monthLeaveDays}</strong></div>`
             : '';
+        // Leaves are counted on top of Working Days (they are weekdays, not
+        // subtracted from it), so once someone books leave the headline number
+        // overstates what they can actually attend. Show what is left in
+        // brackets; hidden when there is no leave so the line stays unchanged.
+        const availDays = Math.max(0, monthWorkDays - monthLeaveDays - monthOfficeDays);
+        const availHTML = monthLeaveDays > 0
+            ? ` <span class="summary-avail" title="Working days minus your leave and the office days you've already done: what's still possible this month">(<strong>${availDays}</strong> pending)</span>`
+            : '';
         card.innerHTML = `
             <div class="month-title">${m.name}</div>
             <div class="day-headers">
@@ -1125,7 +1133,7 @@ function renderCalendars() {
                 ${daysHTML}
             </div>
             <div class="month-summary">
-                <div>📊 Working Days: <strong class="summary-workdays">${monthWorkDays}</strong></div>
+                <div>📊 Working Days: <strong class="summary-workdays">${monthWorkDays}</strong>${availHTML}</div>
                 <div class="summary-office">✅ Office: <strong>${monthOfficeDays}</strong></div>
                 ${leaveHTML}
                 <div class="${monthHolidays > 0 ? 'summary-holidays' : 'summary-holidays summary-holidays--none'}">🎉 Holidays: <strong>${monthHolidays > 0 ? monthHolidays : '—'}</strong></div>
