@@ -966,6 +966,8 @@ function renderCalendars() {
         let monthOfficeDays = 0;
         let monthHolidays = 0;
         let monthLeaveDays = 0;
+        let monthPendingDays = 0;   // weekdays from today on, not yet marked, not on leave
+        let monthDaysAhead = 0;     // weekdays from today on (0 = month is over)
 
         let daysHTML = '';
 
@@ -1023,6 +1025,10 @@ function renderCalendars() {
                 }
                 monthWorkDays++;
                 totalWorkDays++;
+                if (date >= today) {
+                    monthDaysAhead++;
+                    if (!checked && !onLeave) monthPendingDays++;
+                }
                 if (checked) {
                     if (autoMarkedDays[dateStr]) {
                         cellClass += ' auto-checked';
@@ -1118,9 +1124,12 @@ function renderCalendars() {
         // subtracted from it), so once someone books leave the headline number
         // overstates what they can actually attend. Show what is left in
         // brackets; hidden when there is no leave so the line stays unchanged.
-        const availDays = Math.max(0, monthWorkDays - monthLeaveDays - monthOfficeDays);
-        const availHTML = monthLeaveDays > 0
-            ? ` <span class="summary-avail" title="Working days minus your leave and the office days you've already done: what's still possible this month">(<strong>${availDays}</strong> pending)</span>`
+        // Counted per day (today onward, not marked, not on leave) rather than
+        // by subtraction: weekend/holiday office days are not Working Days, and
+        // past days that were missed can no longer be attended. Hidden once
+        // the month is over.
+        const availHTML = (monthLeaveDays > 0 && monthDaysAhead > 0)
+            ? ` <span class="summary-avail" title="Weekdays from today to month end that are not on leave and not yet marked: what's still possible this month">(<strong>${monthPendingDays}</strong> pending)</span>`
             : '';
         card.innerHTML = `
             <div class="month-title">${m.name}</div>
