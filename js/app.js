@@ -1539,6 +1539,7 @@ function toggleLeavePanel() {
     }
     if (infoPanel) infoPanel.style.display = 'none';
     if (settingsPanel) settingsPanel.style.display = 'none';
+    if (!isOpen) checkDayRollover();   // never open on a quarter that has ended
     overlay.style.display = isOpen ? 'none' : 'flex';
     clearLeaveDraft();
     if (!isOpen) renderLeaveCalendar();
@@ -1804,9 +1805,37 @@ function stateSignature() {
     return JSON.stringify([checkedDays, autoMarkedDays, leaveDays, autoMarkLog, settings]);
 }
 
+// A tab left open across midnight kept its old day — and across a quarter
+// boundary its old quarter: on Mon 2 Nov a tab opened on Fri 30 Oct still
+// showed Q2, so the leave manager offered Aug–Oct and "next Monday" (9 Nov)
+// could not be picked. On a new day, do what a fresh load does: land on the
+// quarter containing today if the shown one no longer does, and repaint so
+// today/"days left" move on. Same-day peeks at another quarter are left alone.
+let _rolloverDay = null;   // set on first check (page load)
+function checkDayRollover() {
+    const today = getTodayStr();
+    if (_rolloverDay === null) { _rolloverDay = today; return false; }
+    if (today === _rolloverDay) return false;
+    _rolloverDay = today;
+    const t = todayMid(), q = getQ();
+    if (t < q.start || t > q.end) {
+        const detected = autoDetectQuarter();
+        if (detected !== currentQKey) {
+            if (typeof clearLeaveDraft === 'function') clearLeaveDraft();   // drafts belong to the old quarter
+            switchQuarter(detected);
+        }
+    }
+    renderCalendars();
+    const lo = document.getElementById('leaveOverlay');
+    if (lo && lo.style.display === 'flex') renderLeaveCalendar();
+    return true;
+}
+setInterval(checkDayRollover, 60 * 1000);   // a tab left visible overnight
+
 // Re-read everything shared and repaint, but only when something actually
 // changed — so a tab coming back into view doesn't flicker or redo work.
 function refreshFromStorage() {
+    checkDayRollover();
     const before = stateSignature();
     reloadState();
     settings = readJSON('oatSettings', Object.assign({}, DEFAULT_SETTINGS));
@@ -1841,6 +1870,7 @@ window.addEventListener('pageshow', function (e) {
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    checkDayRollover();   // records today as the day this page was loaded
     initTheme();
     renderStaticFacts();
     updateQuarterBadge();
