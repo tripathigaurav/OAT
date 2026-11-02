@@ -4058,3 +4058,18 @@ body.light-mode .leave-action-btn.reset { border-color: rgba(100,116,139,0.3); c
     transform: none;
     box-shadow: none;
 }
+
+/* Issue report: copy full logs again */
+.chat-choice-copy-again {
+    align-self: center;
+    margin-top: 4px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(195,232,141,0.35);
+    background: transparent;
+    color: #c3e88d;
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+.chat-choice-copy-again:hover { background: rgba(195,232,141,0.12); }
+body.light-mode .chat-choice-copy-again { color: #047857; border-color: rgba(5,150,105,0.35); }

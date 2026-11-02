@@ -1,5 +1,8 @@
 // Configuration
 const REQUIRED_SCRIPT_VERSION = '2.5'; // Latest shipped script version
+// When this page was loaded. Goes into issue reports: a tab left open for
+// days explains a whole class of "it shows the wrong thing" reports.
+const PAGE_OPENED_AT = new Date();
 
 // Quarter we've already fired confetti for (per session). MUST stay declared:
 // renderCalendars() reads it once the total reaches the target, and when this
@@ -2040,6 +2043,7 @@ function reportIssue() {
     logLines.push(`Date/Time   : ${today.toISOString()}`);
     logLines.push(`Browser     : ${navigator.userAgent}`);
     logLines.push(`Platform    : ${navigator.platform || 'unknown'}`);
+    logLines.push(`Page opened : ${PAGE_OPENED_AT.toLocaleString()} (this tab)`);
     logLines.push(`Quarter     : ${currentQKey} (${q.display})`);
     logLines.push(`User        : ${localStorage.getItem('oatUserName') || 'Not set'}`);
     logLines.push(`Script      : active=${localStorage.getItem('oatScriptActive') ? 'true' : 'false'}`
@@ -2111,30 +2115,88 @@ function reportIssue() {
     logLines.push(`Stored quarter key: ${localStorage.getItem('oatCurrentQuarter') || 'none (auto)'}`);
 
     const report = logLines.join('\n');
+    _lastIssueReport = report;
 
-    const showNote = () => {
+    // The full report only ever went to the clipboard, and the Teams message
+    // just said "paste logs below" — reports kept arriving without logs
+    // because nobody pressed paste. A short summary now goes INTO the message
+    // itself, so the essentials arrive even if the paste never happens.
+    const summary = buildIssueSummary({ officeDates, autoDateList, leaveDateList, markLog });
+
+    const showNote = (copied) => {
         const note = document.getElementById('chatChoiceReportNote');
+        const head = document.getElementById('chatChoiceReportHead');
+        const hint = document.getElementById('chatChoiceReportHint');
+        if (head) head.textContent = copied ? '📋 Summary added to the Teams message, full logs copied' : '📋 Summary added to the Teams message';
+        if (hint) hint.textContent = copied
+            ? `In the Teams chat, press ${isMacUA() ? '⌘V' : 'Ctrl+V'} to add the full logs too, then describe the issue and send.`
+            : 'Describe the issue in Teams and send.';
         if (note) note.style.display = 'flex';
     };
 
     const openTeams = () => {
-        const msg = encodeURIComponent('Hi Gaurav, reporting an issue with OAT.\n\n[Paste diagnostic logs below — already copied to clipboard]\n\nIssue: ');
+        const msg = encodeURIComponent(
+            'Hi Gaurav, reporting an issue with OAT.\n\n' +
+            '[Summary, added automatically]\n' + summary + '\n\n' +
+            `[Full logs: press ${isMacUA() ? '⌘V' : 'Ctrl+V'} here to paste them]\n\n` +
+            'Issue: ');
         window.open(`https://teams.microsoft.com/l/chat/0/0?users=Gaurav.Tripathi@netapp.com&message=${msg}`, '_blank');
     };
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(report).then(() => {
-            showNote();
+            showNote(true);
             setTimeout(openTeams, 600);
         }).catch(() => {
-            window.prompt('Copy these diagnostic logs, then paste in Teams chat:', report);
+            showNote(false);
             openTeams();
-            closeChatModal();
         });
     } else {
-        window.prompt('Copy these diagnostic logs, then paste in Teams chat:', report);
+        showNote(false);
         openTeams();
-        closeChatModal();
+    }
+}
+
+let _lastIssueReport = '';
+
+function isMacUA() { return /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || ''); }
+
+function shortBrowser() {
+    const ua = navigator.userAgent || '';
+    const b = /Edg\/(\d+)/.exec(ua) ? 'Edge ' + /Edg\/(\d+)/.exec(ua)[1]
+            : /Chrome\/(\d+)/.exec(ua) ? 'Chrome ' + /Chrome\/(\d+)/.exec(ua)[1]
+            : /Firefox\/(\d+)/.exec(ua) ? 'Firefox ' + /Firefox\/(\d+)/.exec(ua)[1]
+            : /Version\/(\d+).*Safari/.exec(ua) ? 'Safari ' + /Version\/(\d+).*Safari/.exec(ua)[1]
+            : 'Browser';
+    const os = /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'OS?';
+    return `${b} on ${os}`;
+}
+
+// A compact version of the report that fits in the Teams deep link. Kept
+// well under URL limits; the full report is still on the clipboard.
+function buildIssueSummary({ officeDates, autoDateList, leaveDateList, markLog }) {
+    const q = getQ(), t = todayMid();
+    const s = settings || {};
+    const onOff = v => (v ? 'on' : 'off');
+    const lines = [
+        `Script v${localStorage.getItem('oatScriptVersion') || '?'} (min v${REQUIRED_SCRIPT_VERSION}) · last script run ${localStorage.getItem('oatScriptActive') ? new Date(localStorage.getItem('oatScriptActive')).toLocaleString() : 'never'}`,
+        `${shortBrowser()} · now ${new Date().toLocaleString()} · page opened ${PAGE_OPENED_AT.toLocaleString()}`,
+        `Showing ${currentQKey} (${q.display})${t >= q.start && t <= q.end ? '' : ' — today is NOT in this quarter'}`,
+        `Settings: auto-mark ${onOff(s.autoMarkEnabled)}, weekends/holidays ${onOff(s.allowOffDayMark)}, edit auto-marked ${onOff(s.allowAutoMarkEdit)}`,
+        `Office ${officeDates.length} (auto ${autoDateList.length}) · leave ${leaveDateList.length}${leaveDateList.length ? ': ' + leaveDateList.slice(-6).join(', ') : ''}`,
+    ];
+    const recent = markLog.slice(0, 3).map(e => '  ' + String(e).slice(0, 110));
+    if (recent.length) lines.push('Recent log:', ...recent);
+    return lines.join('\n').slice(0, 1200);
+}
+
+function copyIssueReportAgain() {
+    if (!_lastIssueReport) return;
+    const done = () => showNotification('📋 Full logs copied again — paste them in the Teams chat.', 'success');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(_lastIssueReport).then(done).catch(() => window.prompt('Copy these logs:', _lastIssueReport));
+    } else {
+        window.prompt('Copy these logs:', _lastIssueReport);
     }
 }
 

@@ -721,8 +721,9 @@
                 </button>
             </div>
             <div class="chat-choice-report-note" id="chatChoiceReportNote" style="display:none;">
-                <span>📋 Diagnostic logs copied to clipboard!</span>
-                <span class="chat-choice-report-hint">Paste them in the Teams chat to help diagnose the issue.</span>
+                <span id="chatChoiceReportHead">📋 Diagnostic logs copied to clipboard!</span>
+                <span class="chat-choice-report-hint" id="chatChoiceReportHint">Paste them in the Teams chat to help diagnose the issue.</span>
+                <button class="chat-choice-copy-again" onclick="copyIssueReportAgain()">Copy full logs again</button>
             </div>
         </div>
     </div>
