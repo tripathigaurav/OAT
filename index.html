@@ -625,6 +625,12 @@
         canvas.width  = window.innerWidth;
         canvas.height = window.innerHeight;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // A tab opened in the background (the WiFi script's auto-mark tab) or
+        // a hidden pane can report a 0x0 window. getImageData then threw, which
+        // aborted this whole block before the resize listener and animation
+        // were set up, so the background stayed blank until a reload. Wait for
+        // a real size instead; the resize listener calls setup() again.
+        if (!canvas.width || !canvas.height) { silData = null; cols = []; return; }
         silData = buildSilhouette();
         cols = [];
         for (let x = 0; x < canvas.width; x += Math.floor(rnd(10, 18))) {
