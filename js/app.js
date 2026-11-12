@@ -850,19 +850,26 @@ function toggleDay(dateStr) {
         showNotification(`⛔ ${what} marking is off. Turn on "Allow marking attendance on weekends & holidays" in ⚙️ Settings.`, 'info');
         return;
     }
-    // If day is on leave, first ask to remove leave
+    const isToday = dateStr === getTodayStr();
+    // On leave: replace it with an office day in one step. This used to take
+    // two rounds (Remove Leave?, then click again, Mark Office Day?), while the
+    // WiFi auto-mark and Mark Today did the same change silently in one.
+    // Removing leave without marking stays in the 🌴 leave manager.
     if (leaveDays[dateStr] && !checkedDays[dateStr]) {
         showConfirm({
             icon: '🌴',
-            title: 'Remove Leave?',
-            body: `${dateStr} is marked as leave. Remove it to mark attendance instead.`,
-            confirmText: 'Remove Leave', cancelText: 'Keep', type: 'warn',
+            title: 'Replace Leave with Office Day?',
+            body: `${dateStr} is marked as leave. Mark it as an office day instead? (To just remove the leave, use 🌴 Leave.)`,
+            confirmText: 'Mark Office Day', cancelText: 'Keep Leave', type: 'warn',
             onConfirm: () => {
+                if (isToday) { rescanToday(); return; }   // removes leave too
                 reloadState();   // dialog may have sat open while another tab wrote
                 delete leaveDays[dateStr];
                 saveLeaveDays();
+                checkedDays[dateStr] = true;
+                localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
                 renderCalendars();
-                showNotification(`Removed leave for ${dateStr}. Click again to mark attendance.`, 'info');
+                showNotification(`✅ ${dateStr} is now an office day (leave removed).`, 'success');
             }
         });
         return;
@@ -877,7 +884,10 @@ function toggleDay(dateStr) {
             icon: wasAuto ? '🔓' : '🗑️',
             title: wasAuto ? 'Remove WiFi-Verified Day?' : 'Remove Attendance?',
             body: wasAuto
-                ? `${dateStr} was auto-marked because your laptop was on office WiFi. Removing it drops the WiFi verification — marking it again will count as a manual mark.`
+                ? `${dateStr} was auto-marked because your laptop was on office WiFi. Removing it drops the WiFi verification — ` +
+                  (isToday && localStorage.getItem('oatWifiConfirmedDate') === dateStr
+                      ? 'marking it again today still counts as WiFi verified, since office WiFi confirmed you today.'
+                      : 'marking it again will count as a manual mark.')
                 : `Remove your office day mark for ${dateStr}?`,
             confirmText: 'Remove', cancelText: 'Keep', type: 'danger',
             onConfirm: () => {
@@ -903,6 +913,11 @@ function toggleDay(dateStr) {
             body: `Mark ${dateStr} as an office day?`,
             confirmText: 'Mark It', cancelText: 'Cancel', type: 'success',
             onConfirm: () => {
+                // Today goes through Mark Today's rules, so clicking the cell
+                // and pressing 📡 Mark Today give the same result: WiFi
+                // verified if the office WiFi confirmed you today, manual if
+                // not. The cell used to always record a manual mark.
+                if (isToday) { rescanToday(); return; }
                 reloadState();   // dialog may have sat open while another tab wrote
                 checkedDays[dateStr] = true;
                 localStorage.setItem(qKey('officeDays'), JSON.stringify(checkedDays));
@@ -1232,6 +1247,9 @@ function renderCalendars() {
         confetti.style.display = 'none';
         renderFlipCounter(status, remaining, 'DAYS TO GO', 'Keep showing up 💪', '#74b9ff');
     }
+    // Marks change the "auto-tracking may have stopped" check, so refresh the
+    // badge on every repaint rather than only at page load.
+    updateSetupStatus();
 }
 
 // ── Trends Panel ──────────────────────────────────────────
@@ -2280,15 +2298,44 @@ function getSetupStatusText() {
     return '';
 }
 
+// "Active" used to be permanent: once any auto-mark existed the badge said
+// Auto-tracking active forever, even after the script stopped (Windows watcher
+// gave up, LaunchAgent removed, Location turned off). A long gap since the last
+// run proves nothing — the script only opens the app on office days, so WFH
+// and leave look the same. Office days marked BY HAND after the last run do:
+// you were in, and the script didn't fire. Two or more of those → warn.
+const STALE_MANUAL_DAYS = 2;
+function scriptStaleInfo() {
+    const scriptActive = localStorage.getItem('oatScriptActive');
+    if (!scriptActive) return null;
+    const last = new Date(scriptActive);
+    if (isNaN(last)) return null;
+    const lastDay = formatDate(last.getFullYear(), last.getMonth(), last.getDate());
+    const today = getTodayStr();
+    const missed = Object.keys(checkedDays)
+        .filter(d => checkedDays[d] && !autoMarkedDays[d] && d > lastDay && d <= today)
+        .sort();
+    return missed.length >= STALE_MANUAL_DAYS ? { missed, last } : null;
+}
+
 function updateSetupStatus() {
     const badge = document.getElementById('setupStatusBadge');
     if (!badge) return;
 
     const onboarded = localStorage.getItem('oatOnboarded');
     const scriptActive = localStorage.getItem('oatScriptActive');
+    const stale = scriptStaleInfo();
 
     if (isSetupAlreadyDone()) {
-        if (settings.autoMarkEnabled === false) {
+        if (settings.autoMarkEnabled !== false && stale) {
+            badge.className = 'setup-status-badge stale';
+            badge.innerHTML = '⚠️ Auto-tracking may have stopped';
+            badge.title = `You marked ${stale.missed.length} office days by hand since the script last ran ` +
+                          `(${stale.last.toLocaleDateString()}). Open ⚙️ Settings → 🔧 Diagnose to check it.`;
+            badge.style.display = 'inline-flex';
+            badge.style.cursor = 'pointer';
+            badge.onclick = () => toggleSettings();
+        } else if (settings.autoMarkEnabled === false) {
             badge.className = 'setup-status-badge paused';
             badge.innerHTML = '⏸️ Auto-tracking paused';
             badge.title = 'Auto-marking is disabled. Enable it in ⚙️ Settings.';
@@ -2300,6 +2347,7 @@ function updateSetupStatus() {
             badge.innerHTML = '🤖 Auto-tracking active';
             badge.title = getSetupStatusText();
             badge.style.display = 'inline-flex';
+            badge.style.cursor = '';
             badge.onclick = null;
         }
     } else if (onboarded === 'completed' && !scriptActive) {
@@ -2407,6 +2455,7 @@ function onboardDoneActive() {
 
     localStorage.setItem('oatOnboarded', 'completed');
     document.getElementById('onboardOverlay').style.display = 'none';
+    stopSetupVerificationListener();
     updateSetupStatus();
     const greeting = name ? `${name}, ` : '';
     showNotification(`\u2705 ${greeting}your auto-tracking is active and working!`, 'success');
@@ -2444,6 +2493,7 @@ function onboardSkip() {
     saveUserName();
     localStorage.setItem('oatOnboarded', 'skipped');
     document.getElementById('onboardOverlay').style.display = 'none';
+    stopSetupVerificationListener();
 }
 
 function onboardYes() {
@@ -2473,30 +2523,36 @@ function onboardBack() {
 }
 
 // Listen for cross-tab localStorage changes (installer opens new tab → sets oatScriptActive)
+// One watcher at a time. Each Copy click used to start another 2s poll and
+// overwrite window._setupPoll, so only the newest was ever cleared — the older
+// ones kept re-running onSetupVerified every 2s for the life of the page.
+let _setupPoll = null, _setupStorageFn = null;
+
+function stopSetupVerificationListener() {
+    if (_setupPoll) { clearInterval(_setupPoll); _setupPoll = null; }
+    if (_setupStorageFn) { window.removeEventListener('storage', _setupStorageFn); _setupStorageFn = null; }
+}
+
 function startSetupVerificationListener() {
     // Check immediately in case it's already set
     if (localStorage.getItem('oatScriptActive')) {
         onSetupVerified();
         return;
     }
+    stopSetupVerificationListener();   // a second Copy click restarts, never stacks
     // Listen for storage events from other tabs
-    window.addEventListener('storage', function onStorage(e) {
-        if (e.key === 'oatScriptActive' && e.newValue) {
-            window.removeEventListener('storage', onStorage);
-            onSetupVerified();
-        }
-    });
+    _setupStorageFn = function (e) {
+        if (e.key === 'oatScriptActive' && e.newValue) onSetupVerified();
+    };
+    window.addEventListener('storage', _setupStorageFn);
     // Also poll every 2s as fallback (some browsers don't fire storage for same-origin)
-    window._setupPoll = setInterval(() => {
-        if (localStorage.getItem('oatScriptActive')) {
-            clearInterval(window._setupPoll);
-            onSetupVerified();
-        }
+    _setupPoll = setInterval(() => {
+        if (localStorage.getItem('oatScriptActive')) onSetupVerified();
     }, 2000);
 }
 
 function onSetupVerified() {
-    if (window._setupPoll) clearInterval(window._setupPoll);
+    stopSetupVerificationListener();
     const os = detectOS();
     if (os === 'windows') {
         const banner = document.getElementById('setupVerifiedWin');
@@ -2557,6 +2613,7 @@ function onboardDone() {
     saveUserName();
     localStorage.setItem('oatOnboarded', 'completed');
     document.getElementById('onboardOverlay').style.display = 'none';
+    stopSetupVerificationListener();
     showUserGreeting();
     const name = localStorage.getItem('oatUserName');
     const greeting = name ? `Welcome ${name}! ` : '';
