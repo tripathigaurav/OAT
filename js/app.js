@@ -39,8 +39,13 @@ const BIRTHDAYS = [
     { mmdd: '11-25', name: 'Vijayarajan R' },
 ];
 
+// Years birthdays are shown in (calendar badge, tooltip and the birthday
+// pop-up). Only 2026 for now; add a year here to bring them back.
+const BIRTHDAY_YEARS = ['2026'];
+
 function getBirthdayPeople(dateStr) {
     // dateStr is YYYY-MM-DD
+    if (BIRTHDAY_YEARS.indexOf(dateStr.slice(0, 4)) === -1) return [];
     const mmdd = dateStr.slice(5); // MM-DD
     return BIRTHDAYS.filter(b => b.mmdd === mmdd);
 }
